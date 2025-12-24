@@ -1,0 +1,34 @@
+# app/main.py
+from fastapi import FastAPI
+from app.database import engine, Base
+from app.api.routes.auth import router as auth_router
+
+app = FastAPI(title="Food–Body Connection API")
+
+app.include_router(auth_router)
+
+# Create tables (temporary — later use migrations)
+Base.metadata.create_all(bind=engine)
+
+@app.get("/")
+def health_check():
+    return {"status": "ok"}
+
+from sqlalchemy import text
+from app.database import SessionLocal
+
+@app.get("/db-test")
+def db_test():
+    db = SessionLocal()
+    try:
+        db.execute(text("SELECT 1"))
+        return {"db": "connected"}
+    finally:
+        db.close()
+
+@app.post("/__sanity_check")
+def sanity_check():
+    return {"status": "post works"}
+
+
+
