@@ -50,3 +50,13 @@ h1 {
   background: #1d4ed8;
 }
 
+.success {
+  color: #1a7f37;
+  margin-top: 1rem;
+  font-weight: 600;
+}
+
+.error {
+  color:#b42318;
+  margin-top: 1rem;
+}
