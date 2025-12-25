@@ -1,4 +1,4 @@
-const API_URL = "http://54.253.73.35:8000";
+const API_URL = "https://54.253.73.35:8000";
 
 document.getElementById("login-form").addEventListener("submit", async (e) => {
   e.preventDefault();
