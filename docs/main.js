@@ -6,19 +6,34 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
 
-  const response = await fetch(`${API_URL}/auth/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ email, password })
-  });
+  // Clear previous messages
+  document.getElementById("error").textContent = "";
+  document.getElementById("success").textContent = "";
 
-  if (!response.ok) {
-    document.getElementById("error").textContent = "Login failed";
-    return;
+  try {
+
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Invalid email or password");
+    }
+
+    const data = await response.json();
+
+    // ✅ SUCCESS
+    document.getElementById("success").textContent =
+      "✅ Successfully logged in!";
+
+    console.log("User ID:", data.user_id);
+
+  } catch (err) {
+    document.getElementById("error").textContent =
+      "❌ Login failed. Please check your details.";
   }
-
-  const data = await response.json();
-  console.log("Logged in:", data);
 });
