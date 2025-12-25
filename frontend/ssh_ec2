@@ -1,0 +1,2 @@
+#!/bin/bash
+ssh -i foodbody.pem ec2-user@54.253.73.35
