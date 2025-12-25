@@ -2,8 +2,19 @@
 from fastapi import FastAPI
 from app.database import engine, Base
 from app.api.routes.auth import router as auth_router
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Food–Body Connection API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://alkohout.github.io",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth_router)
 

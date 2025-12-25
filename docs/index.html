@@ -3,33 +3,46 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Food–Body Connection</title>
+  <title>Food–Body Connection | Login</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <main class="container">
     <h1>Food–Body Connection</h1>
+    <p class="tagline">Log foods. Track symptoms. Discover patterns.</p>
 
-    <p class="tagline">
-      Log foods and symptoms. Discover patterns. Get personalized insights.
-    </p>
+    <form id="login-form">
+      <label>
+        Email
+        <input type="email" id="email" required />
+      </label>
 
-    <p>
-      This application allows users to record foods they eat and symptoms they experience,
-      then analyzes the data to identify potential dietary triggers.
-    </p>
+      <label>
+        Password
+        <input type="password" id="password" required />
+      </label>
 
-    <p class="status">
-      🚧 The app is currently under development.
-    </p>
+      <button type="submit" class="primary">Log in</button>
+    </form>
 
+    <p id="error" class="error"></p>
     <div class="actions">
       <a class="button primary"
          href="https://alkohout.github.io/projects/food_body_connection/">
         View project overview
       </a>
     </div>
+    <div class="actions">
+      <a class="button primary"
+        href="http://54.253.73.35:8000/docs/"
+        target="_blank">
+        API Documentation (Swagger)
+      </a>
+    </div>
+
   </main>
+
+  <script src="main.js"></script>
 </body>
 </html>
 
