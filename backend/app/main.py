@@ -6,6 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Food–Body Connection API")
 
+origins = [
+    "https://alkohout.github.io",
+]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
