@@ -1,4 +1,4 @@
-const API_URL = "https://54.253.73.35:8000";
+const API_URL = "https://foodbodyconnection.54.253.73.35.nip.io/";
 
 document.getElementById("login-form").addEventListener("submit", async (e) => {
   e.preventDefault();
