@@ -37,20 +37,22 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     access_token = create_access_token(data={"sub": str(user.user_id), "email": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
-# Dependency to get current user from JWT
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
-        email: str = payload.get("email")
-        if not user_id or not email:
+        if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token")
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
-    
-    user = db.query(User).filter(User.email == email).first()
+
+    user = db.query(User).filter(User.user_id == int(user_id)).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+
     return user
 
 # Example protected route
