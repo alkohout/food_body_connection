@@ -12,12 +12,14 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
 
   try {
 
+    const formData = new URLSearchParams();
+        formData.append("username", email); // OAuth2 uses "username"
+        formData.append("password", password);
+
     const response = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData,
     });
 
     if (!response.ok) {
