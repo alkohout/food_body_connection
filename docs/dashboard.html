@@ -1,2 +1,74 @@
-<script type="module" src="js/dashboard.js"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Food–Body Connection | Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Food–Body Connection Dashboard</h1>
+    <div class="user-info">
+      Logged in as: <span id="user-email"></span>
+      <button id="logout-btn">Logout</button>
+    </div>
+  </header>
 
+  <main class="container">
+    <!-- Log Food / Symptom Section -->
+    <section id="log-food">
+      <h2>Log a Food / Symptom</h2>
+      <form id="log-form">
+        <label>
+          Food / Item:
+          <input type="text" id="food-item" required />
+        </label>
+
+        <label>
+          Symptom (optional):
+          <input type="text" id="symptom" />
+        </label>
+
+        <label>
+          Date:
+          <input type="date" id="entry-date" required />
+        </label>
+
+        <button type="submit" class="primary">Log Entry</button>
+      </form>
+
+      <p id="log-success" class="success"></p>
+      <p id="log-error" class="error"></p>
+
+      <!-- Last 5 entries will be displayed here -->
+      <div id="recent-entries">
+        <h3>Recent Entries</h3>
+        <ul id="entries-list"></ul>
+      </div>
+    </section>
+
+    <!-- Stats / Insights Section -->
+    <section id="stats">
+      <h2>Stats & Insights</h2>
+      <p>Charts and insights will appear here.</p>
+      <!-- Placeholder for charts / graphs -->
+      <div id="charts"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Food–Body Connection</p>
+  </footer>
+
+  <!-- Dashboard JS -->
+  <script type="module" src="js/dashboard.js"></script>
+  <script>
+    // Logout functionality
+    document.getElementById("logout-btn").addEventListener("click", () => {
+      localStorage.removeItem("access_token");
+      window.location.href = "index.html";
+    });
+  </script>
+</body>
+</html>
