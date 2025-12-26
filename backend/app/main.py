@@ -13,7 +13,7 @@ origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://alkohout.github.io",
+        "*",
     ],
     allow_credentials=True,
     allow_methods=["*"],
