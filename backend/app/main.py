@@ -21,6 +21,8 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(entries.router)
+
 
 # Create tables (temporary — later use migrations)
 Base.metadata.create_all(bind=engine)
