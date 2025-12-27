@@ -5,10 +5,10 @@ from app.api.routes.auth import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import entries  
 
+app = FastAPI(title="Food–Body Connection API")
+
 app.include_router(auth_router)
 app.include_router(entries.router)
-
-app = FastAPI(title="Food–Body Connection API")
 
 origins = [
     "https://alkohout.github.io",
