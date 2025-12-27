@@ -19,7 +19,7 @@ def allergen_entry_create(
         date_time=entry.date_time,
         allergen_id=entry.allergen_id,
         quantity = entry.quantity,
-        unit_id = entry.unit_id
+        unit_id = entry.unit_id,
     )
     db.add(new_log)
     db.commit()
