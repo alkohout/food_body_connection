@@ -25,7 +25,7 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
     date_time: document.getElementById("entry-date").value
   };
 
-  const res = await fetch(`${API_BASE}/entries`, {
+  const res = await fetch(`${API_URL}/entries`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
