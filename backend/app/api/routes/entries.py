@@ -6,9 +6,9 @@ from app.api.routes.auth import get_current_user
 from app.schemas.entry import AllergenEntryCreate, EntryRead
 from app.models.table_class import AllergenLog
 
-router = APIRouter(prefix="/entries", tags=["entries"])
+router = APIRouter(prefix="/entries/", tags=["entries"])
 
-@router.post("", response_model=EntryRead)
+@router.post("/", response_model=EntryRead)
 def allergen_entry_create(
     entry: AllergenEntryCreate,
     db: Session = Depends(get_db),
