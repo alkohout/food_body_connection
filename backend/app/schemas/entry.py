@@ -1,7 +1,7 @@
 # app/schemas/entry.py
 
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 class AllergenEntryCreate(BaseModel):
