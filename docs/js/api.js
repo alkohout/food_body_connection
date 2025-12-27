@@ -1,4 +1,4 @@
-const API_URL = "https://foodbodyconnection.54.253.73.35.nip.io";
+export const API_URL = "https://foodbodyconnection.54.253.73.35.nip.io";
 
 export async function apiFetch(endpoint, options = {}) {
   const token = localStorage.getItem("access_token");

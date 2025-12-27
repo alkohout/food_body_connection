@@ -1,4 +1,4 @@
-import { getCurrentUser } from "./api.js";
+import { getCurrentUser, API_URL } from "./api.js";
 
 async function init() {
   if (!localStorage.getItem("access_token")) {
