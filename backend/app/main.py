@@ -8,7 +8,6 @@ from app.api.routes import entries
 app.include_router(auth_router)
 app.include_router(entries.router)
 
-
 app = FastAPI(title="Food–Body Connection API")
 
 origins = [
