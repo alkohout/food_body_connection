@@ -38,6 +38,28 @@ export async function login(email, password) {
   return response.json();
 }
 
+export async function register(email, password) {
+
+  const response = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email: email,
+      password: password,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || "Registration failed");
+  }
+
+  return await response.json();
+}
+
+
 export async function getCurrentUser() {
   return apiFetch("/auth/me");
 }
