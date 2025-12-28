@@ -14,19 +14,36 @@
     <form id="login-form">
       <label>
         Email
-        <input type="email" id="email" required />
+        <input type="email" id="login_email" required />
       </label>
 
       <label>
         Password
-        <input type="password" id="password" required />
+        <input type="password" id="login_password" required />
       </label>
 
       <button type="submit" class="primary">Log in</button>
     </form>
 
-    <p id="success" class="success"></p>
-    <p id="error" class="error"></p>
+    <form id="registration-form">
+      <label>
+        Email
+        <input type="email" id="registration_email" required />
+      </label>
+
+      <label>
+        Password
+        <input type="password" id="registration_password" required />
+      </label>
+
+      <button type="submit" class="primary">Register</button>
+    </form>
+
+    <p id="login-success" class="success"></p>
+    <p id="login-error" class="error"></p>
+    <p id="registration-success" class="success"></p>
+    <p id="registration-error" class="error"></p>
+
     <div class="actions">
       <a class="button primary"
          href="https://alkohout.github.io/projects/food_body_connection/">
