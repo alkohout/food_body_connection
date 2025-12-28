@@ -30,7 +30,7 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
   }
 });
 
-document.getElementById("registeration-form").addEventListener("submit", async (e) => {
+document.getElementById("registration-form").addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const email = document.getElementById("registration_email").value;
@@ -46,7 +46,7 @@ document.getElementById("registeration-form").addEventListener("submit", async (
     // STORE TOKEN
     localStorage.setItem("access_token", data.access_token);
 
-    document.getElementById("register-success").textContent =
+    document.getElementById("registration-success").textContent =
   "✅ Registered! Please log in.";
 
     setTimeout(() => {
