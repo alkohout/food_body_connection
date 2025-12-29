@@ -10,3 +10,5 @@ WARNING:  Invalid HTTP request received.
 INFO:     162.142.125.112:39188 - "GET /security.txt HTTP/1.1" 404 Not Found
 INFO:     94.231.206.133:0 - "GET / HTTP/1.0" 200 OK
 INFO:     94.231.206.200:0 - "GET /favicon.ico HTTP/1.0" 404 Not Found
+INFO:     45.139.104.171:0 - "GET /sendgrid.env HTTP/1.0" 404 Not Found
+INFO:     87.236.176.185:0 - "GET / HTTP/1.0" 200 OK
