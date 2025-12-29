@@ -8,4 +8,6 @@ from typing import Optional
 class AllergenLogCreate(BaseModel):
     allergen_id: int
     date_time: str  # or datetime
+    quantity: Optional[float] = None
+    unit_id: Optional[int] = None
 
