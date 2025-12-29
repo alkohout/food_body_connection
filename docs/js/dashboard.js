@@ -66,23 +66,28 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
     return;
   }
 
-  const res = await fetch(`${API_URL}/entries/allergen?allergen_id=${allergenId}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-    },
-  });
+  try {
+    const res = await fetch(`${API_URL}/entries/allergen?allergen_id=${allergenId}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      },
+    });
 
-  if (res.ok) {
-    document.getElementById("log-success").textContent = "Allergen logged!";
-    document.getElementById("log-error").textContent = "";
-    allergenInput.value = "";
-    allergenIdInput.value = "";
-  } else {
-    document.getElementById("log-error").textContent = "Failed to log allergen.";
+    if (res.ok) {
+      document.getElementById("log-success").textContent = "Allergen logged!";
+      document.getElementById("log-error").textContent = "";
+      allergenInput.value = "";
+      allergenIdInput.value = "";
+      suggestions.innerHTML = "";
+    } else {
+      const err = await res.text();
+      document.getElementById("log-error").textContent = `Failed to log allergen: ${err}`;
+    }
+  } catch (error) {
+    document.getElementById("log-error").textContent = `Error: ${error.message}`;
   }
+
 });
-
-
 
 init();
