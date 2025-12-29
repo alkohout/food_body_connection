@@ -3,25 +3,27 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models.table_class import AllergenLog
+from app.models.table_class import AllergenLog, User
 from app.api.routes.auth import get_current_user
+from app.schemas import AllergenLogCreate
 
 router = APIRouter(prefix="/entries", tags=["entries"])
 
-@router.post("/allergen")
+@router.post("/entries/allergen")
 def log_allergen(
-    allergen_id: int,
-    db: Session = Depends(get_db),
-    user = Depends(get_current_user),
+    payload: AllergenLogCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
-    entry = AllergenLog(
-        user_id=user.user_id,
-        allergen_id=allergen_id,
+    new_entry = AllergenLog(
+        user_id=current_user.user_id,
+        allergen_id=payload.allergen_id,
+        date_time=payload.date_time
     )
-    db.add(entry)
+    db.add(new_entry)
     db.commit()
-    db.refresh(entry)
+    db.refresh(new_entry)
+    return {"message": "Allergen logged", "allergen_log_id": new_entry.allergen_log_id}
 
-    return {"status": "ok", "allergen_log_id": entry.allergen_log_id}
 
 

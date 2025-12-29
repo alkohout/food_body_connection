@@ -5,6 +5,11 @@ import { getCurrentUser, API_URL } from "./api.js";
 const allergenInput = document.getElementById("allergen-input");
 const allergenIdInput = document.getElementById("allergen-id");
 const suggestions = document.getElementById("allergen-suggestions");
+const dateInput = document.getElementById("allergen-date");
+
+// Set default to current date/time
+const now = new Date();
+dateInput.value = now.toISOString().slice(0,16); // "YYYY-MM-DDTHH:mm"
 
 async function init() {
   if (!localStorage.getItem("access_token")) {
@@ -60,6 +65,8 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const allergenId = allergenIdInput.value;
+  const dateTime = dateInput.value; // "YYYY-MM-DDTHH:mm"
+
   if (!allergenId) {
     document.getElementById("log-error").textContent =
       "Please select an allergen from the list.";
@@ -72,6 +79,10 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("access_token")}`,
       },
+      body: JSON.stringify({
+        allergen_id: allergenId,
+        date_time: dateTime
+      }),
     });
 
     if (res.ok) {
@@ -80,6 +91,7 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
       allergenInput.value = "";
       allergenIdInput.value = "";
       suggestions.innerHTML = "";
+      dateInput.value = now.toISOString().slice(0,16)
     } else {
       const err = await res.text();
       document.getElementById("log-error").textContent = `Failed to log allergen: ${err}`;
