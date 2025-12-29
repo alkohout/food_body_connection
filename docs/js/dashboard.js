@@ -36,10 +36,9 @@ allergenInput.addEventListener("input", () => {
 });
 
 async function fetchAllergens(query) {
+
   const res = await fetch(`${API_URL}/allergens?q=${encodeURIComponent(query)}`, {
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-    },
+  headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
   });
 
   const data = await res.json();
