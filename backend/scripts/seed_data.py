@@ -21,28 +21,63 @@ def main():
         db.refresh(test_user)  # so test_user.user_id is populated
 
         # Create symptoms
-        headache = Symptom(symptom_name="Headache")
-        tummy_ache = Symptom(symptom_name="Tummy Ache")
-        db.add_all([headache,tummy_ache])
+        symptoms = [
+            "Headache", 
+            "Tummy Ache", 
+            "Rash", 
+            "Nausea", 
+            "Fatigue",
+            "Vomiting", 
+            "Diarrhea", 
+            "Consitipation",
+            "Cough", 
+            "Sneezing", 
+            "Itching",
+            "Swelling", 
+            "Shortness of Breath", 
+            "Dizziness", 
+            "Fever"
+        ]
+        symptom_objects = [Symptom(symptom_name=s) for s in symptoms]
+        db.add_all(symptom_objects)
         db.commit()
-        db.refresh(tummy_ache)
-        db.refresh(headache)
+        for s in symptom_objects:
+            db.refresh(s)
 
         # Create allergens
-        peanut = Allergen(allergen_name="Peanuts")
-        dairy = Allergen(allergen_name="Dairy")
-        db.add_all([peanut, dairy])
+                # Create allergens (standard list)
+        allergens = [
+            "Peanuts",
+            "Tree Nuts",
+            "Dairy",
+            "Eggs",
+            "Fish",
+            "Shellfish",
+            "Gluten",
+            "Soy",
+            "Sesame",
+            "Mustard"
+        ]
+        allergen_objects = [Allergen(allergen_name=a) for a in allergens]
+        db.add_all(allergen_objects)
         db.commit()
-        db.refresh(peanut)
-        db.refresh(dairy)
+        for a in allergen_objects:
+            db.refresh(a)
+
 
         # Create base units
-        grams = Unit(unit_name="grams")
-        ml = Unit(unit_name="ml")
-        db.add_all([grams, ml])
+        units = ["grams", 
+                 "ml", 
+                 "pieces", 
+                 "tablespoons", 
+                 "teaspoons", 
+                 "cups"
+        ]
+        unit_objects = [Unit(unit_name=u) for u in units]
+        db.add_all(unit_objects)
         db.commit()
-        db.refresh(grams)
-        db.refresh(ml)
+        for u in unit_objects:
+            db.refresh(u)
 
         # Create some allergen diary entries
         entry = AllergenLog(
