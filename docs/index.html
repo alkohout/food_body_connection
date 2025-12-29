@@ -1,5 +1,4 @@
 <!-- docs/index.html -->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,7 +12,14 @@
     <h1>Food–Body Connection</h1>
     <p class="tagline">Log foods. Track symptoms. Discover patterns.</p>
 
-    <form id="login-form">
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="login">Log in</button>
+      <button class="tab" data-tab="register">Register</button>
+    </div>
+
+    <!-- Login -->
+    <form id="login-form" class="form active">
       <label>
         Email
         <input type="email" id="login_email" required />
@@ -27,7 +33,8 @@
       <button type="submit" class="primary">Log in</button>
     </form>
 
-    <form id="registration-form">
+    <!-- Register -->
+    <form id="registration-form" class="form">
       <label>
         Email
         <input type="email" id="registration_email" required />
@@ -38,7 +45,7 @@
         <input type="password" id="registration_password" required />
       </label>
 
-      <button type="submit" class="primary">Register</button>
+      <button type="submit" class="primary">Create account</button>
     </form>
 
     <p id="login-success" class="success"></p>
@@ -47,23 +54,22 @@
     <p id="registration-error" class="error"></p>
 
     <div class="actions">
-      <a class="button primary"
+      <a class="button secondary"
          href="https://alkohout.github.io/projects/food_body_connection/">
         View project overview
       </a>
     </div>
+
     <div class="actions">
-      <a class="button primary"
-        href="https://foodbodyconnection.54.253.73.35.nip.io/docs"
-        target="_blank">
+      <a class="button secondary"
+         href="https://foodbodyconnection.54.253.73.35.nip.io/docs"
+         target="_blank">
         API Documentation (Swagger)
       </a>
     </div>
-
   </main>
 
- <script type="module" src="js/main.js"></script>
-
+  <script type="module" src="js/main.js"></script>
+  <script src="js/tabs.js"></script>
 </body>
 </html>
-
