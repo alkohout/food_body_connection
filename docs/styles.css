@@ -126,3 +126,20 @@ button.primary {
   width: 100%;
   margin-top: 1rem;
 }
+
+.suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #ccc;
+  max-width: 300px;
+}
+
+.suggestions li {
+  padding: 6px;
+  cursor: pointer;
+}
+
+.suggestions li:hover {
+  background: #eee;
+}
