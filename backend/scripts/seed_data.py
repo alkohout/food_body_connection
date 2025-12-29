@@ -29,23 +29,81 @@ def main():
             test_user = existing_user
 
         # Create symptoms
-        symptoms = [
-            "Headache", 
-            "Tummy Ache", 
-            "Rash", 
-            "Nausea", 
-            "Fatigue",
-            "Vomiting", 
-            "Diarrhea", 
-            "Consitipation",
-            "Cough", 
-            "Sneezing", 
+        SYMPTOMS = [
+            # Gastrointestinal
+            "Abdominal Pain",
+            "Bloating",
+            "Constipation",
+            "Diarrhea",
+            "Gas",
+            "Heartburn",
+            "Indigestion",
+            "Nausea",
+            "Vomiting",
+            "Loss of Appetite",
+            "Increased Appetite",
+
+            # Neurological
+            "Headache",
+            "Migraine",
+            "Dizziness",
+            "Vertigo",
+            "Brain Fog",
+            "Light Sensitivity",
+            "Sound Sensitivity",
+            "Visual Disturbances",
+            "Tingling",
+            "Numbness",
+
+            # Skin
+            "Rash",
+            "Hives",
             "Itching",
-            "Swelling", 
-            "Shortness of Breath", 
-            "Dizziness", 
-            "Fever"
+            "Eczema",
+            "Acne",
+            "Flushing",
+            "Swelling",
+            "Dry Skin",
+
+            # Respiratory
+            "Cough",
+            "Sneezing",
+            "Runny Nose",
+            "Nasal Congestion",
+            "Shortness of Breath",
+            "Chest Tightness",
+            "Wheezing",
+
+            # Cardiovascular / Autonomic
+            "Palpitations",
+            "Rapid Heart Rate",
+            "Low Blood Pressure",
+            "High Blood Pressure",
+            "Cold Hands or Feet",
+
+            # Systemic / Inflammatory
+            "Fatigue",
+            "Fever",
+            "Chills",
+            "Body Aches",
+            "Joint Pain",
+            "Muscle Pain",
+            "Weakness",
+
+            # Sleep
+            "Difficulty Falling Asleep",
+            "Difficulty Staying Asleep",
+            "Unrefreshing Sleep",
+            "Night Sweats",
+
+            # Mood / Cognitive
+            "Anxiety",
+            "Depression",
+            "Irritability",
+            "Low Mood",
+            "Poor Concentration"
         ]
+
         symptom_objects = [Symptom(symptom_name=s) for s in symptoms]
         db.add_all(symptom_objects)
         db.commit()
@@ -53,19 +111,84 @@ def main():
             db.refresh(s)
 
         # Create allergens
-                # Create allergens (standard list)
-        allergens = [
+        ALLERGENS = [
+
+            # Major food allergens (global)
+            "Milk",
+            "Eggs",
             "Peanuts",
             "Tree Nuts",
-            "Dairy",
-            "Eggs",
+            "Soy",
+            "Wheat",
+            "Gluten",
             "Fish",
             "Shellfish",
-            "Gluten",
-            "Soy",
             "Sesame",
-            "Mustard"
+            "Mustard",
+            "Celery",
+            "Lupin",
+            "Sulphites",
+
+            # Specific nuts (useful for granularity later)
+            "Almonds",
+            "Cashews",
+            "Walnuts",
+            "Pecans",
+            "Hazelnuts",
+            "Pistachios",
+            "Macadamia Nuts",
+
+            # Dairy-related
+            "Lactose",
+            "Casein",
+            "Whey",
+
+            # Grains & starches
+            "Corn",
+            "Rice",
+            "Oats",
+            "Barley",
+            "Rye",
+
+            # Fruits
+            "Citrus",
+            "Bananas",
+            "Strawberries",
+            "Apples",
+            "Avocado",
+
+            # Vegetables / legumes
+            "Tomatoes",
+            "Potatoes",
+            "Nightshades",
+            "Legumes",
+            "Chickpeas",
+            "Lentils",
+
+            # Additives
+            "MSG",
+            "Artificial Sweeteners",
+            "Aspartame",
+            "Food Colorings",
+            "Preservatives",
+
+            # Beverages & stimulants
+            "Caffeine",
+            "Alcohol",
+            "Red Wine",
+            "Beer",
+
+            # Non-food triggers (very useful for migraine/allergy overlap)
+            "Pollen",
+            "Dust Mites",
+            "Mold",
+            "Pet Dander",
+            "Fragrances",
+            "Cleaning Products",
+            "Smoke",
+            "Perfume"
         ]
+
         allergen_objects = [Allergen(allergen_name=a) for a in allergens]
         db.add_all(allergen_objects)
         db.commit()
@@ -109,7 +232,7 @@ def main():
         # Commit all diary entries
         db.commit()
 
-        print("ed data created successfully!")
+        print("Seed data created successfully!")
 
     finally:
         db.close()
