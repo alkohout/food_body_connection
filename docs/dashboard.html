@@ -39,6 +39,19 @@
         <input type="hidden" id="allergen-id" />
 
         <ul id="allergen-suggestions" class="suggestions"></ul>
+        <label for="allergen-quantity">Quantity</label>
+        <input
+        type="number"
+        id="allergen-quantity"
+        placeholder="Enter quantity"
+        min="0"
+        step="any"
+        />
+
+        <label for="allergen-unit">Unit</label>
+        <select id="allergen-unit">
+        <option value="">Select unit</option>
+        </select>
 
         <button type="submit">Log</button>
 
