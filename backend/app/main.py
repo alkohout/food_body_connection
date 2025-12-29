@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from app.database import engine, Base
 from app.api.routes.auth import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
+import app.api.routes.allergens as allergens
 
 app = FastAPI(title="Food–Body Connection API")
 
@@ -20,6 +21,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(allergens.router)
 
 # Create tables (temporary — later use migrations)
 Base.metadata.create_all(bind=engine)
