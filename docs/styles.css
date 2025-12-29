@@ -5,8 +5,8 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background-image:
     linear-gradient(
-      rgba(255, 255, 255, 0.85),
-      rgba(255, 255, 255, 0.85)
+      rgba(255, 255, 255, 0.15),
+      rgba(255, 255, 255, 0.15)
     ),
     url("assets/images/background.PNG");
   background-size: cover;
