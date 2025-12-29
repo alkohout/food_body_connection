@@ -8,7 +8,7 @@ body {
       rgba(255, 255, 255, 0.15),
       rgba(255, 255, 255, 0.15)
     ),
-    url("assets/images/background.PNG");
+    url("assets/images/background.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
