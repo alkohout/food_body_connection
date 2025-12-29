@@ -1,3 +1,5 @@
+// docs/js/main.js
+
 import { login } from "./api.js";
 import { register } from "./api.js";
 
@@ -8,11 +10,11 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
   const password = document.getElementById("login_password").value;
 
   // Clear previous messages
-  document.getElementById("loginerror").textContent = "";
-  document.getElementById("loginsuccess").textContent = "";
+  document.getElementById("login-error").textContent = "";
+  document.getElementById("login-success").textContent = "";
 
   try {
-    const data = await login(login_email, login_password);
+    const data = await login(email, password);
 
     // STORE TOKEN
     localStorage.setItem("access_token", data.access_token);
@@ -41,10 +43,7 @@ document.getElementById("registration-form").addEventListener("submit", async (e
   document.getElementById("registration-success").textContent = "";
 
   try {
-    const data = await register(registration_email, registration_password);
-
-    // STORE TOKEN
-    localStorage.setItem("access_token", data.access_token);
+    const data = await register(email, password);
 
     document.getElementById("registration-success").textContent =
   "✅ Registered! Please log in.";
