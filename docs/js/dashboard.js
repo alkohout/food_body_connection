@@ -91,40 +91,9 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const allergenId = allergenIdInput.value;
-  const dateTime = dateInput.value; // "YYYY-MM-DDTHH:mm"
-
-  if (!allergenId) {
-    document.getElementById("log-error").textContent =
-      "Please select an allergen from the list.";
-    return;
-  }
-
-  try {
-    const res = await fetch(`${API_URL}/entries/allergen?allergen_id=${allergenId}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-      },
-      body: JSON.stringify({
-        allergen_id: allergenId,
-        date_time: dateTime
-      }),
-    });
-
-    if (res.ok) {
-      document.getElementById("log-success").textContent = "Allergen logged!";
-      document.getElementById("log-error").textContent = "";
-      allergenInput.value = "";
-      allergenIdInput.value = "";
-      suggestions.innerHTML = "";
-      dateInput.value = now.toISOString().slice(0,16)
-    } else {
-      const err = await res.text();
-      document.getElementById("log-error").textContent = `Failed to log allergen: ${err}`;
-    }
-  } catch (error) {
-    document.getElementById("log-error").textContent = `Error: ${error.message}`;
-  }
+  const dateTime = dateInput.value;
+  const quantity = document.getElementById("allergen-quantity").value;
+  const unitId = unitSelect.value;
 
   if (!allergenId) {
     document.getElementById("log-error").textContent =
