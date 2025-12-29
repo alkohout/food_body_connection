@@ -1,3 +1,5 @@
+// docs/js/dashboard.js
+
 import { getCurrentUser, API_URL } from "./api.js";
 
 async function init() {
