@@ -32,7 +32,7 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
   }
 });
 
-document.getElementById("registration-form").addEventListener("submit", async (e) => {
+document.getElementById("register-form").addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const email = document.getElementById("registration_email").value;
