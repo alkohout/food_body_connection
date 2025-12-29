@@ -29,7 +29,7 @@ def main():
             test_user = existing_user
 
         # Create symptoms
-        SYMPTOMS = [
+        symptoms = [
             # Gastrointestinal
             "Abdominal Pain",
             "Bloating",
@@ -111,7 +111,7 @@ def main():
             db.refresh(s)
 
         # Create allergens
-        ALLERGENS = [
+        allergens = [
 
             # Major food allergens (global)
             "Milk",
