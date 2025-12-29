@@ -16,14 +16,17 @@ def main():
     db = SessionLocal()
 
     try:
-        # Create a test user
-        test_user = User(
-            email="test@example.com",
-            password_hash=hash_password("password123")
-        )
-        db.add(test_user)
-        db.commit()
-        db.refresh(test_user)  # so test_user.user_id is populated
+        existing_user = db.query(User).filter(User.email == "test@example.com").first()
+        if not existing_user:
+            test_user = User(
+                email="test@example.com",
+                password_hash=hash_password("password123")
+            )
+            db.add(test_user)
+            db.commit()
+            db.refresh(test_user)
+        else:
+            test_user = existing_user
 
         # Create symptoms
         symptoms = [
