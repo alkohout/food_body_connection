@@ -1,10 +1,10 @@
 // docs/js/dashboard.js
 
+import { getCurrentUser, API_URL } from "./api.js";
+
 const allergenInput = document.getElementById("allergen-input");
 const allergenIdInput = document.getElementById("allergen-id");
 const suggestions = document.getElementById("allergen-suggestions");
-
-import { getCurrentUser, API_URL } from "./api.js";
 
 async function init() {
   if (!localStorage.getItem("access_token")) {
