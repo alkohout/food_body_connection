@@ -21,6 +21,14 @@
     <section id="log-allergen">
       <h2>Log an allergen</h2>
       <form id="log-form">
+
+        <label for="allergen-date">Date & Time</label>
+        <input
+        type="datetime-local"
+        id="allergen-date"
+        value=""
+        />
+
         <label for="allergen-input">Allergen</label>
         <input
         type="text"
@@ -28,7 +36,6 @@
         placeholder="Start typing (e.g. milk)"
         autocomplete="off"
         />
-
         <input type="hidden" id="allergen-id" />
 
         <ul id="allergen-suggestions" class="suggestions"></ul>
