@@ -1,9 +1,10 @@
-from click import DateTime
-from traitlets import Integer
+# Ensure project root is in sys.path so 'app' can be imported
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from datetime import datetime, timezone
 from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Unit, Symptom
 from app.core.security import hash_password
 from app.database import Base, SessionLocal
-from datetime import datetime, timezone
 
 def main():
 
