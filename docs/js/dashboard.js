@@ -1,10 +1,10 @@
 // docs/js/dashboard.js
 
+import { getCurrentUser, API_URL } from "./api.js";
+
 const allergenInput = document.getElementById("allergen-input");
 const allergenIdInput = document.getElementById("allergen-id");
 const suggestions = document.getElementById("allergen-suggestions");
-
-import { getCurrentUser, API_URL } from "./api.js";
 
 async function init() {
   if (!localStorage.getItem("access_token")) {
@@ -36,10 +36,9 @@ allergenInput.addEventListener("input", () => {
 });
 
 async function fetchAllergens(query) {
+
   const res = await fetch(`${API_URL}/allergens?q=${encodeURIComponent(query)}`, {
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-    },
+  headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
   });
 
   const data = await res.json();
