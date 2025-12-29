@@ -21,6 +21,19 @@
     <section id="log-allergen">
       <h2>Log an allergen</h2>
       <form id="log-form">
+        <label for="allergen-input">Allergen</label>
+        <input
+        type="text"
+        id="allergen-input"
+        placeholder="Start typing (e.g. milk)"
+        autocomplete="off"
+        />
+
+        <input type="hidden" id="allergen-id" />
+
+        <ul id="allergen-suggestions" class="suggestions"></ul>
+
+        <button type="submit">Log</button>
 
       </form>
 
