@@ -1,3 +1,5 @@
+// docs/js/api.js
+
 export const API_URL = "https://foodbodyconnection.54.253.73.35.nip.io";
 
 export async function apiFetch(endpoint, options = {}) {
