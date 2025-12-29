@@ -15,10 +15,19 @@ const unitId = unitSelect.value;
 // Fetch units from backend
 async function fetchUnits() {
   try {
-    const res = await fetch(`${API_URL}/unit`, {
+    const res = await fetch(`${API_URL}/units`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
     });
+
+    if (!res.ok) throw new Error(`Failed to fetch units: ${res.status}`);
+
     const data = await res.json();
+
+    if (!Array.isArray(data)) {
+      console.error("Units data is not an array:", data);
+      return;
+    }
+
     data.forEach(u => {
       const opt = document.createElement("option");
       opt.value = u.unit_id;
