@@ -4,6 +4,7 @@ from app.database import engine, Base
 from app.api.routes.auth import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
 import app.api.routes.allergens as allergens
+import app.api.routes.symptoms as symptoms 
 from app.api.routes import units
 from app.api.routes import entries
 
@@ -24,6 +25,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(allergens.router)
+app.include_router(symptoms.router)
 app.include_router(units.router)
 app.include_router(entries.router)
 
