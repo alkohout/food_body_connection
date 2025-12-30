@@ -2,6 +2,7 @@
 
 import { getCurrentUser, API_URL } from "./api.js";
 
+// Allergen logging elements
 const allergenInput = document.getElementById("allergen-input");
 const allergenIdInput = document.getElementById("allergen-id");
 const suggestions = document.getElementById("allergen-suggestions");
@@ -149,6 +150,127 @@ if (logForm) {
       } else {
         const err = await res.text();
         document.getElementById("log-error").textContent = `Failed to log allergen: ${err}`;
+      }
+    } catch (error) {
+      document.getElementById("log-error").textContent = `Error: ${error.message}`;
+    }
+  });
+}
+// Symptom logging elements
+const symptomInput = document.getElementById("symptom-input");
+const symptomIdInput = document.getElementById("symptom-id");
+const symptomSuggestions = document.getElementById("symptom-suggestions");
+
+function localDateTimeForInput(date = new Date()) {
+  const tzOffsetMs = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - tzOffsetMs)
+    .toISOString()
+    .slice(0, 16);
+}
+const dateInput = document.getElementById("symptom-date");
+dateInput.value = localDateTimeForInput();
+
+async function init() {
+  if (!localStorage.getItem("access_token")) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  try {
+    const user = await getCurrentUser();
+    document.getElementById("user-email").textContent = user.email;
+  } catch {
+    localStorage.removeItem("access_token");
+    window.location.href = "index.html";
+  }
+}
+
+let debounceTimer2;
+
+symptomInput.addEventListener("input", () => {
+  const query = symptomInput.value.trim();
+
+  symptomIdInput.value = "";
+  symptomSuggestions.innerHTML = "";
+
+  if (query.length < 1) return;
+
+  clearTimeout(debounceTimer2);
+  debounceTimer2 = setTimeout(() => fetchSymptoms(query), 300);
+});
+
+async function fetchSymptoms(query) {
+
+  const res = await fetch(`${API_URL}/symptoms?q=${encodeURIComponent(query)}`, {
+  headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+  });
+
+  const data = await res.json();
+  symptomSuggestions.innerHTML = "";
+
+  data.forEach(a => {
+    const li = document.createElement("li");
+    li.textContent = a.symptom_name;
+    li.addEventListener("click", () => {
+      symptomInput.value = a.symptom_name;
+      symptomIdInput.value = a.symptom_id;
+      symptomSuggestions.innerHTML = "";
+    });
+    symptomSuggestions.appendChild(li);
+  });
+}
+
+const logForm2 = document.getElementById("log-form");
+
+if (logForm2) {
+  logForm2.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const symptomId = symptomIdInput.value;
+    const localInput = dateInput.value; // we already have dateInput above
+
+    if (!symptomId) {
+      document.getElementById("log-error").textContent =
+        "Please select a symptom from the list.";
+      return;
+    }
+
+    if (!localInput) {
+      document.getElementById("log-error").textContent =
+        "Please select a date and time.";
+      return;
+    }
+
+    const dateTime = new Date(localInput).toISOString();
+    const intensity = document.getElementById("symptom-intensity").value;
+
+    try {
+      const res = await fetch(`${API_URL}/entries/symptoms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+
+        body: JSON.stringify({
+          allergen_id: parseInt(allergenId),
+          date_time: dateTime,
+          intensity: intensity !== "" ? parseInt(intensity) : null
+        })
+
+      });
+
+      if (res.ok) {
+        document.getElementById("log-success").textContent = "Symptom logged!";
+        document.getElementById("log-error").textContent = "";
+        symptomInput.value = "";
+        symptomIdInput.value = "";
+        symptomSuggestions.innerHTML = "";
+        dateInput.value = localDateTimeForInput();
+        document.getElementById("symptom-intensity").value = "";
+      } else {
+        const err = await res.text();
+        document.getElementById("log-error").textContent = `Failed to log symptom: ${err}`;
       }
     } catch (error) {
       document.getElementById("log-error").textContent = `Error: ${error.message}`;
