@@ -71,7 +71,9 @@ allergenInput.addEventListener("input", () => {
   if (allergenIdInput) {
     allergenIdInput.value = "";
   }
-  suggestions.innerHTML = "";
+  if (suggestions) {
+    suggestions.innerHTML = "";
+  }
 
   if (query.length < 1) return;
 
@@ -173,8 +175,9 @@ symptomInput.addEventListener("input", () => {
   if (symptomIdInput) {
     symptomIdInput.value = "";
   }
-
-  symptomSuggestions.innerHTML = "";
+  if (symptomSuggestions) {
+    symptomSuggestions.innerHTML = "";
+  }
 
   if (query.length < 1) return;
 
