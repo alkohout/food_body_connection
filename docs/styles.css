@@ -27,11 +27,9 @@ body {
   margin: 4rem auto;
   padding: 2rem 1.5rem;
 
-  background: rgba(17, 24, 39, 0.45);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-
+  background: rgba(17, 24, 39, 0.6); /* dark slate, transparent */
   border-radius: 12px;
+
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
 }
 
@@ -149,4 +147,14 @@ button.primary {
 
 .suggestions li:hover {
   background: #eee;
+}
+
+.secondary {
+  background: rgba(255, 255, 255, 0.12);
+  color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
