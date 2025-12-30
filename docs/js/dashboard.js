@@ -7,6 +7,16 @@ const allergenIdInput = document.getElementById("allergen-id");
 const suggestions = document.getElementById("allergen-suggestions");
 const unitSelect = document.getElementById("allergen-unit");
 
+function localDateTimeForInput(date = new Date()) {
+  const tzOffsetMs = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - tzOffsetMs)
+    .toISOString()
+    .slice(0, 16);
+}
+const dateInput = document.getElementById("allergen-date");
+dateInput.value = localDateTimeForInput();
+
+
 // Fetch units from backend
 async function fetchUnits() {
   try {
@@ -36,12 +46,6 @@ async function fetchUnits() {
 
 // Call on page load
 fetchUnits();
-
-// Set default to current date/time
-const now = new Date();
-const dateInput = document.getElementById("allergen-date");
-
-dateInput.value = now.toISOString().slice(0,16); // "YYYY-MM-DDTHH:mm"
 
 async function init() {
   if (!localStorage.getItem("access_token")) {
@@ -137,7 +141,7 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
       allergenInput.value = "";
       allergenIdInput.value = "";
       suggestions.innerHTML = "";
-      document.getElementById("allergen-date").value = new Date().toISOString().slice(0,16);
+      document.getElementById("allergen-date").value = localDateTimeForInput();
       document.getElementById("allergen-quantity").value = "";
       unitSelect.value = "";
     } else {
