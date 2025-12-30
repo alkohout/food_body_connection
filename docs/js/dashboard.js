@@ -126,12 +126,7 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
   }
 
   // Convert local datetime → UTC ISO
-  const [date, time] = localInput.split("T");
-  const [year, month, day] = date.split("-").map(Number);
-  const [hour, minute] = time.split(":").map(Number);
-  const localDate = new Date(year, month - 1, day, hour, minute);
-  const dateTime = localDate.toISOString(); // send UTC to backend
-
+  const dateTime = new Date(localInput).toISOString();
   const quantity = document.getElementById("allergen-quantity").value;
   const unitId = unitSelect.value;
 
