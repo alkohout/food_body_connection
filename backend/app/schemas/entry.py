@@ -13,7 +13,7 @@ class AllergenLogCreate(BaseModel):
 
 Intensity = Annotated[int, Field(ge=0, le=3)]
 class SymptomLogCreate(BaseModel):
-    allergen_id: int
+    symptom_id: int
     date_time: str  # or datetime
     intensity: Intensity
 class UnitOut(BaseModel):
