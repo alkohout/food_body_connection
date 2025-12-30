@@ -61,9 +61,12 @@
       <h2>Log symptom</h2>
 
       <label>
-        Symptom
-        <input type="text" id="symptom-input" />
+        Symptom 
+        <input type="text" id="symptom-input" autocomplete="off" />
+        <input type="hidden" id="symptom-id" />
+        <ul id="symptom-suggestions" class="suggestions"></ul>
       </label>
+
 
       <label>
         Date & time
