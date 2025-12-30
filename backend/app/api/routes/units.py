@@ -11,7 +11,7 @@ router = APIRouter(
     tags=["units"]
 )
 
-@router.get("/", response_model=list[UnitOut])
+@router.get("", response_model=list[UnitOut])
 def read_units(db: Session = Depends(get_db)):
     return db.query(Unit).all()
 
