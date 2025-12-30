@@ -37,7 +37,7 @@ def log_symptom(
         user_id=current_user.user_id,
         symptom_id=payload.symptom_id,
         date_time=payload.date_time,
-        symptom_intensity=payload.symptom_intensity, 
+        symptom_intensity=payload.intensity, 
     )
     db.add(new_entry)
     db.commit()
