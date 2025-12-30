@@ -11,14 +11,6 @@ from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Unit
 from app.database import SessionLocal
 
 def generate_dairy_intolerance_data(user_email="test@example.com", days=90, entries_per_day=3):
-    """
-    Generates synthetic diary data for a user with dairy intolerance.
-    
-    Args:
-        user_email: Email of the user in the database.
-        days: How many days to generate data for.
-        entries_per_day: Average number of allergen logs per day.
-    """
     db = SessionLocal()
     
     try:
@@ -33,7 +25,7 @@ def generate_dairy_intolerance_data(user_email="test@example.com", days=90, entr
         units = db.query(Unit).all()
         symptoms = db.query(Symptom).all()
 
-        # Define common symptoms triggered by dairy
+        # Common symptoms triggered by dairy
         dairy_symptoms = [s for s in symptoms if s.symptom_name.lower() in [
             "abdominal pain", "bloating", "diarrhea", "nausea", "vomiting", 
             "fatigue", "headache", "brain fog"
@@ -43,21 +35,18 @@ def generate_dairy_intolerance_data(user_email="test@example.com", days=90, entr
         start_date = datetime.now(timezone.utc) - timedelta(days=days)
         for day_offset in range(days):
             date = start_date + timedelta(days=day_offset)
-            # Number of entries today (some days may have 0)
             n_entries = random.randint(max(1, entries_per_day - 1), entries_per_day + 1)
             for _ in range(n_entries):
-                # Mostly dairy, occasionally another allergen as noise
                 if random.random() < 0.8:  
                     allergen = random.choice(dairy_allergens)
-                    symptom_chance = 0.7  # symptom occurs 70% of the time with dairy
+                    symptom_chance = 0.7
                 else:
                     allergen = random.choice(other_allergens)
-                    symptom_chance = 0.1  # rarely triggers symptoms
+                    symptom_chance = 0.1
 
                 unit = random.choice(units)
-                quantity = random.randint(1, 5)  # realistic quantity
+                quantity = random.randint(1, 5)
                 
-                # Add allergen log
                 allergen_log = AllergenLog(
                     user_id=user.user_id,
                     date_time=date + timedelta(hours=random.randint(7, 21), minutes=random.randint(0, 59)),
@@ -69,7 +58,6 @@ def generate_dairy_intolerance_data(user_email="test@example.com", days=90, entr
                 db.commit()
                 db.refresh(allergen_log)
 
-                # Add symptom log if triggered
                 if random.random() < symptom_chance:
                     symptom = random.choice(dairy_symptoms)
                     symptom_intensity = random.randint(1, 5)
@@ -83,12 +71,18 @@ def generate_dairy_intolerance_data(user_email="test@example.com", days=90, entr
                     db.commit()
                     db.refresh(symptom_log)
 
-        print("Synthetic dairy intolerance data generated successfully!")
+        print(f"Synthetic dairy intolerance data generated for {days} days, {entries_per_day} entries per day.")
     
     finally:
         db.close()
 
 
 if __name__ == "__main__":
-    generate_dairy_intolerance_data(days=90, entries_per_day=3)
-
+    if len(sys.argv) != 3:
+        print("Usage: python -m scripts.generate_user_dairy_intolerance <days> <entries_per_day>")
+        sys.exit(1)
+    
+    days = int(sys.argv[1])
+    entries_per_day = int(sys.argv[2])
+    
+    generate_dairy_intolerance_data(days=days, entries_per_day=entries_per_day)
