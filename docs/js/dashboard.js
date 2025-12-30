@@ -111,15 +111,29 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const allergenId = allergenIdInput.value;
-  const dateTime = utcISOString;
-  const quantity = document.getElementById("allergen-quantity").value;
-  const unitId = unitSelect.value;
+  const localInput = document.getElementById("allergen-date").value; // grab value now
 
   if (!allergenId) {
     document.getElementById("log-error").textContent =
       "Please select an allergen from the list.";
     return;
   }
+
+  if (!localInput) {
+    document.getElementById("log-error").textContent =
+      "Please select a date and time.";
+    return;
+  }
+
+  // Convert local datetime → UTC ISO
+  const [date, time] = localInput.split("T");
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+  const localDate = new Date(year, month - 1, day, hour, minute);
+  const dateTime = localDate.toISOString(); // send UTC to backend
+
+  const quantity = document.getElementById("allergen-quantity").value;
+  const unitId = unitSelect.value;
 
   try {
     const res = await fetch(`${API_URL}/entries/allergens`, {
@@ -142,7 +156,7 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
       allergenInput.value = "";
       allergenIdInput.value = "";
       suggestions.innerHTML = "";
-      dateInput.value = new Date().toISOString().slice(0,16);
+      document.getElementById("allergen-date").value = new Date().toISOString().slice(0,16);
       document.getElementById("allergen-quantity").value = "";
       unitSelect.value = "";
     } else {
