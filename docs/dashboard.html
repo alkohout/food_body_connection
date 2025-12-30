@@ -1,4 +1,3 @@
-<!-- docs/dashboard.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,86 +7,88 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header>
-    <h1>Food–Body Connection Dashboard</h1>
-    <div class="user-info">
-      Logged in as: <span id="user-email"></span>
-      <button id="logout-btn">Logout</button>
-    </div>
-  </header>
-
   <main class="container">
-    <!-- Log Allergen / Symptom Section -->
-    <section id="log-allergen">
-      <h2>Log an allergen</h2>
-      <form id="log-form">
 
-        <label for="allergen-date">Date & Time</label>
-        <input
-        type="datetime-local"
-        id="allergen-date"
-        value=""
-        />
+    <header class="dashboard-header">
+      <h1>Food–Body Connection</h1>
+      <p id="user-email" class="subtle"></p>
+    </header>
 
-        <label for="allergen-input">Allergen</label>
-        <input
-        type="text"
-        id="allergen-input"
-        placeholder="Start typing (e.g. milk)"
-        autocomplete="off"
-        />
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="allergen">Log Allergen</button>
+      <button class="tab" data-tab="symptom">Log Symptom</button>
+      <!-- future -->
+      <!-- <button class="tab" data-tab="analysis">Analysis</button> -->
+    </div>
+
+    <!-- Allergen tab -->
+    <form id="allergen" class="form active">
+      <h2>Log allergen consumed</h2>
+
+      <label>
+        Allergen
+        <input type="text" id="allergen-input" autocomplete="off" />
         <input type="hidden" id="allergen-id" />
-
         <ul id="allergen-suggestions" class="suggestions"></ul>
-        <label for="allergen-quantity">Quantity</label>
-        <input
-        type="number"
-        id="allergen-quantity"
-        placeholder="Enter quantity"
-        min="0"
-        step="any"
-        />
+      </label>
 
-        <label for="allergen-unit">Unit</label>
+      <label>
+        Date & time
+        <input type="datetime-local" id="allergen-date" required />
+      </label>
+
+      <label>
+        Quantity
+        <input type="number" step="0.01" id="allergen-quantity" />
+      </label>
+
+      <label>
+        Unit
         <select id="allergen-unit">
-        <option value="">Select unit</option>
+          <option value="">—</option>
         </select>
+      </label>
 
-        <button type="submit">Log</button>
-
-      </form>
+      <button type="submit" class="primary">Log allergen</button>
 
       <p id="log-success" class="success"></p>
       <p id="log-error" class="error"></p>
+    </form>
 
-      <!-- Last 5 entries will be displayed here -->
-      <div id="recent-entries">
-        <h3>Recent Entries</h3>
-        <ul id="entries-list"></ul>
-      </div>
-    </section>
+    <!-- Symptom tab -->
+    <form id="symptom" class="form">
+      <h2>Log symptom</h2>
 
-    <!-- Stats / Insights Section -->
-    <section id="stats">
-      <h2>Stats & Insights</h2>
-      <p>Charts and insights will appear here.</p>
-      <!-- Placeholder for charts / graphs -->
-      <div id="charts"></div>
-    </section>
+      <label>
+        Symptom
+        <input type="text" id="symptom-input" />
+      </label>
+
+      <label>
+        Date & time
+        <input type="datetime-local" id="symptom-date" />
+      </label>
+
+      <label>
+        Severity
+        <input type="range" id="symptom-severity" min="1" max="10" />
+      </label>
+
+      <label>
+        Notes
+        <textarea id="symptom-notes"></textarea>
+      </label>
+
+      <button type="submit" class="primary">Log symptom</button>
+
+      <p id="symptom-success" class="success"></p>
+      <p id="symptom-error" class="error"></p>
+    </form>
+
   </main>
 
-  <footer>
-    <p>&copy; 2025 Food–Body Connection</p>
-  </footer>
-
-  <!-- Dashboard JS -->
   <script type="module" src="js/dashboard.js"></script>
-  <script>
-    // Logout functionality
-    document.getElementById("logout-btn").addEventListener("click", () => {
-      localStorage.removeItem("access_token");
-      window.location.href = "index.html";
-    });
-  </script>
+  <script src="js/tabs.js"></script>
 </body>
 </html>
