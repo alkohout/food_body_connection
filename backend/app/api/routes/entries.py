@@ -3,9 +3,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models.table_class import AllergenLog, User
+from app.models.table_class import AllergenLog, SymptomLog, User
 from app.api.routes.auth import get_current_user
-from app.schemas import AllergenLogCreate
+from app.schemas import AllergenLogCreate, SymptomLogCreate
 
 router = APIRouter(prefix="/entries", tags=["entries"])
 
