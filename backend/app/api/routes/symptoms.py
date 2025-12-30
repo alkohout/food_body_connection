@@ -22,7 +22,7 @@ def search_symptoms(
 
     return [
         {
-            "symptom_id": a.symmptom_id,
+            "symptom_id": a.symptom_id,
             "symptom_name": a.symptom_name
         }
         for a in results
