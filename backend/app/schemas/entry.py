@@ -1,7 +1,6 @@
 # app/schemas/entry.py
 
-import conint
-from pydantic import BaseModel
+from pydantic import BaseModel, conint
 from datetime import date, datetime
 from typing import Optional
 
