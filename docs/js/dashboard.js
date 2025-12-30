@@ -163,21 +163,6 @@ const symptomSuggestions = document.getElementById("symptom-suggestions");
 const symptomDateInput = document.getElementById("symptom-date");
 symptomDateInput.value = localDateTimeForInput();
 
-async function init() {
-  if (!localStorage.getItem("access_token")) {
-    window.location.href = "index.html";
-    return;
-  }
-
-  try {
-    const user = await getCurrentUser();
-    document.getElementById("user-email").textContent = user.email;
-  } catch {
-    localStorage.removeItem("access_token");
-    window.location.href = "index.html";
-  }
-}
-
 let debounceTimer2;
 
 symptomInput.addEventListener("input", () => {
