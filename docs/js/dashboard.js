@@ -5,12 +5,16 @@ import { getCurrentUser, API_URL } from "./api.js";
 const allergenInput = document.getElementById("allergen-input");
 const allergenIdInput = document.getElementById("allergen-id");
 const suggestions = document.getElementById("allergen-suggestions");
-const dateInput = document.getElementById("allergen-date");
+const localInput = document.getElementById("allergen-date").value;
 const unitSelect = document.getElementById("allergen-unit");
 const allergenId = allergenIdInput.value;
-const dateTime = dateInput.value;
 const quantity = document.getElementById("allergen-quantity").value;
 const unitId = unitSelect.value;
+
+// Convert local time → UTC ISO string
+const utcISOString = new Date(localInput).toISOString();
+payload.date_time = utcISOString;
+
 
 // Fetch units from backend
 async function fetchUnits() {
@@ -100,7 +104,7 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const allergenId = allergenIdInput.value;
-  const dateTime = dateInput.value;
+  const dateTime = payload.date_time;
   const quantity = document.getElementById("allergen-quantity").value;
   const unitId = unitSelect.value;
 
