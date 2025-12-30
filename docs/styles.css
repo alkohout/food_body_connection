@@ -25,7 +25,14 @@ body {
 .container {
   max-width: 640px;
   margin: 4rem auto;
-  padding: 0 1rem;
+  padding: 2rem 1.5rem;
+
+  background: rgba(17, 24, 39, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
 }
 
 h1 {
