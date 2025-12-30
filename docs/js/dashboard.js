@@ -111,7 +111,7 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
   }
 
   try {
-    const res = await fetch(`${API_URL}/entries/allergen`, {
+    const res = await fetch(`${API_URL}/entries/allergens`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
