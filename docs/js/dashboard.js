@@ -160,8 +160,8 @@ if (logForm) {
 const symptomInput = document.getElementById("symptom-input");
 const symptomIdInput = document.getElementById("symptom-id");
 const symptomSuggestions = document.getElementById("symptom-suggestions");
-const dateInput = document.getElementById("symptom-date");
-dateInput.value = localDateTimeForInput();
+const symptomDateInput = document.getElementById("symptom-date");
+symptomDateInput.value = localDateTimeForInput();
 
 async function init() {
   if (!localStorage.getItem("access_token")) {
@@ -220,7 +220,7 @@ if (logForm2) {
     e.preventDefault();
 
     const symptomId = symptomIdInput.value;
-    const localInput = dateInput.value; // we already have dateInput above
+    const localInput = symptomDateInput.value; 
 
     if (!symptomId) {
       document.getElementById("log-error").textContent =
@@ -234,7 +234,7 @@ if (logForm2) {
       return;
     }
 
-    const dateTime = new Date(localInput).toISOString();
+    const symptomDateTime = new Date(localInput).toISOString();
     const intensity = document.getElementById("symptom-intensity").value;
 
     try {
@@ -247,7 +247,7 @@ if (logForm2) {
 
         body: JSON.stringify({
           allergen_id: parseInt(allergenId),
-          date_time: dateTime,
+          date_time: symptomDateTime,
           intensity: intensity !== "" ? parseInt(intensity) : null
         })
 
@@ -259,7 +259,7 @@ if (logForm2) {
         symptomInput.value = "";
         symptomIdInput.value = "";
         symptomSuggestions.innerHTML = "";
-        dateInput.value = localDateTimeForInput();
+        symptomDateInput.value = localDateTimeForInput();
         document.getElementById("symptom-intensity").value = "";
       } else {
         const err = await res.text();
