@@ -25,12 +25,12 @@ body {
 .container {
   max-width: 640px;
   margin: 4rem auto;
-  padding: 8rem 1.5rem;
+  padding: 5rem 1.5rem;
 
-  background: rgba(221, 225, 228, 0.7); /* dark slate, transparent */
+  background: rgba(17, 24, 39, 0.6); /* dark slate, transparent */
   border-radius: 12px;
 
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 20px 40px rgba(229, 231, 235, 0.6);
 }
 
 h1 {
