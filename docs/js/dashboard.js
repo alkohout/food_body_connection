@@ -160,13 +160,6 @@ if (logForm) {
 const symptomInput = document.getElementById("symptom-input");
 const symptomIdInput = document.getElementById("symptom-id");
 const symptomSuggestions = document.getElementById("symptom-suggestions");
-
-function localDateTimeForInput(date = new Date()) {
-  const tzOffsetMs = date.getTimezoneOffset() * 60000;
-  return new Date(date.getTime() - tzOffsetMs)
-    .toISOString()
-    .slice(0, 16);
-}
 const dateInput = document.getElementById("symptom-date");
 dateInput.value = localDateTimeForInput();
 
