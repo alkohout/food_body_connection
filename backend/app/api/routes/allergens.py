@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.table_class import Allergen
 
-router = APIRouter(prefix="/allergen", tags=["allergen"], include_in_schema=True)
+router = APIRouter(prefix="/allergens", tags=["allergens"], include_in_schema=True)
 
 @router.get("")
 def search_allergens(
