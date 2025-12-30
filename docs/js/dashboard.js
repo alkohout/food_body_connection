@@ -12,8 +12,16 @@ const quantity = document.getElementById("allergen-quantity").value;
 const unitId = unitSelect.value;
 
 // Convert local time → UTC ISO string
-const utcISOString = new Date(localInput).toISOString();
-payload.date_time = utcISOString;
+function localToUTC(input) {
+  const [date, time] = input.split("T");
+  const [y, m, d] = date.split("-").map(Number);
+  const [h, min] = time.split(":").map(Number);
+  return new Date(y, m - 1, d, h, min).toISOString();
+}
+
+// Usage
+const utcISOString = localToUTC(localInput);
+
 
 
 // Fetch units from backend
@@ -104,7 +112,7 @@ document.getElementById("log-form").addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const allergenId = allergenIdInput.value;
-  const dateTime = payload.date_time;
+  const dateTime = utcISOString;
   const quantity = document.getElementById("allergen-quantity").value;
   const unitId = unitSelect.value;
 
