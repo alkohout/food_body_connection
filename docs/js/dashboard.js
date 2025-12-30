@@ -102,7 +102,7 @@ async function fetchAllergens(query) {
   });
 }
 
-const logForm = document.getElementById("log-form");
+const logForm = document.getElementById("allergen-form");
 
 if (logForm) {
   logForm.addEventListener("submit", async (e) => {
@@ -206,7 +206,7 @@ async function fetchSymptoms(query) {
   });
 }
 
-const logForm2 = document.getElementById("log-form");
+const logForm2 = document.getElementById("symptom-form");
 
 if (logForm2) {
   logForm2.addEventListener("submit", async (e) => {
@@ -239,7 +239,7 @@ if (logForm2) {
         },
 
         body: JSON.stringify({
-          allergen_id: parseInt(allergenId),
+          symptom_id: parseInt(symptomId),
           date_time: symptomDateTime,
           intensity: intensity !== "" ? parseInt(intensity) : null
         })
@@ -247,8 +247,8 @@ if (logForm2) {
       });
 
       if (res.ok) {
-        document.getElementById("log-success").textContent = "Symptom logged!";
-        document.getElementById("log-error").textContent = "";
+        document.getElementById("symptom-success").textContent = "Symptom logged!";
+        document.getElementById("symptom-error").textContent = "";
         symptomInput.value = "";
         symptomIdInput.value = "";
         symptomSuggestions.innerHTML = "";
@@ -256,10 +256,10 @@ if (logForm2) {
         document.getElementById("symptom-intensity").value = "";
       } else {
         const err = await res.text();
-        document.getElementById("log-error").textContent = `Failed to log symptom: ${err}`;
+        document.getElementById("symptom-error").textContent = `Failed to log symptom: ${err}`;
       }
     } catch (error) {
-      document.getElementById("log-error").textContent = `Error: ${error.message}`;
+      document.getElementById("symptom-error").textContent = `Error: ${error.message}`;
     }
   });
 }
