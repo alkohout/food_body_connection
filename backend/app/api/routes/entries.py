@@ -9,7 +9,7 @@ from app.schemas import AllergenLogCreate
 
 router = APIRouter(prefix="/entries", tags=["entries"])
 
-@router.post("/entries/allergen")
+@router.post("/allergen")
 def log_allergen(
     payload: AllergenLogCreate,
     current_user: User = Depends(get_current_user),
