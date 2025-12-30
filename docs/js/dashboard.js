@@ -262,6 +262,12 @@ if (logForm2) {
       document.getElementById("symptom-error").textContent = `Error: ${error.message}`;
     }
   });
+
+  document.getElementById("logout-btn").addEventListener("click", () => {
+    localStorage.removeItem("access_token");
+    window.location.href = "index.html";
+  });
+
 }
 
 init();
