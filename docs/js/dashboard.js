@@ -68,7 +68,9 @@ let debounceTimer;
 allergenInput.addEventListener("input", () => {
   const query = allergenInput.value.trim();
 
-  allergenIdInput.value = "";
+  if (allergenIdInput) {
+    allergenIdInput.value = "";
+  }
   suggestions.innerHTML = "";
 
   if (query.length < 1) return;
@@ -168,7 +170,10 @@ let debounceTimer2;
 symptomInput.addEventListener("input", () => {
   const query = symptomInput.value.trim();
 
-  symptomIdInput.value = "";
+  if (symptomIdInput) {
+    symptomIdInput.value = "";
+  }
+
   symptomSuggestions.innerHTML = "";
 
   if (query.length < 1) return;
