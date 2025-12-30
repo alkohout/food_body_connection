@@ -10,19 +10,18 @@ const unitSelect = document.getElementById("allergen-unit");
 const allergenId = allergenIdInput.value;
 const quantity = document.getElementById("allergen-quantity").value;
 const unitId = unitSelect.value;
+// Example: "2025-01-01T08:30" (no seconds, no timezone)
 
-// Convert local time → UTC ISO string
-function localToUTC(input) {
-  const [date, time] = input.split("T");
-  const [y, m, d] = date.split("-").map(Number);
-  const [h, min] = time.split(":").map(Number);
-  return new Date(y, m - 1, d, h, min).toISOString();
-}
+// Split into parts
+const [date, time] = localInput.split("T");
+const [year, month, day] = date.split("-").map(Number);
+const [hour, minute] = time.split(":").map(Number);
 
-// Usage
-const utcISOString = localToUTC(localInput);
+// JS months are 0-indexed
+const localDate = new Date(year, month - 1, day, hour, minute);
 
-
+// Convert to UTC ISO string
+const utcISOString = localDate.toISOString();
 
 // Fetch units from backend
 async function fetchUnits() {
