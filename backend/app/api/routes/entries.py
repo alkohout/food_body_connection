@@ -27,6 +27,23 @@ def log_allergen(
     db.refresh(new_entry)
     return {"message": "Allergen logged", "allergen_log_id": new_entry.allergen_log_id}
 
+@router.post("/symptoms")
+def log_symptom(
+    payload: SymptomLogCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    new_entry = SymptomLog(
+        user_id=current_user.user_id,
+        symptom_id=payload.symptom_id,
+        date_time=payload.date_time,
+        symptom_intensity=payload.symptom_intensity, 
+    )
+    db.add(new_entry)
+    db.commit()
+    db.refresh(new_entry)
+    return {"message": "Symptom logged", "symptom_log_id": new_entry.symptom_log_id}
+
 
 
 
