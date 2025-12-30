@@ -97,60 +97,63 @@ async function fetchAllergens(query) {
   });
 }
 
-document.getElementById("log-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
+const logForm = document.getElementById("log-form");
 
-  const allergenId = allergenIdInput.value;
-  const localInput = document.getElementById("allergen-date").value; // grab value now
+if (logForm) {
+  logForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-  if (!allergenId) {
-    document.getElementById("log-error").textContent =
-      "Please select an allergen from the list.";
-    return;
-  }
+    const allergenId = allergenIdInput.value;
+    const localInput = dateInput.value; // we already have dateInput above
 
-  if (!localInput) {
-    document.getElementById("log-error").textContent =
-      "Please select a date and time.";
-    return;
-  }
-
-  // Convert local datetime → UTC ISO
-  const dateTime = new Date(localInput).toISOString();
-  const quantity = document.getElementById("allergen-quantity").value;
-  const unitId = unitSelect.value;
-
-  try {
-    const res = await fetch(`${API_URL}/entries/allergens`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-      },
-      body: JSON.stringify({
-        allergen_id: parseInt(allergenId),
-        date_time: dateTime,
-        quantity: quantity ? parseFloat(quantity) : null,
-        unit_id: unitId ? parseInt(unitId) : null
-      }),
-    });
-
-    if (res.ok) {
-      document.getElementById("log-success").textContent = "Allergen logged!";
-      document.getElementById("log-error").textContent = "";
-      allergenInput.value = "";
-      allergenIdInput.value = "";
-      suggestions.innerHTML = "";
-      document.getElementById("allergen-date").value = localDateTimeForInput();
-      document.getElementById("allergen-quantity").value = "";
-      unitSelect.value = "";
-    } else {
-      const err = await res.text();
-      document.getElementById("log-error").textContent = `Failed to log allergen: ${err}`;
+    if (!allergenId) {
+      document.getElementById("log-error").textContent =
+        "Please select an allergen from the list.";
+      return;
     }
-  } catch (error) {
-    document.getElementById("log-error").textContent = `Error: ${error.message}`;
-  }
-});
+
+    if (!localInput) {
+      document.getElementById("log-error").textContent =
+        "Please select a date and time.";
+      return;
+    }
+
+    const dateTime = new Date(localInput).toISOString();
+    const quantity = document.getElementById("allergen-quantity").value;
+    const unitId = unitSelect.value;
+
+    try {
+      const res = await fetch(`${API_URL}/entries/allergens`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+        body: JSON.stringify({
+          allergen_id: parseInt(allergenId),
+          date_time: dateTime,
+          quantity: quantity ? parseFloat(quantity) : null,
+          unit_id: unitId ? parseInt(unitId) : null,
+        }),
+      });
+
+      if (res.ok) {
+        document.getElementById("log-success").textContent = "Allergen logged!";
+        document.getElementById("log-error").textContent = "";
+        allergenInput.value = "";
+        allergenIdInput.value = "";
+        suggestions.innerHTML = "";
+        dateInput.value = localDateTimeForInput();
+        document.getElementById("allergen-quantity").value = "";
+        unitSelect.value = "";
+      } else {
+        const err = await res.text();
+        document.getElementById("log-error").textContent = `Failed to log allergen: ${err}`;
+      }
+    } catch (error) {
+      document.getElementById("log-error").textContent = `Error: ${error.message}`;
+    }
+  });
+}
 
 init();
