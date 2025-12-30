@@ -5,23 +5,7 @@ import { getCurrentUser, API_URL } from "./api.js";
 const allergenInput = document.getElementById("allergen-input");
 const allergenIdInput = document.getElementById("allergen-id");
 const suggestions = document.getElementById("allergen-suggestions");
-const localInput = document.getElementById("allergen-date").value;
 const unitSelect = document.getElementById("allergen-unit");
-const allergenId = allergenIdInput.value;
-const quantity = document.getElementById("allergen-quantity").value;
-const unitId = unitSelect.value;
-// Example: "2025-01-01T08:30" (no seconds, no timezone)
-
-// Split into parts
-const [date, time] = localInput.split("T");
-const [year, month, day] = date.split("-").map(Number);
-const [hour, minute] = time.split(":").map(Number);
-
-// JS months are 0-indexed
-const localDate = new Date(year, month - 1, day, hour, minute);
-
-// Convert to UTC ISO string
-const utcISOString = localDate.toISOString();
 
 // Fetch units from backend
 async function fetchUnits() {
@@ -55,6 +39,8 @@ fetchUnits();
 
 // Set default to current date/time
 const now = new Date();
+const dateInput = document.getElementById("allergen-date");
+
 dateInput.value = now.toISOString().slice(0,16); // "YYYY-MM-DDTHH:mm"
 
 async function init() {
