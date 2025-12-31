@@ -10,6 +10,8 @@ from typing import Optional
 
 from fastapi.responses import JSONResponse
 
+router = APIRouter(prefix="/analysis", tags=["analysis"])
+
 @router.get("/plot-data")
 def plot_data(
     allergen: Optional[str] = None,
