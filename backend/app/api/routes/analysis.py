@@ -57,7 +57,7 @@ def analysis_summary(
 
     days_tracked = db.execute(
         text("""
-        SELECT COUNT(DISTINCT DATE(date))
+        SELECT COUNT(DISTINCT DATE(date_time))
         FROM allergen_log 
         WHERE user_id = :user_id
           AND date_time BETWEEN :start AND :end
