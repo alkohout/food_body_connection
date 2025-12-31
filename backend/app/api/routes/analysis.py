@@ -29,10 +29,9 @@ def analysis_summary(
 
     total_exposures = db.execute(
         text("""
-        SELECT COUNT(*) FROM entries
+        SELECT COUNT(*) FROM allergen_log 
         WHERE user_id = :user_id
-          AND entry_type = 'exposure'
-          AND date BETWEEN :start AND :end
+          AND date_time BETWEEN :start AND :end
           AND (:allergen_id IS NULL OR allergen_id = :allergen_id)
         """),
         {
@@ -45,10 +44,9 @@ def analysis_summary(
 
     total_symptoms = db.execute(
         text("""
-        SELECT COUNT(*) FROM entries
+        SELECT COUNT(*) FROM symptom_log 
         WHERE user_id = :user_id
-          AND entry_type = 'symptom'
-          AND date BETWEEN :start AND :end
+          AND date_time BETWEEN :start AND :end
         """),
         {
             "user_id": current_user.user_id,
@@ -60,9 +58,9 @@ def analysis_summary(
     days_tracked = db.execute(
         text("""
         SELECT COUNT(DISTINCT DATE(date))
-        FROM entries
+        FROM allergen_log 
         WHERE user_id = :user_id
-          AND date BETWEEN :start AND :end
+          AND date_time BETWEEN :start AND :end
         """),
         {
             "user_id": current_user.user_id,
