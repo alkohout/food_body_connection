@@ -105,13 +105,20 @@
 
             <label>
             Allergen
-            <select id="analysis-allergen">
+            <select id="analysis-allergen-id">
                 <option value="">All (default)</option>
                 <!-- populated dynamically -->
             </select>
             </label>
 
-            <button type="button" id="apply-scope">Apply</button>
+            <button type="submit" id="apply-scope">Apply</button>
+
+            <div class="analysis-results">
+                <p>Total exposures: <span id="total-exposures">0</span></p>
+                <p>Total symptoms: <span id="total-symptoms">0</span></p>
+                <p>Days tracked: <span id="days-tracked">0</span></p>
+            </div>
+
         </section>
 
         <!-- ===================== -->
