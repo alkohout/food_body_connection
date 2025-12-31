@@ -21,23 +21,28 @@ def plot_data(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    query = db.query(AnalysisScope.start_date, AnalysisScope.end_date, SymptomLog.date_time, SymptomLog.symptom_id)
+    # Start query from SymptomLog
+    query = db.query(SymptomLog.date_time)
 
+    # Join allergen log if filtering by allergen
     if allergen:
-        query = query.filter(AllergenLog.allergen_id == allergen)
+        query = query.join(AllergenLog).filter(AllergenLog.allergen == allergen)
+
     if symptom:
         query = query.filter(SymptomLog.symptom_id == symptom)
+
     if start_date:
-        query = query.filter(AnalysisScope.start_date >= start_date)
+        query = query.filter(SymptomLog.date_time >= start_date)
     if end_date:
-        query = query.filter(AnalysisScope.end_date <= end_date)
+        query = query.filter(SymptomLog.date_time <= end_date)
 
     results = query.all()
 
     # Count occurrences per date
     counts = {}
     for row in results:
-        counts[row.date] = counts.get(row.date, 0) + 1
+        date_key = row.date_time.date()  # group by date only
+        counts[date_key] = counts.get(date_key, 0) + 1
 
     # Convert to sorted list
     data = [{"date": d.isoformat(), "count": c} for d, c in sorted(counts.items())]
