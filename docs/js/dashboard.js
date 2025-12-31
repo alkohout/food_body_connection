@@ -351,32 +351,38 @@ if (analysisForm) {
 
 }
 
-async function updatePlot() {
-    const allergen = allergenSelect.value;
-    const symptom = symptomSelect.value;
-    const startDate = document.getElementById("analysis-start-date").value;
-    const endDate = document.getElementById("analysis-end-date").value;
+document.addEventListener("DOMContentLoaded", () => {
+    const allergenSelect = document.getElementById("analysis-allergen-id");
+    const symptomSelect = document.getElementById("analysis-symptom-id");
 
-    const url = `/analysis/plot-data?allergen=${allergen}&symptom=${symptom}&start_date=${startDate}&end_date=${endDate}`;
-    const response = await fetch(url);
-    const data = await response.json();
+    const allergens = ["Peanuts", "Shellfish", "Dairy", "Eggs", "Tree Nuts"];
+    const symptoms = ["Hives", "Swelling", "Itching", "Difficulty Breathing", "Nausea"];
 
-    const trace = {
-        x: data.map(d => d.date),
-        y: data.map(d => d.count),
-        type: 'scatter',
-        mode: 'lines+markers',
-        line: {color: 'blue'},
-        marker: {size: 8}
-    };
+    allergens.forEach(a => allergenSelect.add(new Option(a, a)));
+    symptoms.forEach(s => symptomSelect.add(new Option(s, s)));
 
-    const layout = {
-        title: `Counts of ${symptom} for ${allergen}`,
-        xaxis: {title: "Date"},
-        yaxis: {title: "Count"}
-    };
+    async function updatePlot() {
+        const allergen = allergenSelect.value;
+        const symptom = symptomSelect.value;
+        const startDate = document.getElementById("analysis-start-date").value;
+        const endDate = document.getElementById("analysis-end-date").value;
 
-    Plotly.newPlot('plot', [trace], layout);
-}
+        const url = `/analysis/plot-data?allergen=${allergen}&symptom=${symptom}&start_date=${startDate}&end_date=${endDate}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        const trace = {
+            x: data.map(d => d.date),
+            y: data.map(d => d.count),
+            type: 'scatter',
+            mode: 'lines+markers'
+        };
+
+        Plotly.newPlot('plot', [trace]);
+    }
+
+    // Make it global for onclick buttons
+    window.updatePlot = updatePlot;
+});
 
 init();
