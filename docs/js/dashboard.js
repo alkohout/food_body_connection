@@ -303,57 +303,10 @@ if (logForm2) {
 // -----------------------------------------------------------------------
 const analysisForm = document.getElementById("analysis-form");
 
-if (analysisForm) {
-  analysisForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const startDate = document.getElementById("analysis-start-date").value;
-    const endDate = document.getElementById("analysis-end-date").value;
-    const allergenId = document.getElementById("analysis-allergen-id").value;
-    
-    const payload = {
-      start_date: startDate ? new Date(startDate).toISOString() : null,
-      end_date: endDate ? new Date(endDate).toISOString() : null,
-      allergen_id: allergenId ? parseInt(allergenId) : null  
-    }
-    try { 
-      const res = await fetch(`${API_URL}/analysis/summary`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        document.getElementById("total-exposures").textContent = data.total_exposures;
-        document.getElementById("total-symptoms").textContent = data.total_symptoms;
-        document.getElementById("days-tracked").textContent = data.days_tracked;
-      } else {
-        const err = await res.text();
-        document.getElementById("analysis-error").textContent = `Failed to fetch analysis: ${err}`;
-      }
-    } catch (error) {
-      document.getElementById("analysis-error").textContent = `Error: ${error.message}`;
-    }
-  })
-
-  // Populate allergen and symptom selects
-  const allergens = ["Peanuts", "Shellfish", "Dairy", "Eggs", "Tree Nuts"];
-  const symptoms = ["Hives", "Swelling", "Itching", "Difficulty Breathing", "Nausea"];
-  const allergenSelect = document.getElementById("allergen-select-id");
-  allergens.forEach(a => allergenSelect.add(new Option(a, a)));
-
-  const symptomSelect = document.getElementById("symptom-select");
-  symptoms.forEach(s => symptomSelect.add(new Option(s, s)));
-
-}
-
 document.addEventListener("DOMContentLoaded", () => {
-    const allergenSelect = document.getElementById("analysis-allergen-id");
-    const symptomSelect = document.getElementById("analysis-symptom-id");
+    const allergenSelect = document.getElementById("allergen-select");
+    const symptomSelect = document.getElementById("symptom-select");
+    const updateBtn = document.getElementById("update-plot-btn");
 
     const allergens = ["Peanuts", "Shellfish", "Dairy", "Eggs", "Tree Nuts"];
     const symptoms = ["Hives", "Swelling", "Itching", "Difficulty Breathing", "Nausea"];
@@ -364,8 +317,8 @@ document.addEventListener("DOMContentLoaded", () => {
     async function updatePlot() {
         const allergen = allergenSelect.value;
         const symptom = symptomSelect.value;
-        const startDate = document.getElementById("analysis-start-date").value;
-        const endDate = document.getElementById("analysis-end-date").value;
+        const startDate = document.getElementById("start-date").value;
+        const endDate = document.getElementById("end-date").value;
 
         const url = `/analysis/plot-data?allergen=${allergen}&symptom=${symptom}&start_date=${startDate}&end_date=${endDate}`;
         const response = await fetch(url);
@@ -378,11 +331,17 @@ document.addEventListener("DOMContentLoaded", () => {
             mode: 'lines+markers'
         };
 
-        Plotly.newPlot('plot', [trace]);
+        const layout = {
+            title: `Counts of ${symptom} for ${allergen}`,
+            xaxis: { title: "Date" },
+            yaxis: { title: "Count" }
+        };
+
+        Plotly.newPlot('plot', [trace], layout);
     }
 
-    // Make it global for onclick buttons
-    window.updatePlot = updatePlot;
+    updateBtn.addEventListener("click", updatePlot);
 });
+
 
 init();
