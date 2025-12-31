@@ -7,7 +7,6 @@ from datetime import date, datetime
 class AnalysisScope(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
-    allergen_id: Optional[int] = None
 
 class AnalysisSummaryOut(BaseModel):
     total_exposures: int
