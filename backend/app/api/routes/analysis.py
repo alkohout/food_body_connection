@@ -6,14 +6,15 @@ from app.models.table_class import User
 from app.schemas import AnalysisSummaryOut
 from datetime import date, datetime, time, timezone
 from sqlalchemy import text
+from typing import Optional
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
 @router.get("/summary")
 def analysis_summary(
-    start_date: date | None = None,
-    end_date: date | None = None,
-    allergen_id: int | None = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    allergen_id: Optional[int] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
