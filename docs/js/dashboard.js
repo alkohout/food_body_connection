@@ -321,30 +321,43 @@ document.addEventListener("DOMContentLoaded", () => {
         const endDate = document.getElementById("end-date").value;
 
         const url = `${API_URL}/analysis/plot-data?allergen=${allergen}&symptom=${symptom}&start_date=${startDate}&end_date=${endDate}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-          console.error("Failed to fetch plot data", response.status, response.statusText);
-        return;
+        
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+                },
+            });
+
+            if (!response.ok) {
+                console.error("Failed to fetch plot data", response.status, response.statusText);
+                return;
+            }
+
+            const data = await response.json();
+
+            const trace = {
+                x: data.map(d => d.date),
+                y: data.map(d => d.count),
+                type: 'scatter',
+                mode: 'lines+markers'
+            };
+
+            const layout = {
+                title: `Counts of ${symptom} for ${allergen}`,
+                xaxis: { title: "Date" },
+                yaxis: { title: "Count" }
+            };
+
+            Plotly.newPlot('plot', [trace], layout);
+
+        } catch (err) {
+            console.error("Error fetching plot data:", err);
         }
-        const data = await response.json();
-
-        const trace = {
-            x: data.map(d => d.date),
-            y: data.map(d => d.count),
-            type: 'scatter',
-            mode: 'lines+markers'
-        };
-
-        const layout = {
-            title: `Counts of ${symptom} for ${allergen}`,
-            xaxis: { title: "Date" },
-            yaxis: { title: "Count" }
-        };
-
-        Plotly.newPlot('plot', [trace], layout);
     }
 
     updateBtn.addEventListener("click", updatePlot);
+
 });
 
 
