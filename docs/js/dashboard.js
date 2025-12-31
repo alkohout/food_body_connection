@@ -307,8 +307,8 @@ if (analysisForm) {
   analysisForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const startDate = document.getElementById("start-date").value;
-    const endDate = document.getElementById("end-date").value;
+    const startDate = document.getElementById("analysis-start-date").value;
+    const endDate = document.getElementById("analysis-end-date").value;
     const allergenId = document.getElementById("analysis-allergen-id").value;
     
     const payload = {
