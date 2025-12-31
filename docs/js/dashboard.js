@@ -343,40 +343,40 @@ if (analysisForm) {
   // Populate allergen and symptom selects
   const allergens = ["Peanuts", "Shellfish", "Dairy", "Eggs", "Tree Nuts"];
   const symptoms = ["Hives", "Swelling", "Itching", "Difficulty Breathing", "Nausea"];
-  const allergenSelect = document.getElementById("allergen-select");
+  const allergenSelect = document.getElementById("allergen-select-id");
   allergens.forEach(a => allergenSelect.add(new Option(a, a)));
 
   const symptomSelect = document.getElementById("symptom-select");
   symptoms.forEach(s => symptomSelect.add(new Option(s, s)));
 
-  async function updatePlot() {
-      const allergen = allergenSelect.value;
-      const symptom = symptomSelect.value;
-      const startDate = document.getElementById("start-date").value;
-      const endDate = document.getElementById("end-date").value;
+}
 
-      const url = `/analysis/plot-data?allergen=${allergen}&symptom=${symptom}&start_date=${startDate}&end_date=${endDate}`;
-      const response = await fetch(url);
-      const data = await response.json();
+async function updatePlot() {
+    const allergen = allergenSelect.value;
+    const symptom = symptomSelect.value;
+    const startDate = document.getElementById("analysis-start-date").value;
+    const endDate = document.getElementById("analysis-end-date").value;
 
-      const trace = {
-          x: data.map(d => d.date),
-          y: data.map(d => d.count),
-          type: 'scatter',
-          mode: 'lines+markers',
-          line: {color: 'blue'},
-          marker: {size: 8}
-      };
+    const url = `/analysis/plot-data?allergen=${allergen}&symptom=${symptom}&start_date=${startDate}&end_date=${endDate}`;
+    const response = await fetch(url);
+    const data = await response.json();
 
-      const layout = {
-          title: `Counts of ${symptom} for ${allergen}`,
-          xaxis: {title: "Date"},
-          yaxis: {title: "Count"}
-      };
+    const trace = {
+        x: data.map(d => d.date),
+        y: data.map(d => d.count),
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: {color: 'blue'},
+        marker: {size: 8}
+    };
 
-      Plotly.newPlot('plot', [trace], layout);
-  }
+    const layout = {
+        title: `Counts of ${symptom} for ${allergen}`,
+        xaxis: {title: "Date"},
+        yaxis: {title: "Count"}
+    };
 
+    Plotly.newPlot('plot', [trace], layout);
 }
 
 init();
