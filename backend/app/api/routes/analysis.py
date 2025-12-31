@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.api.routes.auth import get_current_user
 from app.models.table_class import User
-from app.schemas import AnalysisSummary
+from app.schemas import AnalysisSummaryOut
 from datetime import date, datetime, time, timezone
 from sqlalchemy import text
 
