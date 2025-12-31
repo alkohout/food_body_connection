@@ -320,8 +320,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const startDate = document.getElementById("start-date").value;
         const endDate = document.getElementById("end-date").value;
 
-        const url = `/analysis/plot-data?allergen=${allergen}&symptom=${symptom}&start_date=${startDate}&end_date=${endDate}`;
+        const url = `${API_URL}/analysis/plot-data?allergen=${allergen}&symptom=${symptom}&start_date=${startDate}&end_date=${endDate}`;
         const response = await fetch(url);
+        if (!response.ok) {
+          console.error("Failed to fetch plot data", response.status, response.statusText);
+        return;
+        }
         const data = await response.json();
 
         const trace = {
