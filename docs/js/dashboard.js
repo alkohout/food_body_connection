@@ -2,12 +2,13 @@
 
 import { getCurrentUser, API_URL } from "./api.js";
 
-// Allergen logging elements
-const allergenInput = document.getElementById("allergen-input");
-const allergenIdInput = document.getElementById("allergen-id");
-const suggestions = document.getElementById("allergen-suggestions");
-const unitSelect = document.getElementById("allergen-unit");
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+// INITIALIZATION
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
 
+// Set date input to local datetime format
 function localDateTimeForInput(date = new Date()) {
   const tzOffsetMs = date.getTimezoneOffset() * 60000;
   return new Date(date.getTime() - tzOffsetMs)
@@ -45,9 +46,9 @@ async function fetchUnits() {
   }
 }
 
-// Call on page load
 fetchUnits();
 
+// Initialize dashboard
 async function init() {
   if (!localStorage.getItem("access_token")) {
     window.location.href = "index.html";
@@ -63,6 +64,19 @@ async function init() {
   }
 }
 
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+// ALLERGEN LOGGIN
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+
+// Allergen logging elements
+const allergenInput = document.getElementById("allergen-input");
+const allergenIdInput = document.getElementById("allergen-id");
+const suggestions = document.getElementById("allergen-suggestions");
+const unitSelect = document.getElementById("allergen-unit");
+
+// Allergen autocomplete
 let debounceTimer;
 
 allergenInput.addEventListener("input", () => {
@@ -81,6 +95,7 @@ allergenInput.addEventListener("input", () => {
   debounceTimer = setTimeout(() => fetchAllergens(query), 300);
 });
 
+// Fetch allergen suggestions
 async function fetchAllergens(query) {
 
   const res = await fetch(`${API_URL}/allergens?q=${encodeURIComponent(query)}`, {
@@ -102,6 +117,7 @@ async function fetchAllergens(query) {
   });
 }
 
+// Handle allergen log form submission
 const logForm = document.getElementById("allergen-form");
 
 if (logForm) {
@@ -160,6 +176,13 @@ if (logForm) {
     }
   });
 }
+
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+// SYMPTOM LOGGIN
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+
 // Symptom logging elements
 const symptomInput = document.getElementById("symptom-input");
 const symptomIdInput = document.getElementById("symptom-id");
@@ -167,6 +190,7 @@ const symptomSuggestions = document.getElementById("symptom-suggestions");
 const symptomDateInput = document.getElementById("symptom-date");
 symptomDateInput.value = localDateTimeForInput();
 
+// Symptom autocomplete
 let debounceTimer2;
 
 symptomInput.addEventListener("input", () => {
@@ -185,6 +209,7 @@ symptomInput.addEventListener("input", () => {
   debounceTimer2 = setTimeout(() => fetchSymptoms(query), 300);
 });
 
+// Fetch symptom suggestions
 async function fetchSymptoms(query) {
 
   const res = await fetch(`${API_URL}/symptoms?q=${encodeURIComponent(query)}`, {
@@ -206,6 +231,7 @@ async function fetchSymptoms(query) {
   });
 }
 
+// Handle symptom log form submission
 const logForm2 = document.getElementById("symptom-form");
 
 if (logForm2) {
@@ -268,6 +294,51 @@ if (logForm2) {
     window.location.href = "index.html";
   });
 
+}
+
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+// ANALYSIS DASHBOARD
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+const analysisForm = document.getElementById("analysis-form");
+
+if (analysisForm) {
+  analysisForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const startDate = document.getElementById("start-date").value;
+    const endDate = document.getElementById("end-date").value;
+    const allergenId = document.getElementById("analysis-allergen-id").value;
+    
+    const payload = {
+      start_date: startDate ? new Date(startDate).toISOString() : null,
+      end_date: endDate ? new Date(endDate).toISOString() : null,
+      allergen_id: allergenId ? parseInt(allergenId) : null  
+    }
+    try { 
+      const res = await fetch(`${API_URL}/analysis/summary`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        document.getElementById("total-exposures").textContent = data.total_exposures;
+        document.getElementById("total-symptoms").textContent = data.total_symptoms;
+        document.getElementById("days-tracked").textContent = data.days_tracked;
+      } else {
+        const err = await res.text();
+        document.getElementById("analysis-error").textContent = `Failed to fetch analysis: ${err}`;
+      }
+    } catch (error) {
+      document.getElementById("analysis-error").textContent = `Error: ${error.message}`;
+    }
+  })
 }
 
 init();
