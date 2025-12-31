@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.api.routes.auth import get_current_user
-from app.models.table_class import User, AllergenLog, SymptomLog
+from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Symptom
 from app.schemas import AnalysisSummaryOut, AnalysisScope
 from datetime import date, datetime, time, timezone
 from sqlalchemy import text
@@ -12,42 +12,65 @@ from fastapi.responses import JSONResponse
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
+from datetime import timedelta
+from fastapi.responses import JSONResponse
+
 @router.get("/plot-data")
 def plot_data(
-    allergen: Optional[str] = None,
-    symptom: Optional[str] = None,
+    allergen: str,
+    symptom: str,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Start query from SymptomLog
-    query = db.query(SymptomLog.date_time)
+    # --- Allergen events ---
+    allergen_q = (
+        db.query(AllergenLog.date_time)
+        .join(Allergen)
+        .filter(AllergenLog.user_id == current_user.user_id)
+        .filter(Allergen.allergen_name == allergen)
+    )
 
-    # Join allergen log if filtering by allergen
-    if allergen:
-        query = query.join(AllergenLog).filter(AllergenLog.allergen == allergen)
-
-    if symptom:
-        query = query.filter(SymptomLog.symptom_id == symptom)
+    # --- Symptom events ---
+    symptom_q = (
+        db.query(SymptomLog.date_time)
+        .join(Symptom)
+        .filter(SymptomLog.user_id == current_user.user_id)
+        .filter(Symptom.symptom_name == symptom)
+    )
 
     if start_date:
-        query = query.filter(SymptomLog.date_time >= start_date)
+        allergen_q = allergen_q.filter(AllergenLog.date_time >= start_date)
+        symptom_q = symptom_q.filter(SymptomLog.date_time >= start_date)
+
     if end_date:
-        query = query.filter(SymptomLog.date_time <= end_date)
+        allergen_q = allergen_q.filter(AllergenLog.date_time <= end_date)
+        symptom_q = symptom_q.filter(SymptomLog.date_time <= end_date)
 
-    results = query.all()
+    allergen_times = [t for (t,) in allergen_q.all()]
+    symptom_times = [t for (t,) in symptom_q.all()]
 
-    # Count occurrences per date
+    # --- Correlate: symptom within 24h of allergen ---
     counts = {}
-    for row in results:
-        date_key = row.date_time.date()  # group by date only
-        counts[date_key] = counts.get(date_key, 0) + 1
 
-    # Convert to sorted list
-    data = [{"date": d.isoformat(), "count": c} for d, c in sorted(counts.items())]
+    for a_time in allergen_times:
+        window_end = a_time + timedelta(hours=24)
 
-    return JSONResponse(content=data)
+        daily_count = sum(
+            1 for s_time in symptom_times
+            if a_time <= s_time <= window_end
+        )
+
+        day = a_time.date()
+        counts[day] = counts.get(day, 0) + daily_count
+
+    return JSONResponse(
+        content=[
+            {"date": d.isoformat(), "count": c}
+            for d, c in sorted(counts.items())
+        ]
+    )
 
 @router.post("/summary")
 def analysis_summary(
