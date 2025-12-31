@@ -27,7 +27,7 @@ body {
   margin: 4rem auto;
   padding: 5rem 2.5rem;
 
-  background: rgba(255, 249, 248, .95); /* dark slate, transparent */
+  background: rgba(255, 251, 252, .9); /* dark slate, transparent */
   border-radius: 12px;
 
   box-shadow: 0 20px 40px rgba(229, 231, 235, 0.6);
