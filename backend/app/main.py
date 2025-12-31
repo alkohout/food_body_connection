@@ -5,6 +5,7 @@ from app.api.routes.auth import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
 import app.api.routes.allergens as allergens
 import app.api.routes.symptoms as symptoms 
+import app.api.routes.analysis as analysis
 from app.api.routes import units
 from app.api.routes import entries
 
@@ -28,6 +29,7 @@ app.include_router(allergens.router)
 app.include_router(symptoms.router)
 app.include_router(units.router)
 app.include_router(entries.router)
+app.include_router(analysis.router)
 
 # Create tables (temporary — later use migrations)
 Base.metadata.create_all(bind=engine)
