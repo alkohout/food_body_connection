@@ -10,7 +10,7 @@ from typing import Optional
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
-@router.get("/summary")
+@router.post("/summary")
 def analysis_summary(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
