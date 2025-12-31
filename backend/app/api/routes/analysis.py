@@ -14,7 +14,6 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 def analysis_summary(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    allergen_id: Optional[int] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -32,13 +31,11 @@ def analysis_summary(
         SELECT COUNT(*) FROM allergen_log 
         WHERE user_id = :user_id
           AND date_time BETWEEN :start AND :end
-          AND (:allergen_id IS NULL OR allergen_id = :allergen_id)
         """),
         {
             "user_id": current_user.user_id,
             "start": start_utc,
             "end": end_utc,
-            "allergen_id": allergen_id
         }
     ).scalar()
 
