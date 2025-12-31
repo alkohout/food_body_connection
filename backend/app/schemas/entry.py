@@ -1,9 +1,9 @@
 # app/schemas/entry.py
 
+from typing_extensions import Annotated
 from pydantic import BaseModel, Field 
 from datetime import date, datetime
 from typing import Optional
-from typing_extensions import Annotated
 
 class AllergenLogCreate(BaseModel):
     allergen_id: int
@@ -20,5 +20,6 @@ class UnitOut(BaseModel):
     unit_id: int
     unit_name: str
 
-    class Config:
-        orm_mode = True
+    model_config = {
+        "from_attributes": True
+    }
