@@ -15,15 +15,26 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 from datetime import timedelta
 from fastapi.responses import JSONResponse
 
+DEFAULT_ALLERGEN = "Dairy"          # default allergen if none selected
+DEFAULT_SYMPTOM = "Nausea"          # default symptom if none selected
+DEFAULT_START_DATE = date(2025, 1, 1)  # earliest date
+DEFAULT_END_DATE = date.today()        # today
+
 @router.get("/plot-data")
 def plot_data(
-    allergen: str,
-    symptom: str,
+    allergen: Optional[str] = None,
+    symptom: Optional[str] = None,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # Use defaults if nothing provided
+    allergen = allergen or DEFAULT_ALLERGEN
+    symptom = symptom or DEFAULT_SYMPTOM
+    start_date = start_date or DEFAULT_START_DATE
+    end_date = end_date or DEFAULT_END_DATE
+
     # --- Allergen events ---
     allergen_q = (
         db.query(AllergenLog.date_time)
