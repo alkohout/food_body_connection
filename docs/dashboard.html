@@ -19,8 +19,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="allergen">Log Allergen</button>
       <button class="tab" data-tab="symptom">Log Symptom</button>
-      <!-- future -->
-      <!-- <button class="tab" data-tab="analysis">Analysis</button> -->
+      <button class="tab" data-tab="analysis">Analysis</button>
     </div>
 
     <!-- Allergen tab -->
@@ -84,6 +83,131 @@
       <p id="symptom-success" class="success"></p>
       <p id="symptom-error" class="error"></p>
     </form>
+
+    <!-- Analysis tab -->
+    <form id="analysis-form" class="form active">
+        <h2>Analysis</h2>
+
+        <!-- ===================== -->
+        <!-- Dataset scope -->
+        <!-- ===================== -->
+        <section class="analysis-section">
+            <h3>Data Scope</h3>
+
+            <label>
+            Date range
+            <div class="row">
+                <input type="date" id="analysis-start-date">
+                <span>to</span>
+                <input type="date" id="analysis-end-date">
+            </div>
+            </label>
+
+            <label>
+            Allergen
+            <select id="analysis-allergen">
+                <option value="">All (default)</option>
+                <!-- populated dynamically -->
+            </select>
+            </label>
+
+            <button type="button" id="apply-scope">Apply</button>
+        </section>
+
+        <!-- ===================== -->
+        <!-- Summary statistics -->
+        <!-- ===================== -->
+        <section class="analysis-section">
+            <h3>Summary</h3>
+
+            <div class="analysis-grid">
+            <div class="stat-card">
+                <h4>Total entries</h4>
+                <div id="stat-total-entries">—</div>
+            </div>
+
+            <div class="stat-card">
+                <h4>Days tracked</h4>
+                <div id="stat-days">—</div>
+            </div>
+
+            <div class="stat-card">
+                <h4>Avg symptoms / day</h4>
+                <div id="stat-avg-symptoms">—</div>
+            </div>
+            </div>
+        </section>
+
+        <!-- ===================== -->
+        <!-- Symptom distribution -->
+        <!-- ===================== -->
+        <section class="analysis-section">
+            <h3>Symptom Distribution</h3>
+
+            <label>
+            Group by
+            <select id="symptom-groupby">
+                <option value="symptom">Symptom</option>
+                <option value="severity">Severity</option>
+                <option value="time_of_day">Time of day</option>
+            </select>
+            </label>
+
+            <div class="plot-container" id="symptom-distribution-plot">
+            <!-- bar / histogram goes here -->
+            </div>
+        </section>
+
+        <!-- ===================== -->
+        <!-- Dose-response -->
+        <!-- ===================== -->
+        <section class="analysis-section">
+            <h3>Dose–Response</h3>
+
+            <label>
+            Unit
+            <select id="dose-unit">
+                <option value="g">grams</option>
+                <option value="ml">ml</option>
+                <option value="serving">servings</option>
+            </select>
+            </label>
+
+            <div class="plot-container" id="dose-response-plot">
+            <!-- scatter / smooth curve -->
+            </div>
+        </section>
+
+        <!-- ===================== -->
+        <!-- Time lag analysis -->
+        <!-- ===================== -->
+        <section class="analysis-section">
+            <h3>Time Lag</h3>
+
+            <label>
+            Max lag (hours)
+            <input type="number" id="max-lag" value="24" min="1" max="72">
+            </label>
+
+            <div class="plot-container" id="lag-plot">
+            <!-- lag histogram / density -->
+            </div>
+        </section>
+
+        <!-- ===================== -->
+        <!-- Notes / interpretation -->
+        <!-- ===================== -->
+        <section class="analysis-section">
+            <h3>Notes</h3>
+            <textarea
+            id="analysis-notes"
+            placeholder="Observations, hypotheses, confounders…"
+            rows="4"
+            ></textarea>
+        </section>
+
+    </form>
+
 
   </main>
 
