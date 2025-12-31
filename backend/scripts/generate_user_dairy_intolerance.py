@@ -60,7 +60,7 @@ def generate_dairy_intolerance_data(user_email="test@example.com", days=90, entr
 
                 if random.random() < symptom_chance:
                     symptom = random.choice(dairy_symptoms)
-                    symptom_intensity = random.randint(1, 5)
+                    symptom_intensity = random.randint(0, 3) 
                     symptom_log = SymptomLog(
                         user_id=user.user_id,
                         date_time=allergen_log.date_time + timedelta(minutes=random.randint(30, 180)),
