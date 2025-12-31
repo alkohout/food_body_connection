@@ -372,7 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
             };
 
             const layout = {
-              title: "Symptoms vs Allergen Exposure",
+              title: `Counts of ${symptom} for ${allergen}`,
               xaxis: { title: "Date" },
 
               yaxis: {
@@ -403,11 +403,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 mode: 'lines+markers'
             };
 
-            const layout = {
-                title: `Counts of ${symptom} for ${allergen}`,
-                xaxis: { title: "Date" },
-                yaxis: { title: "Count" }
-            };
 
             //Plotly.newPlot('plot', [trace], layout);
             Plotly.newPlot(
