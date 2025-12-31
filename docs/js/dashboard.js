@@ -302,6 +302,66 @@ if (logForm2) {
 // -----------------------------------------------------------------------
 // -----------------------------------------------------------------------
 const analysisForm = document.getElementById("analysis-form");
+const symptomColors = {
+  Nausea: "#ef4444",
+  Headache: "#3b82f6",
+  Fatigue: "#10b981",
+  Bloating: "#f59e0b"
+};
+
+const allergenColors = {
+  Dairy: "#8b5cf6",
+  Gluten: "#ec4899",
+  Nuts: "#14b8a6"
+};
+
+const symptomTraces = Object.entries(data.symptoms).map(
+  ([symptom, values]) => ({
+    x: data.dates,
+    y: values,
+    name: symptom,
+    mode: "lines+markers",
+    yaxis: "y1",
+    line: { color: symptomColors[symptom] ?? "#6b7280" }
+  })
+);
+
+const allergenTrace = {
+  x: data.dates,
+  y: data.allergen_series,
+  name: data.selected_allergen,
+  mode: "markers",
+  yaxis: "y2",
+  marker: {
+    size: 10,
+    color: allergenColors[data.selected_allergen],
+    symbol: "diamond"
+  }
+};
+
+const layout = {
+  title: "Symptoms vs Allergen Exposure",
+  xaxis: { title: "Date" },
+
+  yaxis: {
+    title: "Symptom Intensity",
+    rangemode: "tozero"
+  },
+
+  yaxis2: {
+    title: "Allergen Exposure",
+    overlaying: "y",
+    side: "right",
+    rangemode: "tozero"
+  },
+
+  legend: {
+    orientation: "h",
+    y: -0.25
+  },
+
+  margin: { t: 60 }
+};
 
 document.addEventListener("DOMContentLoaded", () => {
     const allergenSelect = document.getElementById("allergen-select");
@@ -349,8 +409,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 yaxis: { title: "Count" }
             };
 
-            Plotly.newPlot('plot', [trace], layout);
-
+            //Plotly.newPlot('plot', [trace], layout);
+            Plotly.newPlot(
+              'plot',
+              [trace, symptomTraces, allergenTrace],
+              layout,
+              { responsive: true }
+            );  
         } catch (err) {
             console.error("Error fetching plot data:", err);
         }
