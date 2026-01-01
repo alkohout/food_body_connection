@@ -88,7 +88,7 @@ def plot_eda(
         # Build a frequency table
         freq_table = {}
         for a in allergen_events:
-            a_name = getattr(a, 'allergen_name', allergen)
+            a_name = getattr(a, 'allergen_name', allergen_names)
             for s in symptom_events:
                 # within 24h window
                 if a.date_time <= s.date_time <= a.date_time + timedelta(hours=24):
@@ -102,7 +102,7 @@ def plot_eda(
         df_heat = pd.DataFrame(freq_table).fillna(0).T  # rows=allergens, cols=symptoms
 
         if df_heat.empty:
-            df_heat = pd.DataFrame([[0]], index=[allergen], columns=[symptom])  
+            df_heat = pd.DataFrame([[0]], index=[allergen_names], columns=[symptom])  
 
         # --- Plotting ---
         sns.set(style="whitegrid")
