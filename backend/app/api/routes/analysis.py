@@ -107,7 +107,7 @@ def plot_eda(
 
         # Sort by count descending and take top 10
         bar_data_top10 = bar_data.sort_values("Count", ascending=False).head(10)
-        sns.barplot(data=bar_data_top10, x="Allergen", y="Count", ax=axes[0])
+        sns.barplot(data=bar_data_top10, x="Allergen", y="Count", ax=axes)
         axes[0].set_title(f"Number of symptoms within 24h of allergen exposures (top 10 allergens)")
         axes[0].set_xlabel("Allergen")
         axes[0].set_ylabel("Symptom Count")
