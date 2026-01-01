@@ -177,22 +177,21 @@ button.primary {
 
 .stat-inline {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  min-height: unset;
-  gap: 0.5rem;   /* small space between label and number */
   padding: 0.25rem 0.5rem;
   margin-left: 1rem;
+  gap: 0.5rem;
 }
 
 .stat-inline .stat-label {
+  display: inline-block;
+  width: 110px;  /* adjust so labels align nicely */
   font-size: 0.85rem;
   color: #666;
-  width: 10%;       /* adjust as needed */
-  flex-shrink: 0;     /* prevent label from shrinking */
 }
 
 .stat-inline .stat-value {
-  font-size: .85rem;
+  font-size: 0.85rem;
   font-weight: 500;
 }
+
