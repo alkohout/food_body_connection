@@ -305,15 +305,18 @@ if (logForm2) {
 // -----------------------------------------------------------------------
 // -----------------------------------------------------------------------
 
+const symptomPlotInput = document.getElementById("symptom-plot-input");
+const allergenPlotInput = document.getElementById("allergen-plot-input");
+
 document.getElementById("update-plot-btn").addEventListener("click", async () => {
     const img = document.getElementById("analysis-plot");
     
     try {
-        const symptom = symptomInput.value || "Nausea";
-        const allergen = allergenInput.value || "Dairy";
+        const symptom = symptomPlotInput.value || "Nausea";
+        const allergen = allergenPlotInput.value || "Dairy";
         const start_date = dateInput.value ? dateInput.value.split("T")[0] : "2025-01-01";
 
-        const response = await fetch(`${API_URL}/analysis/plot-layman?allergen=${allergen}&symptom=${symptom}&start_date=${start_date}`, {
+        const response = await fetch(`${API_URL}/analysis/plot-eda?allergen=${allergen}&symptom=${symptom}&start_date=${start_date}`, {
             headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
         });
 
