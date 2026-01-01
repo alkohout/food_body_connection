@@ -304,107 +304,12 @@ if (logForm2) {
 // ANALYSIS DASHBOARD
 // -----------------------------------------------------------------------
 // -----------------------------------------------------------------------
-const analysisForm = document.getElementById("analysis-form");
-document.addEventListener("DOMContentLoaded", () => {
-    const allergenSelect = document.getElementById("allergen-select");
-    const symptomSelect = document.getElementById("symptom-select");
-    const updateBtn = document.getElementById("update-plot-btn");
 
-    async function updatePlot() {
-
-      const allergen = allergenSelect?.value || "Dairy";
-      const symptom = symptomSelect?.value || "Nausea";
-      const startDate = "2025-01-01";
-      const endDate = new Date().toISOString().slice(0,10);
-
-      const url = `${API_URL}/analysis/plot-data?allergen=${allergen}&symptom=${symptom}&start_date=${startDate}&end_date=${endDate}`;
-
-      try {
-        const response = await fetch(url, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
-        });
-
-        if (!response.ok) {
-          console.error("Failed to fetch plot data", response.status, response.statusText);
-          Plotly.react("plot", [], { title: "No data available" });
-          return;
-        }
-
-        const data = await response.json();
-
-        // Validate data
-        if (!data || !data.dates || !Array.isArray(data.dates)) {
-          console.warn("No valid plot data returned:", data);
-          Plotly.react("plot", [], { title: "No data available" });
-          return;
-        }
-
-        // Symptom color map
-        const symptomColors = {
-          Nausea: "#ef4444",
-          Headache: "#3b82f6",
-          Fatigue: "#10b981",
-          Bloating: "#f59e0b",
-          Hives: "#f97316",
-          Swelling: "#6366f1",
-          Itching: "#14b8a6",
-          "Difficulty Breathing": "#db2777"
-        };
-
-        const allergenColors = {
-          Dairy: "#8b5cf6",
-          Gluten: "#ec4899",
-          Nuts: "#14b8a6",
-          Peanuts: "#f59e0b",
-          Shellfish: "#3b82f6",
-          Eggs: "#f97316",
-          "Tree Nuts": "#10b981"
-        };
-
-        // Build symptom traces
-        const symptomTraces = Object.entries(data.symptoms ?? {}).map(([sym, values]) => ({
-          x: data.dates,
-          y: values,
-          name: sym,
-          mode: "lines+markers",
-          yaxis: "y1",
-          line: { color: symptomColors[sym] ?? "#6b7280" }
-        }));
-
-        // Build allergen trace
-        const allergenTrace = {
-          x: data.dates,
-          y: data.allergen_series ?? [],
-          name: data.selected_allergen ?? allergen,
-          mode: "markers",
-          yaxis: "y2",
-          marker: {
-            size: 10,
-            color: allergenColors[data.selected_allergen ?? allergen] ?? "#6b7280",
-            symbol: "diamond"
-          }
-        };
-
-        // Layout
-        const layout = {
-          title: `Symptoms vs Allergen: ${allergen}`,
-          xaxis: { title: "Date" },
-          yaxis: { title: "Symptom Intensity", rangemode: "tozero" },
-          yaxis2: { title: "Allergen Exposure", overlaying: "y", side: "right", rangemode: "tozero" },
-          legend: { orientation: "h", y: -0.25 },
-          margin: { t: 60 }
-        };
-
-        // Plot everything together
-        Plotly.newPlot("plot", [...symptomTraces, allergenTrace], layout, { responsive: true });
-
-      } catch (err) {
-        console.error("Error fetching plot data:", err);
-        Plotly.react("plot", [], { title: "Error loading data" });
-      }
-    }
-    updateBtn.addEventListener("click", updatePlot);
-  })
+document.getElementById("update-plot-btn").addEventListener("click", async () => {
+    const img = document.getElementById("analysis-plot");
+    const url = `${API_URL}/analysis/plot?allergen=Dairy&symptom=Nausea&start_date=2025-01-01`;
+    img.src = url;
+});
 
 document.addEventListener("DOMContentLoaded", async () => {
   await init();
