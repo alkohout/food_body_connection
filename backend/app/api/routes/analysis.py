@@ -1,6 +1,4 @@
 import matplotlib
-
-from projects.capstone.backend.app.api.routes import symptoms
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
