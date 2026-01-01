@@ -69,21 +69,28 @@ def plot_eda(
         from datetime import timedelta
         from collections import defaultdict
 
+        # --- Count symptom events within 24h of each allergen ---
         counts_by_allergen = defaultdict(int)
 
+        # Ensure we only count allergens that actually exist
         for a in allergen_events:
             window_end = a.date_time + timedelta(hours=24)
-
-            count = sum(
-                1 for s in symptom_events
-                if a.date_time <= s.date_time <= window_end
-            )
-
+            
+            # Count number of symptoms within 24h of this allergen event
+            count = sum(1 for s in symptom_events if a.date_time <= s.date_time <= window_end)
+            
+            # Accumulate count per allergen_id
             counts_by_allergen[a.allergen_id] += count
 
-
+        # If there are no allergen events, provide a placeholder
         if not counts_by_allergen:
-            counts_by_allergen = {allergen: 0}
+            # Use a fake allergen_id = 0 and count 0
+            counts_by_allergen = {0: 0}
+
+        # Map allergen IDs to names for plotting
+        allergen_names = {a.allergen_id: getattr(a, 'allergen_name', allergen) for a in allergen_events}
+        if not allergen_names:
+            allergen_names = {0: allergen}  # placeholder
 
         # --- Heatmap: allergen × symptom frequency ---
         # Build a frequency table
