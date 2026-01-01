@@ -72,6 +72,30 @@ async function init() {
   }
 }
 
+// Select tabs
+const tabs = document.querySelectorAll(".tab");
+const forms = document.querySelectorAll(".form");
+
+tabs.forEach(tab => {
+  tab.addEventListener("click", () => {
+    const target = tab.dataset.tab;
+
+    // Switch active tab
+    tabs.forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+
+    // Switch active form
+    forms.forEach(f => f.classList.remove("active"));
+    const activeForm = document.getElementById(`${target}-form`);
+    activeForm.classList.add("active");
+
+    // If Analysis tab, fetch plot immediately
+    if (target === "analysis") {
+      fetchAnalysisPlot(); // function to get the plot
+    }
+  });
+});
+
 // -----------------------------------------------------------------------
 // -----------------------------------------------------------------------
 // ALLERGEN LOGGIN
@@ -382,7 +406,30 @@ async function fetchSymptomsForPlot(query) {
   });
 }
 
+async function fetchAnalysisPlot() {
+    const img = document.getElementById("analysis-plot");
+    
+    try {
+        const symptom = symptomPlotInput.value || "Nausea";
+        const allergen = allergenPlotInput.value || "Dairy";
+        const start_date = dateInput.value ? dateInput.value.split("T")[0] : "2025-01-01";
 
+        const response = await fetch(`${API_URL}/analysis/plot-eda?allergen=${allergen}&symptom=${symptom}&start_date=${start_date}`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+        });
+
+        if (!response.ok) {
+            console.error("Failed to fetch plot:", response.statusText);
+            return;
+        }
+
+        const blob = await response.blob();
+        img.src = URL.createObjectURL(blob);
+
+    } catch (err) {
+        console.error("Error fetching plot:", err);
+    }
+}
 
 document.getElementById("update-plot-btn").addEventListener("click", async () => {
     const img = document.getElementById("analysis-plot");
