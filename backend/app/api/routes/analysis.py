@@ -89,6 +89,7 @@ def plot_eda(
 
         # Map allergen IDs to names for plotting
         allergen_names = {a.allergen_id: getattr(a, 'allergen_name', allergen) for a in allergen_events}
+        logger.info("Allergen names mapping: %s", allergen_names)
         if not allergen_names:
             allergen_names = {0: allergen}  # placeholder
 
@@ -118,19 +119,17 @@ def plot_eda(
 
         # Convert counts to DataFrame for barplot
         bar_data = pd.DataFrame({
-            "Allergen": [getattr(a, 'allergen_name', allergen) for a in allergen_events],
-            "Count": [counts_by_allergen.get(a.allergen_id, 0) for a in allergen_events]
+            "Allergen": [allergen_names[a_id] for a_id in counts_by_allergen.keys()],
+            "Count": [counts_by_allergen[a_id] for a_id in counts_by_allergen.keys()]
         })
 
-        # If bar_data is empty, create a placeholder
-        if bar_data.empty:
-            bar_data = pd.DataFrame({"Allergen": [allergen], "Count": [0]})
+        # Optional: remove allergens with 0 count if you want
+        bar_data = bar_data[bar_data["Count"] > 0]
 
         sns.barplot(data=bar_data, x="Allergen", y="Count", ax=axes[0])
         axes[0].set_title(f"Number of {symptom} events within 24h of allergen exposures")
         axes[0].set_xlabel("Allergens")
         axes[0].set_ylabel("Count")
-
 
         # --- Heatmap ---
         sns.heatmap(df_heat, annot=True, fmt=".0f", cmap="Reds", cbar_kws={'label': 'Count'}, ax=axes[1])
