@@ -91,14 +91,10 @@ def plot_eda(
 
         # Convert freq_table to a DataFrame for seaborn
         import pandas as pd
-        df_heat = None
-
-        if df_heat.empty:
-            df_heat = pd.DataFrame([[0]], index=[allergen_names], columns=[symptom])  
 
         # --- Plotting ---
         sns.set(style="whitegrid")
-        fig, axes = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 3]})
+        fig, axes = plt.subplots(1, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3]})
 
         # Convert counts to DataFrame for barplot
         bar_data = pd.DataFrame({
@@ -115,12 +111,6 @@ def plot_eda(
         axes[0].set_title(f"Number of symptoms within 24h of allergen exposures (top 10 allergens)")
         axes[0].set_xlabel("Allergen")
         axes[0].set_ylabel("Symptom Count")
-
-        # --- Heatmap ---
-        sns.heatmap(df_heat, annot=True, fmt=".0f", cmap="Reds", cbar_kws={'label': 'Count'}, ax=axes[1])
-        axes[1].set_title("Frequency of symptoms per allergen (within 24h)")
-        axes[1].set_xlabel("Symptoms")
-        axes[1].set_ylabel("Allergens")
 
         plt.tight_layout()
 
