@@ -82,24 +82,11 @@ def plot_eda(
             # Accumulate count per allergen_id
             counts_by_allergen[a.allergen_id] += count
 
-        # If there are no allergen events, provide a placeholder
-        if not counts_by_allergen:
-            # Use a fake allergen_id = 0 and count 0
-            counts_by_allergen = {0: 0}
-
         # Map allergen IDs to names for plotting
-        # Get all allergen_ids present in counts_by_allergen
         allergen_ids = list(counts_by_allergen.keys())
-
-        # Query the Allergen table for these IDs
         allergens = db.query(Allergen).filter(Allergen.allergen_id.in_(allergen_ids)).all()
-
-        # Build a mapping: allergen_id -> allergen_name
         allergen_names = {a.allergen_id: a.allergen_name for a in allergens}
-
         logger.info("Allergen names mapping: %s", allergen_names)
-        if not allergen_names:
-            allergen_names = {0: allergen}  # placeholder
 
         # --- Heatmap: allergen × symptom frequency ---
         # Build a frequency table
@@ -134,10 +121,12 @@ def plot_eda(
         # Optional: remove allergens with 0 count if you want
         bar_data = bar_data[bar_data["Count"] > 0]
 
-        sns.barplot(data=bar_data, x="Allergen", y="Count", ax=axes[0])
-        axes[0].set_title(f"Number of {symptom} events within 24h of allergen exposures")
-        axes[0].set_xlabel("Allergens")
-        axes[0].set_ylabel("Count")
+        # Sort by count descending and take top 10
+        bar_data_top10 = bar_data.sort_values("Count", ascending=False).head(10)
+        sns.barplot(data=bar_data_top10, x="Allergen", y="Count", ax=axes[0])
+        axes[0].set_title(f"Number of symptoms within 24h of allergen exposures (top 10 allergens)")
+        axes[0].set_xlabel("Allergen")
+        axes[0].set_ylabel("Symptom Count")
 
         # --- Heatmap ---
         sns.heatmap(df_heat, annot=True, fmt=".0f", cmap="Reds", cbar_kws={'label': 'Count'}, ax=axes[1])
