@@ -45,15 +45,15 @@ def plot_eda(
         min_symptom = db.query(func.min(SymptomLog.date_time)).filter(SymptomLog.user_id == current_user.user_id).scalar()
         max_symptom = db.query(func.max(SymptomLog.date_time)).filter(SymptomLog.user_id == current_user.user_id).scalar()
 
-        try:
-            start_dt = datetime.strptime(start_date, "%Y-%m-%d") if start_date else min(d for d in [min_allergen, min_symptom] if d is not None)
-        except ValueError:
-            start_dt = start_dt = datetime.now() - timedelta(days=30) 
+        #try:
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d") if start_date else min(d for d in [min_allergen, min_symptom] if d is not None)
+        #except ValueError:
+            #start_dt = start_dt = datetime.now() - timedelta(days=30) 
 
-        try:
-            end_dt = datetime.strptime(end_date, "%Y-%m-%d") if end_date else max(d for d in [max_allergen, max_symptom] if d is not None)
-        except ValueError:
-            end_dt = datetime.now()
+        #try:
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d") if end_date else max(d for d in [max_allergen, max_symptom] if d is not None)
+        #except ValueError:
+            #end_dt = datetime.now()
 
         # --- Query allergen and symptom events within range ---
         allergen_events = db.query(AllergenLog).filter(
