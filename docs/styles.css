@@ -174,3 +174,23 @@ button.primary {
 .stat-card--secondary div {
   font-size: 1.1rem;        /* smaller number */
 }
+
+.stat-inline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 0.4rem 0.6rem;
+  margin-left: 1rem;
+  min-height: unset;
+}
+
+.stat-inline .stat-label {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.stat-inline .stat-value {
+  font-size: 1rem;
+  font-weight: 500;
+}
