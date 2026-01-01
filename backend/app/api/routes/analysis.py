@@ -32,10 +32,18 @@ def analysis_stats(
     db: Session = Depends(get_db)
 ):
 
-    all_dates = db.query(union_all(
-        select(func.date(AllergenLog.date_time)).func.count(func.distinct(all_dates.c.date)),
-        select(func.date(SymptomLog.date_time)).func.count(func.distinct(all_dates.c.date))
-    ))
+
+    all_dates = union_all(
+        select(func.date(AllergenLog.date_time).label("date"))
+            .where(AllergenLog.user_id == current_user.id),
+        select(func.date(SymptomLog.date_time).label("date"))
+            .where(SymptomLog.user_id == current_user.id),
+    ).subquery()
+
+    total_days = (
+        db.query(func.count(func.distinct(all_dates.c.date)))
+        .scalar()
+    )
 
     total_allergens = db.query(func.count(AllergenLog.allergen_log_id)) \
                          .filter(AllergenLog.user_id == current_user.user_id) \
@@ -43,8 +51,7 @@ def analysis_stats(
     total_symptoms = db.query(func.count(SymptomLog.symptom_log_id)) \
                         .filter(SymptomLog.user_id == current_user.user_id) \
                         .scalar()
-    total_days = db.query(func.count(func.distinct(all_dates.c.date))) \
-                   .scalar()
+
     return {
         "Total allergens logged": total_allergens,
         "Total symptoms logged": total_symptoms,
