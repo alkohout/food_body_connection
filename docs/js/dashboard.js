@@ -307,6 +307,45 @@ if (logForm2) {
 
 const symptomPlotInput = document.getElementById("symptom-plot-input");
 const allergenPlotInput = document.getElementById("allergen-plot-input");
+const allergenPlotIdInput = document.getElementById("allergen-plot-id");
+const symptomPlotIdInput = document.getElementById("symptom-plot-id");
+const allergenPlotSuggestions = document.getElementById("allergen-plot-suggestions");
+const symptomPlotSuggestions = document.getElementById("symptom-plot-suggestions");
+
+// Autocomplete
+let debouncePlotTimer;
+
+allergenPlotInput.addEventListener("input", () => {
+  const query = allergenPlotInput.value.trim();
+
+  if (allergenPlotIdInput) {
+    allergenPlotIdInput.value = "";
+  }
+  if (allergenPlotSuggestions) {
+    allergenPlotSuggestions.innerHTML = "";
+  }
+
+  if (query.length < 1) return;
+
+  clearTimeout(debouncePlotTimer);
+  debounceTimer = setTimeout(() => fetchAllergens(query), 300);
+});
+
+symptomPlotInput.addEventListener("input", () => {
+  const query = symptomPlotInput.value.trim();
+
+  if (symptomPlotIdInput) {
+    symptomPlotIdInput.value = "";
+  }
+  if (symptomPlotSuggestions) {
+    symptomPlotSuggestions.innerHTML = "";
+  }
+
+  if (query.length < 1) return;
+
+  clearTimeout(debouncePlotTimer);
+  debouncePlotTimer = setTimeout(() => fetchSymptoms(query), 300);
+});
 
 document.getElementById("update-plot-btn").addEventListener("click", async () => {
     const img = document.getElementById("analysis-plot");
