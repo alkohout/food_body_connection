@@ -30,7 +30,6 @@ DEFAULT_END_DATE = date.today()        # today
 
 @router.get("/plot-eda")
 def plot_eda(
-
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
     ):
