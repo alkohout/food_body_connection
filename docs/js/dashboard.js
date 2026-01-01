@@ -429,7 +429,7 @@ async function fetchAnalysisPlot() {
             return;
         }
 
-        const blob = await response.blob();
+        const blob = await response_plot.blob();
         img.src = URL.createObjectURL(blob);
 
     } catch (err) {
