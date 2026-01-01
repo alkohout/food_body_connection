@@ -411,14 +411,31 @@ async function fetchAnalysisPlot() {
     
     try {
 
+        // --------------------
+        // Fetch stats
+        // --------------------
         const response_stat = await fetch(`${API_URL}/analysis/stats`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`
+          }
         });
 
         if (!response_stat.ok) {
-            console.error("Failed to fetch stats:", response_stat.statusText);
-            return;
+          console.error("Failed to fetch stats:", response_stat.statusText);
+          return;
         }
+
+        const stats = await response_stat.json();
+
+        // Populate stats cards
+        const totalEntries =
+          stats["Total allergens logged"] + stats["Total symptoms logged"];
+
+        document.getElementById("stat-total-entries").textContent =
+          totalEntries;
+
+        document.getElementById("stat-days").textContent =
+          stats["Total days tracked"];
 
         const response_plot = await fetch(`${API_URL}/analysis/plot-eda`, {
             headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
