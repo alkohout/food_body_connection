@@ -36,8 +36,15 @@ def plot_eda(
     min_symptom = db.query(func.min(SymptomLog.date_time)).filter(SymptomLog.user_id == current_user.user_id).scalar()
     max_symptom = db.query(func.max(SymptomLog.date_time)).filter(SymptomLog.user_id == current_user.user_id).scalar()
 
-    start_dt = datetime.strptime(start_date, "%Y-%m-%d") if start_date else min(d for d in [min_allergen, min_symptom] if d is not None)
-    end_dt = datetime.strptime(end_date, "%Y-%m-%d") if end_date else max(d for d in [max_allergen, max_symptom] if d is not None)
+    try:
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d") if start_date else min(d for d in [min_allergen, min_symptom] if d is not None)
+    except ValueError:
+        start_dt = start_dt = datetime.now() - timedelta(days=30) 
+
+    try:
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d") if end_date else max(d for d in [max_allergen, max_symptom] if d is not None)
+    except ValueError:
+        end_dt = datetime.now()
 
     # --- Query allergen and symptom events within range ---
     allergen_events = db.query(AllergenLog).filter(
@@ -97,8 +104,11 @@ def plot_eda(
     fig, axes = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 3]})
 
     # --- Histogram ---
+    x = [getattr(a, 'allergen_name', allergen) 
+     for a in allergen_events 
+     for _ in range(max(counts_by_allergen.get(a.allergen_id, 0), 1))]
     sns.histplot(
-        x=[getattr(a, 'allergen_name', allergen) for a in allergen_events for _ in range(counts_by_allergen.get(a.allergen_id, 0))],
+        x,
         bins=len(counts_by_allergen),
         ax=axes[0]
     )
