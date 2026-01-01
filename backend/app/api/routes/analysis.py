@@ -70,6 +70,8 @@ def plot_eda(
 
         logger.info("Generating EDA plot for user_id=%d", current_user.user_id)
         logger.info("Allergen events: %d, Symptom events: %d", len(allergen_events), len(symptom_events))
+        logger.info("Min Start date: %s, Max end date: %s", min_allergen, max_allergen)   
+        logger.info("Min Start date: %s, Max end date: %s", min_symptom, max_symptom)   
         logger.info("Start date: %s, End date: %s", start_dt, end_dt)   
 
 
