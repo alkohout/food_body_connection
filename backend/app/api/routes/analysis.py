@@ -53,15 +53,24 @@ def plot_eda(
     ).all()
 
     # --- Time series: count of symptom events within 24h of each allergen ---
-    counts = {}
+    from datetime import timedelta
+    from collections import defaultdict
+
+    counts_by_allergen = defaultdict(int)
+
     for a in allergen_events:
         window_end = a.date_time + timedelta(hours=24)
-        daily_count = sum(1 for s in symptom_events if a.date_time <= s.date_time <= window_end)
-        day = a.date_time.date()
-        counts[day] = counts.get(day, 0) + daily_count
 
-    if not counts:
-        counts = {start_dt.date(): 0, end_dt.date(): 0}
+        count = sum(
+            1 for s in symptom_events
+            if a.date_time <= s.date_time <= window_end
+        )
+
+        counts_by_allergen[a.allergen_id] += count
+
+
+    if not counts_by_allergen:
+        counts_by_allergen = {allergen: 0}
 
     # --- Heatmap: allergen × symptom frequency ---
     # Build a frequency table
@@ -85,16 +94,17 @@ def plot_eda(
 
     # --- Plotting ---
     sns.set(style="whitegrid")
-    fig, axes = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [2, 3]})
+    fig, axes = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 3]})
 
-    # --- Time series ---
-    ts_dates = sorted(counts.keys())
-    ts_values = [counts[d] for d in ts_dates]
-    sns.lineplot(x=ts_dates, y=ts_values, marker="o", ax=axes[0])
-    axes[0].set_title(f"Symptoms within 24h of allergen exposures")
-    axes[0].set_xlabel("Date")
-    axes[0].set_ylabel("Number of symptom events")
-    axes[0].tick_params(axis='x', rotation=45)
+    # --- Histogram ---
+    sns.histplot(
+        x=[getattr(a, 'allergen_name', allergen) for a in allergen_events for _ in range(counts_by_allergen.get(a.allergen_id, 0))],
+        bins=len(counts_by_allergen),
+        ax=axes[0]
+    )
+    axes[0].set_title(f"Number of {symptom} events within 24h of allergen exposures")
+    axes[0].set_xlabel("Allergens")
+    axes[0].set_ylabel("Count")
 
     # --- Heatmap ---
     sns.heatmap(df_heat, annot=True, fmt=".0f", cmap="Reds", cbar_kws={'label': 'Count'}, ax=axes[1])
