@@ -309,7 +309,7 @@ document.getElementById("update-plot-btn").addEventListener("click", async () =>
     const img = document.getElementById("analysis-plot");
     
     try {
-        const response = await fetch(`${API_URL}/analysis/plot?allergen=Dairy&symptom=Nausea&start_date=2025-01-01`, {
+        const response = await fetch(`${API_URL}/analysis/plot-layman?allergen=Dairy&symptom=Nausea&start_date=2025-01-01`, {
             headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
         });
 
