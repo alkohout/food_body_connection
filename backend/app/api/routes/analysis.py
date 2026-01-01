@@ -11,7 +11,7 @@ from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Symp
 from app.schemas import AnalysisSummaryOut, AnalysisScope
 from io import BytesIO
 from datetime import date, datetime, time, timezone, timedelta
-from sqlalchemy import text
+from sqlalchemy import text, func
 from typing import Optional
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
@@ -30,10 +30,29 @@ def plot_analysis(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Convert dates
-    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-    end_dt = datetime.strptime(end_date, "%Y-%m-%d") if end_date else datetime.now()
 
+    min_allergen = db.query(func.min(AllergenLog.date_time)) \
+                     .filter(AllergenLog.user_id == current_user.user_id) \
+                     .scalar()
+    max_allergen = db.query(func.max(AllergenLog.date_time)) \
+                     .filter(AllergenLog.user_id == current_user.user_id) \
+                     .scalar()
+    
+    min_symptom = db.query(func.min(SymptomLog.date_time)) \
+                    .filter(SymptomLog.user_id == current_user.user_id) \
+                    .scalar()
+    max_symptom = db.query(func.max(SymptomLog.date_time)) \
+                    .filter(SymptomLog.user_id == current_user.user_id) \
+                    .scalar()
+    # Start = earliest of allergen/symptom logs
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d") if start_date else min(
+        d for d in [min_allergen, min_symptom] if d is not None
+    )
+
+    # End = latest of allergen/symptom logs
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d") if end_date else max(
+        d for d in [max_allergen, max_symptom] if d is not None
+    )
     # Query allergen and symptom events
     allergen_times = [
         t for (t,) in db.query(AllergenLog.date_time)
@@ -78,7 +97,7 @@ def plot_analysis(
 
     # Save to BytesIO
     buf = BytesIO()
-    plt.savefig(buf, format="png")
+    plt.savefig(buf, format="png", bbox_inches="tight")
     plt.close(fig)
     buf.seek(0)
 
