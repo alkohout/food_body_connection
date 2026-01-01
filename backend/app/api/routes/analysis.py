@@ -21,6 +21,93 @@ DEFAULT_SYMPTOM = "Nausea"          # default symptom if none selected
 DEFAULT_START_DATE = date(2025, 1, 1)  # earliest date
 DEFAULT_END_DATE = date.today()        # today
 
+@router.get("/plot-layman")
+def plot_layman(
+    allergen: str = "Dairy",
+    symptom: str = "Nausea",
+    start_date: str = None,
+    end_date: str = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # --- Determine overall min/max dates ---
+    min_allergen = db.query(func.min(AllergenLog.date_time)).filter(AllergenLog.user_id == current_user.user_id).scalar()
+    max_allergen = db.query(func.max(AllergenLog.date_time)).filter(AllergenLog.user_id == current_user.user_id).scalar()
+    min_symptom = db.query(func.min(SymptomLog.date_time)).filter(SymptomLog.user_id == current_user.user_id).scalar()
+    max_symptom = db.query(func.max(SymptomLog.date_time)).filter(SymptomLog.user_id == current_user.user_id).scalar()
+
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d") if start_date else min(d for d in [min_allergen, min_symptom] if d is not None)
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d") if end_date else max(d for d in [max_allergen, max_symptom] if d is not None)
+
+    # --- Query allergen and symptom events within range ---
+    allergen_events = db.query(AllergenLog).filter(
+        AllergenLog.user_id == current_user.user_id,
+        AllergenLog.date_time >= start_dt,
+        AllergenLog.date_time <= end_dt
+    ).all()
+
+    symptom_events = db.query(SymptomLog).filter(
+        SymptomLog.user_id == current_user.user_id,
+        SymptomLog.date_time >= start_dt,
+        SymptomLog.date_time <= end_dt
+    ).all()
+
+    # --- Time series: count of symptom events within 24h of each allergen ---
+    counts = {}
+    for a in allergen_events:
+        window_end = a.date_time + timedelta(hours=24)
+        daily_count = sum(1 for s in symptom_events if a.date_time <= s.date_time <= window_end)
+        day = a.date_time.date()
+        counts[day] = counts.get(day, 0) + daily_count
+
+    if not counts:
+        counts = {start_dt.date(): 0, end_dt.date(): 0}
+
+    # --- Heatmap: allergen × symptom frequency ---
+    # Build a frequency table
+    freq_table = {}
+    for a in allergen_events:
+        a_name = getattr(a, 'allergen_name', allergen)
+        for s in symptom_events:
+            # within 24h window
+            if a.date_time <= s.date_time <= a.date_time + timedelta(hours=24):
+                s_name = getattr(s, 'symptom_name', symptom)
+                if a_name not in freq_table:
+                    freq_table[a_name] = {}
+                freq_table[a_name][s_name] = freq_table[a_name].get(s_name, 0) + 1
+
+    # Convert freq_table to a DataFrame for seaborn
+    import pandas as pd
+    df_heat = pd.DataFrame(freq_table).fillna(0).T  # rows=allergens, cols=symptoms
+
+    # --- Plotting ---
+    sns.set(style="whitegrid")
+    fig, axes = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [2, 3]})
+
+    # --- Time series ---
+    ts_dates = sorted(counts.keys())
+    ts_values = [counts[d] for d in ts_dates]
+    sns.lineplot(x=ts_dates, y=ts_values, marker="o", ax=axes[0])
+    axes[0].set_title(f"Symptoms within 24h of allergen exposures")
+    axes[0].set_xlabel("Date")
+    axes[0].set_ylabel("Number of symptom events")
+    axes[0].tick_params(axis='x', rotation=45)
+
+    # --- Heatmap ---
+    sns.heatmap(df_heat, annot=True, fmt=".0f", cmap="Reds", cbar_kws={'label': 'Count'}, ax=axes[1])
+    axes[1].set_title("Frequency of symptoms per allergen (within 24h)")
+    axes[1].set_xlabel("Symptoms")
+    axes[1].set_ylabel("Allergens")
+
+    plt.tight_layout()
+
+    # --- Save to PNG ---
+    buf = BytesIO()
+    plt.savefig(buf, format="png", bbox_inches="tight")
+    plt.close(fig)
+    buf.seek(0)
+    return StreamingResponse(buf, media_type="image/png")
+
 @router.get("/plot")
 def plot_analysis(
     allergen: str = "Dairy",
