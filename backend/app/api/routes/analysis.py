@@ -62,11 +62,8 @@ def plot_eda(
         ).all()
 
         logger.info("Generating EDA plot for user_id=%d", current_user.user_id)
-        logger.info("Allergen events: %d, Symptom events: %d", len(allergen_events), len(symptom_events))
-        logger.info("Min Start date: %s, Max end date: %s", min_allergen, max_allergen)   
-        logger.info("Min Start date: %s, Max end date: %s", min_symptom, max_symptom)   
         logger.info("Start date: %s, End date: %s", start_dt, end_dt)   
-
+        logger.info("Allergen events: %d, Symptom events: %d", len(allergen_events), len(symptom_events))
 
         # --- Time series: count of symptom events within 24h of each allergen ---
         from datetime import timedelta
@@ -112,18 +109,21 @@ def plot_eda(
         sns.set(style="whitegrid")
         fig, axes = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 3]})
 
-        # --- Histogram ---
-        x = [getattr(a, 'allergen_name', allergen) 
-        for a in allergen_events 
-        for _ in range(max(counts_by_allergen.get(a.allergen_id, 0), 1))]
-        sns.histplot(
-            x,
-            bins=len(counts_by_allergen),
-            ax=axes[0]
-        )
+        # Convert counts to DataFrame for barplot
+        bar_data = pd.DataFrame({
+            "Allergen": [getattr(a, 'allergen_name', allergen) for a in allergen_events],
+            "Count": [counts_by_allergen.get(a.allergen_id, 0) for a in allergen_events]
+        })
+
+        # If bar_data is empty, create a placeholder
+        if bar_data.empty:
+            bar_data = pd.DataFrame({"Allergen": [allergen], "Count": [0]})
+
+        sns.barplot(data=bar_data, x="Allergen", y="Count", ax=axes[0])
         axes[0].set_title(f"Number of {symptom} events within 24h of allergen exposures")
         axes[0].set_xlabel("Allergens")
         axes[0].set_ylabel("Count")
+
 
         # --- Heatmap ---
         sns.heatmap(df_heat, annot=True, fmt=".0f", cmap="Reds", cbar_kws={'label': 'Count'}, ax=axes[1])
