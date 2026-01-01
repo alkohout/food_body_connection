@@ -8,6 +8,14 @@ import { getCurrentUser, API_URL } from "./api.js";
 // -----------------------------------------------------------------------
 // -----------------------------------------------------------------------
 
+const logoutBtn = document.getElementById("logout-btn");
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", () => {
+    localStorage.removeItem("access_token");
+    window.location.href = "index.html";
+  });
+}
+
 // Set date input to local datetime format
 function localDateTimeForInput(date = new Date()) {
   const tzOffsetMs = date.getTimezoneOffset() * 60000;
@@ -248,7 +256,7 @@ if (logForm2) {
     }
 
     if (!localInput) {
-      document.getElementById("log-error").textContent =
+      document.getElementById("symptom-error").textContent =
         "Please select a date and time.";
       return;
     }
@@ -289,11 +297,6 @@ if (logForm2) {
     }
   });
 
-  document.getElementById("logout-btn").addEventListener("click", () => {
-    localStorage.removeItem("access_token");
-    window.location.href = "index.html";
-  });
-
 }
 
 // -----------------------------------------------------------------------
@@ -309,8 +312,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function updatePlot() {
 
-      const allergen = "Dairy"; // default allergen
-      const symptom = "Nausea";  // default symptom
+      const allergen = allergenSelect?.value || "Dairy";
+      const symptom = symptomSelect?.value || "Nausea";
       const startDate = "2025-01-01";
       const endDate = new Date().toISOString().slice(0,10);
 
@@ -402,4 +405,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     updateBtn.addEventListener("click", updatePlot);
   })
-init();
+
+document.addEventListener("DOMContentLoaded", async () => {
+  await init();
+  // set up updatePlot, event listeners here
+});
