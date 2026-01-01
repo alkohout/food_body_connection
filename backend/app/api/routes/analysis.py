@@ -68,6 +68,8 @@ def plot_eda(
             SymptomLog.date_time <= end_dt
         ).all()
 
+        logger.info("Allergen events: %d, Symptom events: %d", len(allergen_events), len(symptom_events))
+
         # --- Time series: count of symptom events within 24h of each allergen ---
         from datetime import timedelta
         from collections import defaultdict
