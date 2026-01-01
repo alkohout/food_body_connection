@@ -188,9 +188,11 @@ button.primary {
 .stat-inline .stat-label {
   font-size: 0.85rem;
   color: #666;
+  width: 100px;       /* adjust as needed */
+  flex-shrink: 0;     /* prevent label from shrinking */
 }
 
 .stat-inline .stat-value {
-  font-size: 1rem;
+  font-size: .85rem;
   font-weight: 500;
 }
