@@ -4,16 +4,13 @@ from app.database import get_db
 from app.api.routes.auth import get_current_user
 from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Symptom
 from app.schemas import AnalysisSummaryOut, AnalysisScope
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timezone, timedelta
 from sqlalchemy import text
 from typing import Optional
 
 from fastapi.responses import JSONResponse
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
-
-from datetime import timedelta
-from fastapi.responses import JSONResponse
 
 DEFAULT_ALLERGEN = "Dairy"          # default allergen if none selected
 DEFAULT_SYMPTOM = "Nausea"          # default symptom if none selected
@@ -95,11 +92,16 @@ def plot_data(
     if not counts:
         counts = {start_date: 0, end_date: 0}
 
+    dates = [d.isoformat() for d in sorted(counts.keys())]
+    counts_list = [counts[d] for d in sorted(counts.keys())]
+
     return JSONResponse(
-        content=[
-            {"date": d.isoformat(), "count": c}
-            for d, c in sorted(counts.items())
-        ]
+        content={
+            "dates": dates,
+            "symptoms": {symptom: counts_list},  # if you want to keep symptom-based plotting
+            "allergen_series": counts_list,
+            "selected_allergen": allergen
+        }
     )
 
 @router.post("/summary")
