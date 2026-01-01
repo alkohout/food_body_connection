@@ -29,10 +29,6 @@ DEFAULT_END_DATE = date.today()        # today
 @router.get("/plot-eda")
 def plot_eda(
 
-        allergen: str = "Dairy",
-        symptom: str = "Nausea",
-        start_date: str = None,
-        end_date: str = None,
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
     ):
