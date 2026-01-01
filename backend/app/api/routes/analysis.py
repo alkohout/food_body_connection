@@ -91,6 +91,10 @@ def plot_data(
         day = a_time.date()
         counts[day] = counts.get(day, 0) + daily_count
 
+    # If no data, provide a dummy point
+    if not counts:
+        counts = {start_date: 0, end_date: 0}
+
     return JSONResponse(
         content=[
             {"date": d.isoformat(), "count": c}
