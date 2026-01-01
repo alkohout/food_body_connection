@@ -95,9 +95,13 @@
         <section class="analysis-section">
 
             <label>Allergen:</label>
-            <select id="allergen-plot-input"></select>
+            <input type="text" id="allergen-plot-input" autocomplete="off" />
+            <input type="hidden" id="allergen-id" />
+            <ul id="allergen-suggestions" class="suggestions"></ul>
             <label>Symptom:</label>
-            <select id="symptom-plot-input"></select>
+            <input type="text" id="symptom-plot-input" autocomplete="off" />
+            <input type="hidden" id="symptom-id" />
+            <ul id="symptom-suggestions" class="suggestions"></ul>
             <button type="button"id="update-plot-btn">Update Plot</button>
             <img id="analysis-plot" src="" alt="Analysis Plot" style="width:90%; height:auto;" />
 
