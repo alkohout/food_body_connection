@@ -1,4 +1,6 @@
 import matplotlib
+
+from projects.capstone.backend.app.api.routes import symptoms
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -67,7 +69,6 @@ def plot_eda(
 
         # --- Count symptom events within 24h of each allergen ---
         counts_by_allergen = defaultdict(int)
-
         # Ensure we only count allergens that actually exist
         for a in allergen_events:
             window_end = a.date_time + timedelta(hours=24)
@@ -78,28 +79,22 @@ def plot_eda(
             # Accumulate count per allergen_id
             counts_by_allergen[a.allergen_id] += count
 
+
         # Map allergen IDs to names for plotting
         allergen_ids = list(counts_by_allergen.keys())
         allergens = db.query(Allergen).filter(Allergen.allergen_id.in_(allergen_ids)).all()
         allergen_names = {a.allergen_id: a.allergen_name for a in allergens}
         logger.info("Allergen names mapping: %s", allergen_names)
 
-        # --- Heatmap: allergen × symptom frequency ---
-        # Build a frequency table
-        freq_table = {}
-        for a in allergen_events:
-            a_name = getattr(a, 'allergen_name', allergen_names)
-            for s in symptom_events:
-                # within 24h window
-                if a.date_time <= s.date_time <= a.date_time + timedelta(hours=24):
-                    s_name = getattr(s, 'symptom_name', symptom)
-                    if a_name not in freq_table:
-                        freq_table[a_name] = {}
-                    freq_table[a_name][s_name] = freq_table[a_name].get(s_name, 0) + 1
+        # Map symptom IDs to names for heatmap
+        symptom_ids = list({s.symptom_id for s in symptom_events})
+        symptoms = db.query(Symptom).filter(Symptom.symptom_id.in_(symptom_ids)).all()
+        symptom_names = {s.symptom_id: s.symptom_name for s in symptoms}
+        logger.info("Symptom names mapping: %s", symptom_names)
 
         # Convert freq_table to a DataFrame for seaborn
         import pandas as pd
-        df_heat = pd.DataFrame(freq_table).fillna(0).T  # rows=allergens, cols=symptoms
+        df_heat = None
 
         if df_heat.empty:
             df_heat = pd.DataFrame([[0]], index=[allergen_names], columns=[symptom])  
