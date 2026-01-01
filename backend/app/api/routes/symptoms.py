@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models.table_class import Symptom 
+from app.models.table_class import Symptom
 
 router = APIRouter(prefix="/symptoms", tags=["symptoms"], include_in_schema=True)
 
