@@ -124,7 +124,6 @@ def plot_eda(
         logger.info("Number of allergen events: %d", len(allergen_events))
         logger.info("Number of symptom events: %d", len(symptom_events))
         logger.info("Counts by allergen: %s", counts_by_allergen)
-        logger.info("Heatmap DataFrame:\n%s", df_heat)
 
         return StreamingResponse(buf, media_type="image/png")
 
