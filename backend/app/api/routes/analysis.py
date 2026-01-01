@@ -80,6 +80,9 @@ def plot_layman(
     import pandas as pd
     df_heat = pd.DataFrame(freq_table).fillna(0).T  # rows=allergens, cols=symptoms
 
+    if df_heat.empty:
+        df_heat = pd.DataFrame([[0]], index=[allergen], columns=[symptom])  
+
     # --- Plotting ---
     sns.set(style="whitegrid")
     fig, axes = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [2, 3]})
