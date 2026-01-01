@@ -101,7 +101,11 @@ def main():
             "Depression",
             "Irritability",
             "Low Mood",
-            "Poor Concentration"
+            "Poor Concentration",
+
+            # Mentstrual
+            "Cramps",
+            "Cycle" ,
         ]
 
         symptom_objects = [Symptom(symptom_name=s) for s in symptoms]
@@ -114,12 +118,11 @@ def main():
         allergens = [
 
             # Major food allergens (global)
-            "Milk",
+            "Dairy",
             "Eggs",
             "Peanuts",
             "Tree Nuts",
             "Soy",
-            "Wheat",
             "Gluten",
             "Fish",
             "Shellfish",
@@ -128,34 +131,6 @@ def main():
             "Celery",
             "Lupin",
             "Sulphites",
-
-            # Specific nuts (useful for granularity later)
-            "Almonds",
-            "Cashews",
-            "Walnuts",
-            "Pecans",
-            "Hazelnuts",
-            "Pistachios",
-            "Macadamia Nuts",
-
-            # Dairy-related
-            "Lactose",
-            "Casein",
-            "Whey",
-
-            # Grains & starches
-            "Corn",
-            "Rice",
-            "Oats",
-            "Barley",
-            "Rye",
-
-            # Fruits
-            "Citrus",
-            "Bananas",
-            "Strawberries",
-            "Apples",
-            "Avocado",
 
             # Vegetables / legumes
             "Tomatoes",
@@ -199,7 +174,7 @@ def main():
         # Create base units
         units = ["grams", 
                  "ml", 
-                 "pieces", 
+                 "Liters", 
                  "tablespoons", 
                  "teaspoons", 
                  "cups"
