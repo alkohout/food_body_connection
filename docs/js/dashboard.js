@@ -411,21 +411,21 @@ async function fetchAnalysisPlot() {
     
     try {
 
-        const response = await fetch(`${API_URL}/analysis/stats`, {
+        const response_stat = await fetch(`${API_URL}/analysis/stats`, {
             headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
         });
 
-        if (!response.ok) {
-            console.error("Failed to fetch stats:", response.statusText);
+        if (!response_stat.ok) {
+            console.error("Failed to fetch stats:", response_stat.statusText);
             return;
         }
 
-        const response = await fetch(`${API_URL}/analysis/plot-eda`, {
+        const response_plot = await fetch(`${API_URL}/analysis/plot-eda`, {
             headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
         });
 
-        if (!response.ok) {
-            console.error("Failed to fetch plot:", response.statusText);
+        if (!response_plot.ok) {
+            console.error("Failed to fetch plot:", response_plot.statusText);
             return;
         }
 
