@@ -411,6 +411,15 @@ async function fetchAnalysisPlot() {
     
     try {
 
+        const response = await fetch(`${API_URL}/analysis/stats`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+        });
+
+        if (!response.ok) {
+            console.error("Failed to fetch stats:", response.statusText);
+            return;
+        }
+
         const response = await fetch(`${API_URL}/analysis/plot-eda`, {
             headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
         });
@@ -424,7 +433,7 @@ async function fetchAnalysisPlot() {
         img.src = URL.createObjectURL(blob);
 
     } catch (err) {
-        console.error("Error fetching plot:", err);
+        console.error("Error fetching default analysis:", err);
     }
 }
 

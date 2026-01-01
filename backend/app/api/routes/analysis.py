@@ -11,7 +11,7 @@ from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Symp
 from app.schemas import AnalysisSummaryOut, AnalysisScope
 from io import BytesIO
 from datetime import date, datetime, time, timezone, timedelta
-from sqlalchemy import text, func
+from sqlalchemy import text, func, union_all, select, func
 from typing import Optional
 import logging
 import traceback
@@ -25,6 +25,31 @@ DEFAULT_ALLERGEN = "Dairy"          # default allergen if none selected
 DEFAULT_SYMPTOM = "Nausea"          # default symptom if none selected
 DEFAULT_START_DATE = date(2025, 1, 1)  # earliest date
 DEFAULT_END_DATE = date.today()        # today
+
+@router.get("/stats")
+def analysis_stats(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    all_dates = db.query(union_all(
+        select(func.date(AllergenLog.date_time)).func.count(func.distinct(all_dates.c.date)),
+        select(func.date(SymptomLog.date_time)).func.count(func.distinct(all_dates.c.date))
+    ))
+
+    total_allergens = db.query(func.count(AllergenLog.allergen_log_id)) \
+                         .filter(AllergenLog.user_id == current_user.user_id) \
+                         .scalar()
+    total_symptoms = db.query(func.count(SymptomLog.symptom_log_id)) \
+                        .filter(SymptomLog.user_id == current_user.user_id) \
+                        .scalar()
+    total_days = db.query(func.count(func.distinct(all_dates.c.date))) \
+                   .scalar()
+    return {
+        "Total allergens logged": total_allergens,
+        "Total symptoms logged": total_symptoms,
+        "Total days tracked": total_days    
+    }
 
 @router.get("/plot-eda")
 def plot_eda(
