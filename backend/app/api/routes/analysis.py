@@ -1,14 +1,18 @@
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import seaborn as sns
+from fastapi.responses import StreamingResponse,JSONResponse
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.api.routes.auth import get_current_user
 from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Symptom
 from app.schemas import AnalysisSummaryOut, AnalysisScope
+from io import BytesIO
 from datetime import date, datetime, time, timezone, timedelta
 from sqlalchemy import text
 from typing import Optional
-
-from fastapi.responses import JSONResponse
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
@@ -16,17 +20,6 @@ DEFAULT_ALLERGEN = "Dairy"          # default allergen if none selected
 DEFAULT_SYMPTOM = "Nausea"          # default symptom if none selected
 DEFAULT_START_DATE = date(2025, 1, 1)  # earliest date
 DEFAULT_END_DATE = date.today()        # today
-
-import matplotlib.pyplot as plt
-import seaborn as sns
-from io import BytesIO
-from fastapi.responses import StreamingResponse
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.api.routes.auth import get_current_user
-from app.models.table_class import User, AllergenLog, SymptomLog
-from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
