@@ -88,7 +88,13 @@ def plot_eda(
             counts_by_allergen = {0: 0}
 
         # Map allergen IDs to names for plotting
-        allergen_names = {a.allergen_id: getattr(a, 'allergen_name', allergen) for a in allergen_events}
+        # Build mapping: allergen_id -> allergen_name
+# Only include allergen_ids that actually have counts
+        allergen_names = {
+            a.allergen_id: a.allergen_name  # assume allergen_name exists in AllergenLog
+            for a in allergen_events
+            if a.allergen_id in counts_by_allergen
+        }
         logger.info("Allergen names mapping: %s", allergen_names)
         if not allergen_names:
             allergen_names = {0: allergen}  # placeholder
