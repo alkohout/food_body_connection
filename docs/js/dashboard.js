@@ -307,8 +307,23 @@ if (logForm2) {
 
 document.getElementById("update-plot-btn").addEventListener("click", async () => {
     const img = document.getElementById("analysis-plot");
-    const url = `${API_URL}/analysis/plot?allergen=Dairy&symptom=Nausea&start_date=2025-01-01`;
-    img.src = url;
+    
+    try {
+        const response = await fetch(`${API_URL}/analysis/plot?allergen=Dairy&symptom=Nausea&start_date=2025-01-01`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+        });
+
+        if (!response.ok) {
+            console.error("Failed to fetch plot:", response.statusText);
+            return;
+        }
+
+        const blob = await response.blob();
+        img.src = URL.createObjectURL(blob);
+
+    } catch (err) {
+        console.error("Error fetching plot:", err);
+    }
 });
 
 document.addEventListener("DOMContentLoaded", async () => {
