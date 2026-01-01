@@ -13,6 +13,11 @@ from io import BytesIO
 from datetime import date, datetime, time, timezone, timedelta
 from sqlalchemy import text, func
 from typing import Optional
+import logging
+import traceback
+
+logger = logging.getLogger("plot_eda")
+logging.basicConfig(level=logging.INFO)
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
@@ -23,113 +28,132 @@ DEFAULT_END_DATE = date.today()        # today
 
 @router.get("/plot-eda")
 def plot_eda(
-    allergen: str = "Dairy",
-    symptom: str = "Nausea",
-    start_date: str = None,
-    end_date: str = None,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    # --- Determine overall min/max dates ---
-    min_allergen = db.query(func.min(AllergenLog.date_time)).filter(AllergenLog.user_id == current_user.user_id).scalar()
-    max_allergen = db.query(func.max(AllergenLog.date_time)).filter(AllergenLog.user_id == current_user.user_id).scalar()
-    min_symptom = db.query(func.min(SymptomLog.date_time)).filter(SymptomLog.user_id == current_user.user_id).scalar()
-    max_symptom = db.query(func.max(SymptomLog.date_time)).filter(SymptomLog.user_id == current_user.user_id).scalar()
 
-    try:
-        start_dt = datetime.strptime(start_date, "%Y-%m-%d") if start_date else min(d for d in [min_allergen, min_symptom] if d is not None)
-    except ValueError:
-        start_dt = start_dt = datetime.now() - timedelta(days=30) 
+        allergen: str = "Dairy",
+        symptom: str = "Nausea",
+        start_date: str = None,
+        end_date: str = None,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+    ):
 
-    try:
-        end_dt = datetime.strptime(end_date, "%Y-%m-%d") if end_date else max(d for d in [max_allergen, max_symptom] if d is not None)
-    except ValueError:
-        end_dt = datetime.now()
+    try: 
+        
+        # --- Determine overall min/max dates ---
+        min_allergen = db.query(func.min(AllergenLog.date_time)).filter(AllergenLog.user_id == current_user.user_id).scalar()
+        max_allergen = db.query(func.max(AllergenLog.date_time)).filter(AllergenLog.user_id == current_user.user_id).scalar()
+        min_symptom = db.query(func.min(SymptomLog.date_time)).filter(SymptomLog.user_id == current_user.user_id).scalar()
+        max_symptom = db.query(func.max(SymptomLog.date_time)).filter(SymptomLog.user_id == current_user.user_id).scalar()
 
-    # --- Query allergen and symptom events within range ---
-    allergen_events = db.query(AllergenLog).filter(
-        AllergenLog.user_id == current_user.user_id,
-        AllergenLog.date_time >= start_dt,
-        AllergenLog.date_time <= end_dt
-    ).all()
+        try:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d") if start_date else min(d for d in [min_allergen, min_symptom] if d is not None)
+        except ValueError:
+            start_dt = start_dt = datetime.now() - timedelta(days=30) 
 
-    symptom_events = db.query(SymptomLog).filter(
-        SymptomLog.user_id == current_user.user_id,
-        SymptomLog.date_time >= start_dt,
-        SymptomLog.date_time <= end_dt
-    ).all()
+        try:
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d") if end_date else max(d for d in [max_allergen, max_symptom] if d is not None)
+        except ValueError:
+            end_dt = datetime.now()
 
-    # --- Time series: count of symptom events within 24h of each allergen ---
-    from datetime import timedelta
-    from collections import defaultdict
+        # --- Query allergen and symptom events within range ---
+        allergen_events = db.query(AllergenLog).filter(
+            AllergenLog.user_id == current_user.user_id,
+            AllergenLog.date_time >= start_dt,
+            AllergenLog.date_time <= end_dt
+        ).all()
 
-    counts_by_allergen = defaultdict(int)
+        symptom_events = db.query(SymptomLog).filter(
+            SymptomLog.user_id == current_user.user_id,
+            SymptomLog.date_time >= start_dt,
+            SymptomLog.date_time <= end_dt
+        ).all()
 
-    for a in allergen_events:
-        window_end = a.date_time + timedelta(hours=24)
+        # --- Time series: count of symptom events within 24h of each allergen ---
+        from datetime import timedelta
+        from collections import defaultdict
 
-        count = sum(
-            1 for s in symptom_events
-            if a.date_time <= s.date_time <= window_end
+        counts_by_allergen = defaultdict(int)
+
+        for a in allergen_events:
+            window_end = a.date_time + timedelta(hours=24)
+
+            count = sum(
+                1 for s in symptom_events
+                if a.date_time <= s.date_time <= window_end
+            )
+
+            counts_by_allergen[a.allergen_id] += count
+
+
+        if not counts_by_allergen:
+            counts_by_allergen = {allergen: 0}
+
+        # --- Heatmap: allergen × symptom frequency ---
+        # Build a frequency table
+        freq_table = {}
+        for a in allergen_events:
+            a_name = getattr(a, 'allergen_name', allergen)
+            for s in symptom_events:
+                # within 24h window
+                if a.date_time <= s.date_time <= a.date_time + timedelta(hours=24):
+                    s_name = getattr(s, 'symptom_name', symptom)
+                    if a_name not in freq_table:
+                        freq_table[a_name] = {}
+                    freq_table[a_name][s_name] = freq_table[a_name].get(s_name, 0) + 1
+
+        # Convert freq_table to a DataFrame for seaborn
+        import pandas as pd
+        df_heat = pd.DataFrame(freq_table).fillna(0).T  # rows=allergens, cols=symptoms
+
+        if df_heat.empty:
+            df_heat = pd.DataFrame([[0]], index=[allergen], columns=[symptom])  
+
+        # --- Plotting ---
+        sns.set(style="whitegrid")
+        fig, axes = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 3]})
+
+        # --- Histogram ---
+        x = [getattr(a, 'allergen_name', allergen) 
+        for a in allergen_events 
+        for _ in range(max(counts_by_allergen.get(a.allergen_id, 0), 1))]
+        sns.histplot(
+            x,
+            bins=len(counts_by_allergen),
+            ax=axes[0]
         )
+        axes[0].set_title(f"Number of {symptom} events within 24h of allergen exposures")
+        axes[0].set_xlabel("Allergens")
+        axes[0].set_ylabel("Count")
 
-        counts_by_allergen[a.allergen_id] += count
+        # --- Heatmap ---
+        sns.heatmap(df_heat, annot=True, fmt=".0f", cmap="Reds", cbar_kws={'label': 'Count'}, ax=axes[1])
+        axes[1].set_title("Frequency of symptoms per allergen (within 24h)")
+        axes[1].set_xlabel("Symptoms")
+        axes[1].set_ylabel("Allergens")
 
+        plt.tight_layout()
 
-    if not counts_by_allergen:
-        counts_by_allergen = {allergen: 0}
+        # --- Save to PNG ---
+        buf = BytesIO()
+        plt.savefig(buf, format="png", bbox_inches="tight")
+        plt.close(fig)
+        buf.seek(0)
 
-    # --- Heatmap: allergen × symptom frequency ---
-    # Build a frequency table
-    freq_table = {}
-    for a in allergen_events:
-        a_name = getattr(a, 'allergen_name', allergen)
-        for s in symptom_events:
-            # within 24h window
-            if a.date_time <= s.date_time <= a.date_time + timedelta(hours=24):
-                s_name = getattr(s, 'symptom_name', symptom)
-                if a_name not in freq_table:
-                    freq_table[a_name] = {}
-                freq_table[a_name][s_name] = freq_table[a_name].get(s_name, 0) + 1
+        # logging for debugging
+        logger.info("Number of allergen events: %d", len(allergen_events))
+        logger.info("Number of symptom events: %d", len(symptom_events))
+        logger.info("Counts by allergen: %s", counts_by_allergen)
+        logger.info("Heatmap DataFrame:\n%s", df_heat)
 
-    # Convert freq_table to a DataFrame for seaborn
-    import pandas as pd
-    df_heat = pd.DataFrame(freq_table).fillna(0).T  # rows=allergens, cols=symptoms
+        return StreamingResponse(buf, media_type="image/png")
 
-    if df_heat.empty:
-        df_heat = pd.DataFrame([[0]], index=[allergen], columns=[symptom])  
+    except Exception as e:
 
-    # --- Plotting ---
-    sns.set(style="whitegrid")
-    fig, axes = plt.subplots(2, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3, 3]})
-
-    # --- Histogram ---
-    x = [getattr(a, 'allergen_name', allergen) 
-     for a in allergen_events 
-     for _ in range(max(counts_by_allergen.get(a.allergen_id, 0), 1))]
-    sns.histplot(
-        x,
-        bins=len(counts_by_allergen),
-        ax=axes[0]
-    )
-    axes[0].set_title(f"Number of {symptom} events within 24h of allergen exposures")
-    axes[0].set_xlabel("Allergens")
-    axes[0].set_ylabel("Count")
-
-    # --- Heatmap ---
-    sns.heatmap(df_heat, annot=True, fmt=".0f", cmap="Reds", cbar_kws={'label': 'Count'}, ax=axes[1])
-    axes[1].set_title("Frequency of symptoms per allergen (within 24h)")
-    axes[1].set_xlabel("Symptoms")
-    axes[1].set_ylabel("Allergens")
-
-    plt.tight_layout()
-
-    # --- Save to PNG ---
-    buf = BytesIO()
-    plt.savefig(buf, format="png", bbox_inches="tight")
-    plt.close(fig)
-    buf.seek(0)
-    return StreamingResponse(buf, media_type="image/png")
+        logger.error("Error generating plot: %s", e)
+        logger.error(traceback.format_exc())
+        # Optionally return a 500 with a message
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail="Failed to generate plot")
 
 @router.get("/plot")
 def plot_analysis(
