@@ -17,6 +17,82 @@ DEFAULT_SYMPTOM = "Nausea"          # default symptom if none selected
 DEFAULT_START_DATE = date(2025, 1, 1)  # earliest date
 DEFAULT_END_DATE = date.today()        # today
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+from io import BytesIO
+from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from app.database import get_db
+from app.api.routes.auth import get_current_user
+from app.models.table_class import User, AllergenLog, SymptomLog
+from datetime import datetime, timedelta
+
+router = APIRouter(prefix="/analysis", tags=["analysis"])
+
+@router.get("/plot")
+def plot_analysis(
+    allergen: str = "Dairy",
+    symptom: str = "Nausea",
+    start_date: str = "2025-01-01",
+    end_date: str = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Convert dates
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d") if end_date else datetime.now()
+
+    # Query allergen and symptom events
+    allergen_times = [
+        t for (t,) in db.query(AllergenLog.date_time)
+                       .filter(AllergenLog.user_id == current_user.user_id)
+                       .filter(AllergenLog.date_time >= start_dt)
+                       .filter(AllergenLog.date_time <= end_dt)
+                       .all()
+    ]
+
+    symptom_times = [
+        t for (t,) in db.query(SymptomLog.date_time)
+                       .filter(SymptomLog.user_id == current_user.user_id)
+                       .filter(SymptomLog.date_time >= start_dt)
+                       .filter(SymptomLog.date_time <= end_dt)
+                       .all()
+    ]
+
+    # Aggregate symptoms within 24h of allergen
+    counts = {}
+    for a_time in allergen_times:
+        window_end = a_time + timedelta(hours=24)
+        daily_count = sum(1 for s_time in symptom_times if a_time <= s_time <= window_end)
+        day = a_time.date()
+        counts[day] = counts.get(day, 0) + daily_count
+
+    if not counts:
+        counts = {start_dt.date(): 0, end_dt.date(): 0}
+
+    # --- Plot with seaborn / matplotlib ---
+    sns.set(style="whitegrid")
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    dates = list(sorted(counts.keys()))
+    values = [counts[d] for d in dates]
+
+    sns.lineplot(x=dates, y=values, marker="o", ax=ax)
+    ax.set_title(f"Symptoms within 24h of {allergen}")
+    ax.set_xlabel("Date")
+    ax.set_ylabel(f"Number of {symptom} events")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    # Save to BytesIO
+    buf = BytesIO()
+    plt.savefig(buf, format="png")
+    plt.close(fig)
+    buf.seek(0)
+
+    return StreamingResponse(buf, media_type="image/png")
+
 @router.get("/plot-data")
 
 def plot_data(
