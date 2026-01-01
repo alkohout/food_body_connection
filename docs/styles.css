@@ -179,10 +179,10 @@ button.primary {
   display: flex;
   justify-content: space-between;
   align-items: center;
-
-  padding: 0.4rem 0.6rem;
-  margin-left: 1rem;
   min-height: unset;
+  gap: 0.5rem;   /* small space between label and number */
+  padding: 0.25rem 0.5rem;
+  margin-left: 1rem;
 }
 
 .stat-inline .stat-label {
