@@ -158,3 +158,19 @@ button.primary {
 .secondary:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+.stat-card--secondary {
+  margin-left: 1rem;        /* indent */
+  padding: 0.75rem;         /* slightly tighter */
+  opacity: 0.9;             /* optional: visually de-emphasise */
+}
+
+.stat-card--secondary h4 {
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.stat-card--secondary div {
+  font-size: 1.1rem;        /* smaller number */
+}
