@@ -78,7 +78,7 @@ def plot_analysis(
 
     # Save to BytesIO
     buf = BytesIO()
-    plt.savefig(buf, format="png")
+    plt.savefig(buf, format="png", bbox_inches="tight")
     plt.close(fig)
     buf.seek(0)
 
