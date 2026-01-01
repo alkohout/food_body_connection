@@ -35,9 +35,9 @@ def analysis_stats(
 
     all_dates = union_all(
         select(func.date(AllergenLog.date_time).label("date"))
-            .where(AllergenLog.user_id == current_user.id),
+            .where(AllergenLog.user_id == current_user.user_id),
         select(func.date(SymptomLog.date_time).label("date"))
-            .where(SymptomLog.user_id == current_user.id),
+            .where(SymptomLog.user_id == current_user.user_id),
     ).subquery()
 
     total_days = (
