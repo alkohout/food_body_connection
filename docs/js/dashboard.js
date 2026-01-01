@@ -312,40 +312,77 @@ const symptomPlotIdInput = document.getElementById("symptom-plot-id");
 const allergenPlotSuggestions = document.getElementById("allergen-plot-suggestions");
 const symptomPlotSuggestions = document.getElementById("symptom-plot-suggestions");
 
-// Autocomplete
 let debouncePlotTimer;
 
 allergenPlotInput.addEventListener("input", () => {
   const query = allergenPlotInput.value.trim();
-
-  if (allergenPlotIdInput) {
-    allergenPlotIdInput.value = "";
-  }
-  if (allergenPlotSuggestions) {
-    allergenPlotSuggestions.innerHTML = "";
-  }
+  allergenPlotIdInput.value = "";
+  allergenPlotSuggestions.innerHTML = "";
 
   if (query.length < 1) return;
 
   clearTimeout(debouncePlotTimer);
-  debounceTimer = setTimeout(() => fetchAllergens(query), 300);
+  debouncePlotTimer = setTimeout(
+    () => fetchAllergensForPlot(query),
+    300
+  );
 });
 
 symptomPlotInput.addEventListener("input", () => {
   const query = symptomPlotInput.value.trim();
-
-  if (symptomPlotIdInput) {
-    symptomPlotIdInput.value = "";
-  }
-  if (symptomPlotSuggestions) {
-    symptomPlotSuggestions.innerHTML = "";
-  }
+  symptomPlotIdInput.value = "";
+  symptomPlotSuggestions.innerHTML = "";
 
   if (query.length < 1) return;
 
   clearTimeout(debouncePlotTimer);
-  debouncePlotTimer = setTimeout(() => fetchSymptoms(query), 300);
+  debouncePlotTimer = setTimeout(
+    () => fetchSymptomsForPlot(query),
+    300
+  );
 });
+
+async function fetchAllergensForPlot(query) {
+  const res = await fetch(`${API_URL}/allergens?q=${encodeURIComponent(query)}`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+  });
+
+  const data = await res.json();
+  allergenPlotSuggestions.innerHTML = "";
+
+  data.forEach(a => {
+    const li = document.createElement("li");
+    li.textContent = a.allergen_name;
+    li.addEventListener("click", () => {
+      allergenPlotInput.value = a.allergen_name;
+      allergenPlotIdInput.value = a.allergen_id;
+      allergenPlotSuggestions.innerHTML = "";
+    });
+    allergenPlotSuggestions.appendChild(li);
+  });
+}
+
+async function fetchSymptomsForPlot(query) {
+  const res = await fetch(`${API_URL}/symptoms?q=${encodeURIComponent(query)}`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+  });
+
+  const data = await res.json();
+  symptomPlotSuggestions.innerHTML = "";
+
+  data.forEach(s => {
+    const li = document.createElement("li");
+    li.textContent = s.symptom_name;
+    li.addEventListener("click", () => {
+      symptomPlotInput.value = s.symptom_name;
+      symptomPlotIdInput.value = s.symptom_id;
+      symptomPlotSuggestions.innerHTML = "";
+    });
+    symptomPlotSuggestions.appendChild(li);
+  });
+}
+
+
 
 document.getElementById("update-plot-btn").addEventListener("click", async () => {
     const img = document.getElementById("analysis-plot");
