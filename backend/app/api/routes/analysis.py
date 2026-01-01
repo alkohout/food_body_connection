@@ -21,17 +21,32 @@ DEFAULT_START_DATE = date(2025, 1, 1)  # earliest date
 DEFAULT_END_DATE = date.today()        # today
 
 @router.get("/plot-data")
+
 def plot_data(
     allergen: Optional[str] = None,
     symptom: Optional[str] = None,
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
+    start_date: Optional[str] = None,  # <-- accept string
+    end_date: Optional[str] = None,    # <-- accept string
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Use defaults if nothing provided
+    # Defaults
     allergen = allergen or DEFAULT_ALLERGEN
     symptom = symptom or DEFAULT_SYMPTOM
+
+    # Parse start_date
+    try:
+        start_date = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else date(2025, 1, 1)
+    except ValueError:
+        start_date = date(2025, 1, 1)
+
+    # Parse end_date
+    try:
+        end_date = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else date.today()
+    except ValueError:
+        end_date = date.today()
+
+    # Use defaults if nothing provided
     start_date = start_date or DEFAULT_START_DATE
     end_date = end_date or DEFAULT_END_DATE
 
