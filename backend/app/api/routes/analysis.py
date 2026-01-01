@@ -21,8 +21,6 @@ DEFAULT_SYMPTOM = "Nausea"          # default symptom if none selected
 DEFAULT_START_DATE = date(2025, 1, 1)  # earliest date
 DEFAULT_END_DATE = date.today()        # today
 
-router = APIRouter(prefix="/analysis", tags=["analysis"])
-
 @router.get("/plot")
 def plot_analysis(
     allergen: str = "Dairy",
