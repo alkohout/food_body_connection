@@ -21,8 +21,8 @@ DEFAULT_SYMPTOM = "Nausea"          # default symptom if none selected
 DEFAULT_START_DATE = date(2025, 1, 1)  # earliest date
 DEFAULT_END_DATE = date.today()        # today
 
-@router.get("/plot-layman")
-def plot_layman(
+@router.get("/plot-eda")
+def plot_eda(
     allergen: str = "Dairy",
     symptom: str = "Nausea",
     start_date: str = None,
