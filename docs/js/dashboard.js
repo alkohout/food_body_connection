@@ -307,17 +307,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const symptomSelect = document.getElementById("symptom-select");
     const updateBtn = document.getElementById("update-plot-btn");
 
-    const allergens = ["Peanuts", "Shellfish", "Dairy", "Eggs", "Tree Nuts"];
-    const symptoms = ["Hives", "Swelling", "Itching", "Difficulty Breathing", "Nausea"];
-
-    allergens.forEach(a => allergenSelect.add(new Option(a, a)));
-    symptoms.forEach(s => symptomSelect.add(new Option(s, s)));
-
     async function updatePlot() {
-      const allergen = allergenSelect.value || "Dairy"; // default allergen
-      const symptom = symptomSelect.value || "Nausea";  // default symptom
-      const startDate = document.getElementById("start-date").value || "2025-01-01";
-      const endDate = document.getElementById("end-date").value || new Date().toISOString().slice(0,10);
+
+      const allergen = "Dairy"; // default allergen
+      const symptom = "Nausea";  // default symptom
+      const startDate = "2025-01-01";
+      const endDate = new Date().toISOString().slice(0,10);
 
       const url = `${API_URL}/analysis/plot-data?allergen=${allergen}&symptom=${symptom}&start_date=${startDate}&end_date=${endDate}`;
 
