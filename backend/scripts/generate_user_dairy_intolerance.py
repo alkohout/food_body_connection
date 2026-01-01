@@ -20,7 +20,7 @@ def generate_dairy_intolerance_data(user_email="test@example.com", days=90, entr
             raise ValueError(f"No user found with email {user_email}")
 
         # Get allergens and units
-        dairy_allergens = db.query(Allergen).filter(Allergen.allergen_name.in_(["Milk", "Lactose", "Casein", "Whey"])).all()
+        dairy_allergens = db.query(Allergen).filter(Allergen.allergen_name.in_(["Dairy"])).all()
         other_allergens = db.query(Allergen).filter(~Allergen.allergen_name.in_([a.allergen_name for a in dairy_allergens])).all()
         units = db.query(Unit).all()
         symptoms = db.query(Symptom).all()

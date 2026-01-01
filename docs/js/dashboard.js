@@ -8,6 +8,14 @@ import { getCurrentUser, API_URL } from "./api.js";
 // -----------------------------------------------------------------------
 // -----------------------------------------------------------------------
 
+const logoutBtn = document.getElementById("logout-btn");
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", () => {
+    localStorage.removeItem("access_token");
+    window.location.href = "index.html";
+  });
+}
+
 // Set date input to local datetime format
 function localDateTimeForInput(date = new Date()) {
   const tzOffsetMs = date.getTimezoneOffset() * 60000;
@@ -248,7 +256,7 @@ if (logForm2) {
     }
 
     if (!localInput) {
-      document.getElementById("log-error").textContent =
+      document.getElementById("symptom-error").textContent =
         "Please select a date and time.";
       return;
     }
@@ -289,11 +297,6 @@ if (logForm2) {
     }
   });
 
-  document.getElementById("logout-btn").addEventListener("click", () => {
-    localStorage.removeItem("access_token");
-    window.location.href = "index.html";
-  });
-
 }
 
 // -----------------------------------------------------------------------
@@ -307,17 +310,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const symptomSelect = document.getElementById("symptom-select");
     const updateBtn = document.getElementById("update-plot-btn");
 
-    const allergens = ["Peanuts", "Shellfish", "Dairy", "Eggs", "Tree Nuts"];
-    const symptoms = ["Hives", "Swelling", "Itching", "Difficulty Breathing", "Nausea"];
-
-    allergens.forEach(a => allergenSelect.add(new Option(a, a)));
-    symptoms.forEach(s => symptomSelect.add(new Option(s, s)));
-
     async function updatePlot() {
-      const allergen = allergenSelect.value || "Dairy"; // default allergen
-      const symptom = symptomSelect.value || "Nausea";  // default symptom
-      const startDate = document.getElementById("start-date").value || "2025-01-01";
-      const endDate = document.getElementById("end-date").value || new Date().toISOString().slice(0,10);
+
+      const allergen = allergenSelect?.value || "Dairy";
+      const symptom = symptomSelect?.value || "Nausea";
+      const startDate = "2025-01-01";
+      const endDate = new Date().toISOString().slice(0,10);
 
       const url = `${API_URL}/analysis/plot-data?allergen=${allergen}&symptom=${symptom}&start_date=${startDate}&end_date=${endDate}`;
 
@@ -407,4 +405,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     updateBtn.addEventListener("click", updatePlot);
   })
-init();
+
+document.addEventListener("DOMContentLoaded", async () => {
+  await init();
+  // set up updatePlot, event listeners here
+});
