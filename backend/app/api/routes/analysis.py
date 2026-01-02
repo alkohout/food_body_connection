@@ -143,7 +143,10 @@ def intensity_volume(
                     volume = quantity * unit_conversion[unit]
                 else:
                     volume = None  # unknown unit or missing quantity
-                logger.info("volume: %s, unit: %s, conversion: %f", volume, unit, unit_conversion[unit])
+                if unit in unit_conversion:
+                    logger.info("volume: %s, unit: %s, conversion: %f", volume, unit, unit_conversion[unit])
+                else:
+                    logger.info("Skipping allergen with missing or unknown unit: %s", unit)
                 
                 rows.append({
                     "intensity": intensity,
