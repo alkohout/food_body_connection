@@ -18,7 +18,7 @@ def get_allergen_events(db: Session, user_id: int, allergen_name: str, start_dt=
         query = query.filter(AllergenLog.date_time <= end_dt)
 
     events = query.all()
-    return events, allergen
+    return events
 
 def get_symptom_events(db: Session, user_id: int, symptom_name: str, start_dt=None, end_dt=None):
     symptom = db.query(Symptom).filter(Symptom.symptom_name == symptom_name).first()
@@ -35,7 +35,7 @@ def get_symptom_events(db: Session, user_id: int, symptom_name: str, start_dt=No
         query = query.filter(SymptomLog.date_time <= end_dt)
 
     events = query.all()
-    return events, symptom
+    return events
 
 def get_all_symptom_events(db: Session, user_id: int, start_dt=None, end_dt=None):
     query = db.query(SymptomLog).filter(SymptomLog.user_id == user_id)
