@@ -462,7 +462,7 @@ document.getElementById("update-plot-btn").addEventListener("click", async () =>
         const allergen = allergenPlotInput.value || "Dairy";
         const start_date = dateInput.value ? dateInput.value.split("T")[0] : "2025-01-01";
 
-        const response = await fetch(`${API_URL}/analysis/plot-eda?allergen=${allergen}&symptom=${symptom}&start_date=${start_date}`, {
+        const response = await fetch(`${API_URL}/analysis/intensity-volume?allergen=${allergen}&symptom=${symptom}`, {
             headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
         });
 
