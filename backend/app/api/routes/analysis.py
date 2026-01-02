@@ -134,7 +134,7 @@ def intensity_volume(
                 quantity = getattr(allergen, "quantity", None)
                 unit = getattr(allergen, "unit_id", None)
                 intensity = getattr(s, "intensity", None)
-                unit_obj = db.query(Unit).filter(Unit.unit_name == unit).first()
+                unit_obj = db.query(Unit).filter(Unit.unit_id == unit).first()
                 conversion = unit_obj.conversion if unit_obj else None
                 volume = quantity*conversion
                 
