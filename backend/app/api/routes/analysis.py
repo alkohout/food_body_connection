@@ -158,8 +158,8 @@ def intensity_volume(
                 })
 
         df = pd.DataFrame(rows)
-
-        logger.info("DataFrame size: %d rows", len(df))
+        df = df.dropna(subset=["volume", "intensity"])
+        logger.info("Valid rows for plot: %d", len(df))
 
         # --- Plotting ---
         sns.set(style="whitegrid")
