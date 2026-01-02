@@ -59,11 +59,11 @@ def plot_eda(
             
             # Count symptoms in the 24h window
             count = sum(1 for s in symptom_events if a.date_time <= s.date_time <= window_end)
-            allergen_name = get_allergen(db, current_user.user_id, allergen_id=a.allergen_id)
+            allergen_obj = get_allergen(db, current_user.user_id, allergen_id=a.allergen_id)
             
             # Append a row
             rows.append({
-                "allergen_name": allergen_name,
+                "allergen_name": allergen_obj.allergen_name if allergen_obj else "Unknown",
                 "symptom_count_24h": count
             })
 
