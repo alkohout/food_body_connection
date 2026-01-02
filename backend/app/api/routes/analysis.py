@@ -62,6 +62,9 @@ def intensity_volume(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    import pandas as pd
+    from datetime import timedelta  
+
     try: 
         
         # Query for the allergen ID
@@ -98,12 +101,6 @@ def intensity_volume(
         logger.info("Allergen events: %d, Symptom events: %d", len(allergen_events), len(symptom_events))
 
         # --- Time series: count of symptom events within 24h of each allergen ---
-        from collections import defaultdict
-        import pandas as pd
-        from datetime import timedelta
-        import pandas as pd
-        from datetime import timedelta
-
         if allergen:
             allergen_id = allergen.allergen_id
             logger.info("Allergen ID for %s is %s", allergen_name, allergen_id)
