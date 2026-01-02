@@ -145,6 +145,7 @@ def intensity_volume(
 
         df = pd.DataFrame(rows)
         logger.info("Valid rows for plot: %d", len(df))
+        logger.info(df.head(74))
 
         # --- Plotting ---
         sns.set(style="whitegrid")
