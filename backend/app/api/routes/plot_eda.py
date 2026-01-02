@@ -7,7 +7,7 @@ from app.api.routes.auth import get_current_user
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from app.models.table_class import User
-from app.data.analysis_data import get_all_allergen_events, get_all_symptom_events
+from app.data.analysis_data import get_all_allergen_events, get_all_symptom_events, get_allergen
 from datetime import timedelta, datetime
 import traceback
 
@@ -59,15 +59,17 @@ def plot_eda(
             
             # Count symptoms in the 24h window
             count = sum(1 for s in symptom_events if a.date_time <= s.date_time <= window_end)
+            allergen_name = get_allergen(db, current_user.user_id, a.allergen_id)
             
             # Append a row
             rows.append({
-                "allergen_name": a.allergen_name,
+                "allergen_name": allergen_name,
                 "symptom_count_24h": count
             })
 
         # Convert to DataFrame
         df = pd.DataFrame(rows)
+        df = df.groupby(["allergen_name"])["symptom_count_24h"].sum().reset_index()
 
         # --- Plotting ---
         sns.set(style="whitegrid")
@@ -77,8 +79,8 @@ def plot_eda(
         rows = rows[rows["symptom_count_24h"] > 0]
 
         # Sort by count descending and take top 10
-        bar_data_top10 = bar_data.sort_values("symptom_count_24h", ascending=False).head(10)
-        sns.barplot(data=bar_data_top10, x="Allergen", y="Count", ax=axes)
+        top10 = rows.sort_values("symptom_count_24h", ascending=False).head(10)
+        sns.barplot(data=top10, x="Allergen", y="Count", ax=axes)
         axes.set_title(f"Number of symptoms within 24h of allergen exposures (top 10 allergens)")
         axes.set_xlabel("Allergen")
         axes.set_ylabel("Symptom Count")
