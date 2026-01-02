@@ -175,7 +175,7 @@ def main():
         conversions = [1, 1, 1000, 15, 5, 240]  # convert to base unit (grams or ml)
 
         # Create Unit objects with both name and conversion
-        unit_objects = [Unit(unit_name=u, conversion=c) for u, c in zip(units, conversions)]
+        unit_objects = [Unit(unit_name=u, unit_conversion=c) for u, c in zip(units, conversions)]
 
         db.add_all(unit_objects)
         db.commit()
