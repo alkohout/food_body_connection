@@ -7,8 +7,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.api.routes.auth import get_current_user
-from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Symptom, Unit
-from app.schemas import AnalysisSummaryOut, AnalysisScope
+from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Symptom
 from io import BytesIO
 from datetime import date, datetime, time, timezone, timedelta
 from sqlalchemy import text, func, union_all, select, func
@@ -56,111 +55,6 @@ def analysis_stats(
         "Total symptoms logged": total_symptoms,
         "Total days tracked": total_days    
     }
-@router.get('/intensity-volume')
-def intensity_volume(
-    allergen_name: str,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    import pandas as pd
-    from datetime import timedelta  
-
-    try: 
-        
-        # Query for the allergen ID
-        allergen = db.query(Allergen).filter(Allergen.allergen_name == allergen_name).first()
-        if allergen:
-            allergen_id = allergen.allergen_id
-            logger.info("Allergen ID for %s is %s", allergen_name, allergen_id)
-        else:
-            logger.warning("No allergen found with name %s", allergen_name)
-
-        # --- Determine overall min/max dates ---
-        min_allergen = db.query(func.min(AllergenLog.date_time)).filter(AllergenLog.user_id == current_user.user_id).scalar()
-        max_allergen = db.query(func.max(AllergenLog.date_time)).filter(AllergenLog.user_id == current_user.user_id).scalar()
-
-        start_dt = min_allergen
-        end_dt = max_allergen
-
-        # --- Query allergen and symptom events within range ---
-        allergen_events = db.query(AllergenLog).filter(
-            AllergenLog.user_id == current_user.user_id,
-            AllergenLog.allergen_id == allergen_id,
-            AllergenLog.date_time >= start_dt,
-            AllergenLog.date_time <= end_dt
-        ).all()
-
-        symptom_events = db.query(SymptomLog).filter(
-            SymptomLog.user_id == current_user.user_id,
-            SymptomLog.date_time >= start_dt,
-            SymptomLog.date_time <= end_dt + timedelta(hours=24)
-        ).all()
-
-        logger.info("Generating EDA plot for user_id=%d", current_user.user_id)
-        logger.info("Start date: %s, End date: %s", start_dt, end_dt)   
-        logger.info("Allergen events: %d, Symptom events: %d", len(allergen_events), len(symptom_events))
-
-        # --- Time series: count of symptom events within 24h of each allergen ---
-        if allergen:
-            allergen_id = allergen.allergen_id
-            logger.info("Allergen ID for %s is %s", allergen_name, allergen_id)
-        else:
-            logger.warning("No allergen found with name %s", allergen_name)
-
-        rows = []
-
-        for allergen in allergen_events:
-            window_end = allergen.date_time + timedelta(hours=24)
-            
-            matching_symptoms = [s for s in symptom_events if allergen.date_time <= s.date_time <= window_end]
-            
-            # Lookup the unit conversion from the database
-            quantity = getattr(allergen, "quantity", None)
-            unit_id = getattr(allergen, "unit_id", None)
-            unit_obj = db.query(Unit).filter(Unit.unit_id == unit_id).first()
-            conversion = unit_obj.unit_conversion if unit_obj else None
-            volume = quantity * conversion if quantity and conversion else None
-
-            # Sum intensity and square it
-            total_intensity = sum(s.symptom_intensity or 0 for s in matching_symptoms)
-            burden_score = total_intensity ** 2  # emphasize larger clusters
-
-            rows.append({
-                "volume": volume,
-                "burden_score": burden_score,
-            })
-
-        df = pd.DataFrame(rows)
-        logger.info("Valid rows for plot: %d", len(df))
-        logger.info(df.head(74))
-
-        # --- Plotting ---
-        sns.set(style="whitegrid")
-        fig, axes = plt.subplots(1, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3]})
-
-        # Sort by count descending and take top 10
-        sns.scatterplot(data=df, x="volume", y="burden_score", ax=axes)
-        axes.set_title(f"Total symptom Burden Score vs Allergen Volume for {allergen_name}")
-        axes.set_xlabel("Allergen Volume")
-        axes.set_ylabel("Symptom Burden Score")
-
-        plt.tight_layout()
-
-        # --- Save to PNG ---
-        buf = BytesIO()
-        plt.savefig(buf, format="png", bbox_inches="tight")
-        plt.close(fig)
-        buf.seek(0)
-
-        return StreamingResponse(buf, media_type="image/png")
-
-    except Exception as e:
-
-        logger.error("Error generating plot: %s", e)
-        logger.error(traceback.format_exc())
-        # Optionally return a 500 with a message
-        from fastapi import HTTPException
-        raise HTTPException(status_code=500, detail="Failed to generate plot")
 
 @router.get("/plot-eda")
 def plot_eda(
@@ -270,88 +164,6 @@ def plot_eda(
         # Optionally return a 500 with a message
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail="Failed to generate plot")
-
-@router.get("/plot")
-def plot_analysis(
-    allergen: str = "Dairy",
-    symptom: str = "Nausea",
-    start_date: str = "2025-01-01",
-    end_date: str = None,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-
-    min_allergen = db.query(func.min(AllergenLog.date_time)) \
-                     .filter(AllergenLog.user_id == current_user.user_id) \
-                     .scalar()
-    max_allergen = db.query(func.max(AllergenLog.date_time)) \
-                     .filter(AllergenLog.user_id == current_user.user_id) \
-                     .scalar()
-    
-    min_symptom = db.query(func.min(SymptomLog.date_time)) \
-                    .filter(SymptomLog.user_id == current_user.user_id) \
-                    .scalar()
-    max_symptom = db.query(func.max(SymptomLog.date_time)) \
-                    .filter(SymptomLog.user_id == current_user.user_id) \
-                    .scalar()
-    # Start = earliest of allergen/symptom logs
-    start_dt = datetime.strptime(start_date, "%Y-%m-%d") if start_date else min(
-        d for d in [min_allergen, min_symptom] if d is not None
-    )
-
-    # End = latest of allergen/symptom logs
-    end_dt = datetime.strptime(end_date, "%Y-%m-%d") if end_date else max(
-        d for d in [max_allergen, max_symptom] if d is not None
-    )
-    # Query allergen and symptom events
-    allergen_times = [
-        t for (t,) in db.query(AllergenLog.date_time)
-                       .filter(AllergenLog.user_id == current_user.user_id)
-                       .filter(AllergenLog.date_time >= start_dt)
-                       .filter(AllergenLog.date_time <= end_dt)
-                       .all()
-    ]
-
-    symptom_times = [
-        t for (t,) in db.query(SymptomLog.date_time)
-                       .filter(SymptomLog.user_id == current_user.user_id)
-                       .filter(SymptomLog.date_time >= start_dt)
-                       .filter(SymptomLog.date_time <= end_dt)
-                       .all()
-    ]
-
-    # Aggregate symptoms within 24h of allergen
-    counts = {}
-    for a_time in allergen_times:
-        window_end = a_time + timedelta(hours=24)
-        daily_count = sum(1 for s_time in symptom_times if a_time <= s_time <= window_end)
-        day = a_time.date()
-        counts[day] = counts.get(day, 0) + daily_count
-
-    if not counts:
-        counts = {start_dt.date(): 0, end_dt.date(): 0}
-
-    # --- Plot with seaborn / matplotlib ---
-    sns.set(style="whitegrid")
-    fig, ax = plt.subplots(figsize=(10, 5))
-
-    dates = list(sorted(counts.keys()))
-    values = [counts[d] for d in dates]
-
-    sns.lineplot(x=dates, y=values, marker="o", ax=ax)
-    ax.set_title(f"Symptoms within 24h of {allergen}")
-    ax.set_xlabel("Date")
-    ax.set_ylabel(f"Number of {symptom} events")
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-
-    # Save to BytesIO
-    buf = BytesIO()
-    plt.savefig(buf, format="png", bbox_inches="tight")
-    plt.close(fig)
-    buf.seek(0)
-
-    return StreamingResponse(buf, media_type="image/png")
 
 @router.get("/plot-data")
 
