@@ -184,10 +184,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // -------------------------
   document.getElementById("update-plot-btn").addEventListener("click", async () => {
     const allergenName = allergenIntInput.value || "Dairy";
-    const symptomName = symptomIntInput.value || "Nausea";
 
     try {
-      const res = await fetch(`${API_URL}/analysis/intensity-volume?allergen_name=${allergenName}&symptom_name=${symptomName}`, {
+      const res = await fetch(`${API_URL}/analysis/intensity-volume?allergen_name=${allergenName}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
       });
       if (!res.ok) throw new Error(res.statusText);
