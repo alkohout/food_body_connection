@@ -63,24 +63,24 @@ def plot_eda(
             
             # Append a row
             rows.append({
-                "allergen_name": allergen_obj.allergen_name if allergen_obj else "Unknown",
-                "symptom_count_24h": count
+                "allergen": allergen_obj.allergen_name if allergen_obj else "Unknown",
+                "count": count
             })
 
         # Convert to DataFrame
         df = pd.DataFrame(rows)
-        df = df.groupby(["allergen_name"])["symptom_count_24h"].sum().reset_index()
+        df = df.groupby(["allergen"])["count"].sum().reset_index()
 
         # --- Plotting ---
         sns.set(style="whitegrid")
         fig, axes = plt.subplots(1, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3]})
 
         # Remove allergens with 0 count
-        rows = rows[rows["symptom_count_24h"] > 0]
+        df = df[df["count"] > 0]
 
         # Sort by count descending and take top 10
-        top10 = rows.sort_values("symptom_count_24h", ascending=False).head(10)
-        sns.barplot(data=top10, x="Allergen", y="Count", ax=axes)
+        df = df.sort_values("count", ascending=False).head(10)
+        sns.barplot(data=df, x="allergen", y="count", ax=axes)
         axes.set_title(f"Number of symptoms within 24h of allergen exposures (top 10 allergens)")
         axes.set_xlabel("Allergen")
         axes.set_ylabel("Symptom Count")
