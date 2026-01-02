@@ -1,4 +1,4 @@
-# app/api/routes/intensity-volume.py
+# app/api/routes/intensity_volume.py
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -18,12 +18,12 @@ import traceback
 from fastapi import HTTPException
 from io import BytesIO
 
-logger = logging.getLogger("backend/app/api/routes/intensity-volume.py")
+logger = logging.getLogger("backend/app/api/routes/intensity_volume.py")
 logging.basicConfig(level=logging.INFO)
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
-@router.get('/intensity-volume')
+@router.get('/intensity_volume')
 def intensity_volume(
     allergen_name: str,
     current_user: User = Depends(get_current_user),

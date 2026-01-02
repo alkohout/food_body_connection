@@ -1,4 +1,4 @@
-# app/api/routes/plot-eda.py
+# app/api/routes/plot_eda.py
 import logging
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -18,12 +18,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
-logger = logging.getLogger("app/api/routes/plot-eda.py")
+logger = logging.getLogger("app/api/routes/plot_eda.py")
 logging.basicConfig(level=logging.INFO)
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
-@router.get("/plot-eda")
+@router.get("/plot_eda")
 def plot_eda(
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
