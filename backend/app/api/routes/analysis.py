@@ -32,7 +32,6 @@ def analysis_stats(
     db: Session = Depends(get_db)
 ):
 
-
     all_dates = union_all(
         select(func.date(AllergenLog.date_time).label("date"))
             .where(AllergenLog.user_id == current_user.user_id),
@@ -57,6 +56,141 @@ def analysis_stats(
         "Total symptoms logged": total_symptoms,
         "Total days tracked": total_days    
     }
+@router.get('/intensity-volume')
+def intensity_volume(
+    symptom_name: str,
+    allergen_name: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try: 
+        
+        # Query for the allergen ID
+        allergen = db.query(Allergen).filter(Allergen.allergen_name == allergen_name).first()
+        if allergen:
+            allergen_id = allergen.allergen_id
+            logger.info("Allergen ID for %s is %s", allergen_name, allergen_id)
+        else:
+            logger.warning("No allergen found with name %s", allergen_name)
+        # Query for the symptom ID
+        symptom = db.query(Symptom).filter(Symptom.symptom_name == symptom_name).first()
+        if symptom:
+            symptom_id = symptom.symptom_id
+            logger.info("Symptom ID for %s is %s", symptom_name, symptom_id)
+        else:
+            logger.warning("No symptom found with name %s", symptom_name)
+
+        # --- Determine overall min/max dates ---
+        min_allergen = db.query(func.min(AllergenLog.date_time)).filter(AllergenLog.user_id == current_user.user_id).scalar()
+        max_allergen = db.query(func.max(AllergenLog.date_time)).filter(AllergenLog.user_id == current_user.user_id).scalar()
+        min_symptom = db.query(func.min(SymptomLog.date_time)).filter(SymptomLog.user_id == current_user.user_id).scalar()
+        max_symptom = db.query(func.max(SymptomLog.date_time)).filter(SymptomLog.user_id == current_user.user_id).scalar()
+
+        start_dt = min(d for d in [min_allergen, min_symptom] if d is not None)
+        end_dt = max(d for d in [max_allergen, max_symptom] if d is not None)
+
+        # --- Query allergen and symptom events within range ---
+        allergen_events = db.query(AllergenLog).filter(
+            AllergenLog.user_id == current_user.user_id,
+            AllergenLog.allergen_id == allergen_id,
+            AllergenLog.date_time >= start_dt,
+            AllergenLog.date_time <= end_dt
+        ).all()
+
+        symptom_events = db.query(SymptomLog).filter(
+            SymptomLog.user_id == current_user.user_id,
+            SymptomLog.symptom_id == symptom_id,
+            SymptomLog.date_time >= start_dt,
+            SymptomLog.date_time <= end_dt
+        ).all()
+
+        logger.info("Generating EDA plot for user_id=%d", current_user.user_id)
+        logger.info("Start date: %s, End date: %s", start_dt, end_dt)   
+        logger.info("Allergen events: %d, Symptom events: %d", len(allergen_events), len(symptom_events))
+
+        # --- Time series: count of symptom events within 24h of each allergen ---
+        from collections import defaultdict
+        import pandas as pd
+        from datetime import timedelta
+        import pandas as pd
+        from datetime import timedelta
+
+        # Example unit conversion dictionary to standard volume (mL or g)
+        unit_conversion = {
+            "ml": 1,         # already in mL
+            "Liters": 1000,   # 1 L = 1000 mL
+            "teaspoons": 5,        # 1 teaspoon = 5 mL
+            "tablespoons": 15,      # 1 tablespoon = 15 mL
+            "cups": 240,      # 1 cup = 240 mL
+            "grams": 1,          # grams for solids
+            # add more units as needed
+        }
+
+        rows = []
+
+        for allergen in allergen_events:
+            window_end = allergen.date_time + timedelta(hours=24)
+            
+            matching_symptoms = [s for s in symptom_events if allergen.date_time <= s.date_time <= window_end]
+            
+            for s in matching_symptoms:
+                quantity = getattr(s, "quantity", None)
+                unit = getattr(s, "unit", None)
+                intensity = getattr(s, "intensity", None)
+                
+                # Convert to standard volume/weight
+                if quantity is not None and unit in unit_conversion:
+                    volume = quantity * unit_conversion[unit]
+                else:
+                    volume = None  # unknown unit or missing quantity
+                
+                rows.append({
+                    "allergen_id": allergen.allergen_id,
+                    "allergen_name": getattr(allergen, "allergen_name", None),
+                    "symptom_id": s.symptom_id,
+                    "symptom_name": getattr(s, "symptom_name", None),
+                    "quantity": quantity,
+                    "unit": unit,
+                    "volume": volume,
+                    "intensity": intensity,
+                    "allergen_time": allergen.date_time,
+                    "symptom_time": s.date_time,
+                })
+
+        df = pd.DataFrame(rows)
+
+        print(df.head())
+
+
+        logger.info( df.head()) 
+
+        # --- Plotting ---
+        sns.set(style="whitegrid")
+        fig, axes = plt.subplots(1, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3]})
+
+        # Sort by count descending and take top 10
+        sns.scatter(df, x="volume", y="intensity", ax=axes)
+        axes.set_title(f"Symptom Intensity vs Allergen Volume for {allergen_name} and {symptom_name}")
+        axes.set_xlabel("Allergen Volume")
+        axes.set_ylabel("Symptom Intensity")
+
+        plt.tight_layout()
+
+        # --- Save to PNG ---
+        buf = BytesIO()
+        plt.savefig(buf, format="png", bbox_inches="tight")
+        plt.close(fig)
+        buf.seek(0)
+
+        return StreamingResponse(buf, media_type="image/png")
+
+    except Exception as e:
+
+        logger.error("Error generating plot: %s", e)
+        logger.error(traceback.format_exc())
+        # Optionally return a 500 with a message
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail="Failed to generate plot")
 
 @router.get("/plot-eda")
 def plot_eda(

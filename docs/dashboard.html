@@ -94,19 +94,16 @@
         <!-- Summary statistics -->
         <!-- ===================== -->
             <h3>Summary Statistics</h3>
-
-            <div class="analysis-grid">
-            <div class="stat-card">
-                <h4>Total entries</h4>
-                <div id="stat-total-entries">—</div>
+            <div class="stat-card stat-card--secondary stat-inline">
+                <span class="stat-label">Total entries</span>
+                <span class="stat-value" id="stat-total-entries">—</span>
             </div>
 
-            <div class="stat-card">
-                <h4>Days tracked</h4>
-                <div id="stat-days">—</div>
+            <div class="stat-card stat-card--secondary stat-inline">
+                <span class="stat-label">Days tracked</span>
+                <span class="stat-value" id="stat-days">—</span>
             </div>
 
-            </div>
         <!-- ===================== -->
         <!-- Bar plot - Symptom Frequency -->
         <!-- ===================== -->
@@ -122,7 +119,8 @@
             <input type="text" id="symptom-plot-input" autocomplete="off" />
             <input type="hidden" id="symptom-plot-id" />
             <ul id="symptom-plot-suggestions" class="suggestions"></ul>
-            <button type="button" id="update-plot-btn">Generate Plot</button>
+            <img id="analysis-intensity-volume-plot" src="" alt="Intensity-Volume Plot" style="width:90%; height:auto;" />
+            <button type="button" id="update-plot-btn">Generate Scatter Plot</button>
         </section>
 
 
