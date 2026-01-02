@@ -32,7 +32,7 @@ def intensity_volume(
     try: 
         
         # --- Fetch allergen and symptom events for user ---
-        allergen_events = get_allergen_events(db, current_user.user_id)
+        allergen_events = get_allergen_events(db, current_user.user_id, allergen_name=allergen_name)
         symptom_events = get_all_symptom_events(db, current_user.user_id)
 
         # --- Determine overall min/max dates ---
