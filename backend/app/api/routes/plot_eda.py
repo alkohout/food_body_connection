@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.api.routes.auth import get_current_user
-from collections import defaultdict
+from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from app.models.table_class import User
-from app.data.analysis_data import get_allergen, get_all_allergen_events, get_all_symptom_events
-from datetime import timedelta
+from app.data.analysis_data import get_all_allergen_events, get_all_symptom_events
+from datetime import timedelta, datetime
 import traceback
 
 from io import BytesIO
@@ -36,40 +36,48 @@ def plot_eda(
         symptom_events = get_all_symptom_events(db, current_user.user_id)
         
         # --- Determine overall min/max dates ---
-        start_dt = min(allergen_events.date_time, symptom_events.date_time)
-        end_dt = max(allergen_events.date_time, symptom_events.date_time)
+        allergen_times = [a.date_time for a in allergen_events]
+        symptom_times = [s.date_time for s in symptom_events]
+
+        # Combine and take min/max
+        all_times = allergen_times + symptom_times
+        if all_times:  # make sure there is data
+            start_dt = min(all_times)
+            end_dt = max(all_times)
+        else:
+            # fallback if no data
+            start_dt = end_dt = datetime.now()
+
 
         logger.info("Generating EDA plot for user_id=%d", current_user.user_id)
         logger.info("Start date: %s, End date: %s", start_dt, end_dt)   
         logger.info("Allergen events: %d, Symptom events: %d", len(allergen_events), len(symptom_events))
 
-        # --- Time series: count of symptom events within 24h of each allergen ---
-        counts_by_allergen = defaultdict(int)
+        rows = []
         for a in allergen_events:
             window_end = a.date_time + timedelta(hours=24)
+            
+            # Count symptoms in the 24h window
             count = sum(1 for s in symptom_events if a.date_time <= s.date_time <= window_end)
-            counts_by_allergen[a.allergen_id] += count
+            
+            # Append a row
+            rows.append({
+                "allergen_name": a.allergen_name,
+                "symptom_count_24h": count
+            })
 
-        # --- Map allergen IDs to names for plotting ---
-        allergen_ids = list(counts_by_allergen.keys())
-        allergen_names = get_allergen(db, current_user.user_id, allergen_ids=allergen_ids)
-        logger.info("Allergen names mapping: %s", allergen_names)
+        # Convert to DataFrame
+        df = pd.DataFrame(rows)
 
         # --- Plotting ---
         sns.set(style="whitegrid")
         fig, axes = plt.subplots(1, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3]})
 
-        # Convert counts to DataFrame for barplot
-        bar_data = pd.DataFrame({
-            "Allergen": [allergen_names[a_id] for a_id in counts_by_allergen.keys()],
-            "Count": [counts_by_allergen[a_id] for a_id in counts_by_allergen.keys()]
-        })
-
         # Remove allergens with 0 count
-        bar_data = bar_data[bar_data["Count"] > 0]
+        rows = rows[rows["symptom_count_24h"] > 0]
 
         # Sort by count descending and take top 10
-        bar_data_top10 = bar_data.sort_values("Count", ascending=False).head(10)
+        bar_data_top10 = bar_data.sort_values("symptom_count_24h", ascending=False).head(10)
         sns.barplot(data=bar_data_top10, x="Allergen", y="Count", ax=axes)
         axes.set_title(f"Number of symptoms within 24h of allergen exposures (top 10 allergens)")
         axes.set_xlabel("Allergen")
@@ -83,17 +91,10 @@ def plot_eda(
         plt.close(fig)
         buf.seek(0)
 
-        # logging for debugging
-        logger.info("Number of allergen events: %d", len(allergen_events))
-        logger.info("Number of symptom events: %d", len(symptom_events))
-        logger.info("Counts by allergen: %s", counts_by_allergen)
-
         return StreamingResponse(buf, media_type="image/png")
 
     except Exception as e:
 
         logger.error("Error generating plot: %s", e)
         logger.error(traceback.format_exc())
-        # Optionally return a 500 with a message
-        from fastapi import HTTPException
         raise HTTPException(status_code=500, detail="Failed to generate plot")
