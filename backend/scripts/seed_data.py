@@ -170,16 +170,15 @@ def main():
         for a in allergen_objects:
             db.refresh(a)
 
+        # Define your units and conversions
+        units = ["grams", "ml", "liters", "tablespoons", "teaspoons", "cups"]
+        conversions = [1, 1, 1000, 15, 5, 240]  # convert to base unit (grams or ml)
 
-        # Create base units
-        units = ["grams", 
-                 "ml", 
-                 "Liters", 
-                 "tablespoons", 
-                 "teaspoons", 
-                 "cups"
-        ]
-        unit_objects = [Unit(unit_name=u) for u in units]
+        # Create Unit objects with both name and conversion
+        unit_objects = [Unit(unit_name=u, conversion=c) for u, c in zip(units, conversions)]
+
+        db.add_all(unit_objects)
+        db.commit()
         db.add_all(unit_objects)
         db.commit()
         for u in unit_objects:

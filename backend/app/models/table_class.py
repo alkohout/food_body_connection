@@ -31,6 +31,7 @@ class Unit(Base):
     
     unit_id = Column(Integer, primary_key=True)
     unit_name = Column(String(100), nullable=False)
+    unit_conversion = Column(Integer, nullable=False)  
     
     # Relationships
     allergen_log = relationship("AllergenLog", back_populates="unit")
