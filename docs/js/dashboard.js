@@ -181,7 +181,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const allergenName = allergenIntInput.value || "Dairy";
 
     try {
-      const res = await fetch(`${API_URL}/analysis/intensity-volume?allergen_name=${allergenName}`, {
+      const res = await fetch(`${API_URL}/analysis/intensity-volume?allergen_name=${allergenName}`,{
         headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
       });
       if (!res.ok) throw new Error(res.statusText);
