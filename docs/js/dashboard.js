@@ -89,10 +89,6 @@ tabs.forEach(tab => {
     const activeForm = document.getElementById(`${target}-form`);
     activeForm.classList.add("active");
 
-    // If Analysis tab, fetch plot immediately
-    if (target === "analysis") {
-      fetchAnalysisPlot(); // function to get the plot
-    }
   });
 });
 
@@ -331,6 +327,9 @@ if (logForm2) {
 
 document.addEventListener("DOMContentLoaded", async () => {
   await init();
+
+  // Auto-load initial plot
+  updatePlotBtn.click();
 
   // --- Analysis Inputs & Plots ---
   const allergenIntInput = document.getElementById("allergen-intensity-input");
