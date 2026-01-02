@@ -181,7 +181,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const allergenName = allergenIntInput.value || "Dairy";
 
     try {
-      const res = await fetch(`${API_URL}/analysis/intensity-volume?allergen_name=${allergenName}`,{
+      const res = await fetch(`${API_URL}/analysis/intensity_volume?allergen_name=${allergenName}`,{
         headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
       });
       if (!res.ok) throw new Error(res.statusText);
@@ -205,7 +205,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.getElementById("stat-days").textContent =
         stats["Total days tracked"];
 
-      const plotRes = await fetch(`${API_URL}/analysis/plot-eda`, {
+      const plotRes = await fetch(`${API_URL}/analysis/plot_eda`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
       });
       if (!plotRes.ok) throw new Error(plotRes.statusText);
