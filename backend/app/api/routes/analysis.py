@@ -169,7 +169,7 @@ def intensity_volume(
         fig, axes = plt.subplots(1, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3]})
 
         # Sort by count descending and take top 10
-        sns.scatter(df, x="volume", y="intensity", ax=axes)
+        sns.scatterplot(data=df, x="volume", y="intensity", ax=axes)
         axes.set_title(f"Symptom Intensity vs Allergen Volume for {allergen_name} and {symptom_name}")
         axes.set_xlabel("Allergen Volume")
         axes.set_ylabel("Symptom Intensity")
