@@ -40,10 +40,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const allergenIntIdInput = document.getElementById("allergen-intensity-id");
   const allergenIntSuggestions = document.getElementById("allergen-intensity-suggestions");
 
-  const symptomIntInput = document.getElementById("symptom-intensity-input");
-  const symptomIntIdInput = document.getElementById("symptom-intensity-id");
-  const symptomIntSuggestions = document.getElementById("symptom-intensity-suggestions");
-
   const analysisPlotImg = document.getElementById("analysis-plot");
   const intensityVolumePlotImg = document.getElementById("analysis-intensity-volume-plot");
 
@@ -120,7 +116,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupAutocomplete(allergenInput, allergenIdInput, allergenSuggestions, "allergen");
   setupAutocomplete(symptomInput, symptomIdInput, symptomSuggestions, "symptom");
   setupAutocomplete(allergenIntInput, allergenIntIdInput, allergenIntSuggestions, "allergen");
-  setupAutocomplete(symptomIntInput, symptomIntIdInput, symptomIntSuggestions, "symptom");
 
   // -------------------------
   // Form submissions
