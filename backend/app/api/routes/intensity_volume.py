@@ -36,8 +36,13 @@ def intensity_volume(
         symptom_events = get_all_symptom_events(db, current_user.user_id)
 
         # --- Determine overall min/max dates ---
-        start_dt = min(allergen_events.date_time)
-        end_dt = max(allergen_events.date_time)
+        allergen_times = [a.date_time for a in allergen_events]
+        if allergen_times:  # make sure there is data
+            start_dt = min(allergen_times)
+            end_dt = max(allergen_times)
+        else:
+            # fallback if no data
+            start_dt = end_dt = datetime.now()
 
         logger.info("Generating EDA plot for user_id=%d", current_user.user_id)
         logger.info("Start date: %s, End date: %s", start_dt, end_dt)   
