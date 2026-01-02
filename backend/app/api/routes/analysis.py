@@ -121,6 +121,7 @@ def intensity_volume(
         else:
             logger.warning("No allergen found with name %s", allergen_name)
 
+
         rows = []
 
         for allergen in allergen_events:
@@ -129,19 +130,20 @@ def intensity_volume(
             matching_symptoms = [s for s in symptom_events if allergen.date_time <= s.date_time <= window_end]
             
             # Lookup the unit conversion from the database
-            for s in matching_symptoms:
+            quantity = getattr(allergen, "quantity", None)
+            unit_id = getattr(allergen, "unit_id", None)
+            unit_obj = db.query(Unit).filter(Unit.unit_id == unit_id).first()
+            conversion = unit_obj.unit_conversion if unit_obj else None
+            volume = quantity * conversion if quantity and conversion else None
 
-                quantity = getattr(allergen, "quantity", None)
-                unit_id = getattr(allergen, "unit_id", None)
-                intensity = getattr(s, "symptom_intensity", None)
-                unit_obj = db.query(Unit).filter(Unit.unit_id == unit_id).first()
-                conversion = unit_obj.unit_conversion if unit_obj else None
-                volume = quantity*conversion
-                
-                rows.append({
-                    "intensity": intensity,
-                    "volume": volume
-                })
+            # Sum intensity and square it
+            total_intensity = sum(s.symptom_intensity or 0 for s in matching_symptoms)
+            burden_score = total_intensity ** 2  # emphasize larger clusters
+
+            rows.append({
+                "volume": volume,
+                "burden_score": burden_score,
+            })
 
         df = pd.DataFrame(rows)
         logger.info("Valid rows for plot: %d", len(df))
@@ -152,18 +154,10 @@ def intensity_volume(
         fig, axes = plt.subplots(1, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3]})
 
         # Sort by count descending and take top 10
-        sns.stripplot(
-            data=df,
-            x="volume",
-            y="intensity",
-            jitter=0.25,
-            alpha=0.6,
-            size=5
-        )
-        axes.set_title(f"Symptom Intensity vs Allergen Volume for {allergen_name} and {symptom_name}")
+        sns.scatterplot(data=df, x="volume", y="burden_score", ax=axes)
+        axes.set_title(f"Symptom Burden Score vs Allergen Volume for {allergen_name} and {symptom_name}")
         axes.set_xlabel("Allergen Volume")
-        axes.set_ylabel("Symptom Intensity")
-
+        axes.set_ylabel("Symptom Burden Score")
 
         plt.tight_layout()
 
