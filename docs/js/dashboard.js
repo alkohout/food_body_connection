@@ -335,6 +335,13 @@ const allergenPlotIdInput = document.getElementById("allergen-plot-id");
 const symptomPlotIdInput = document.getElementById("symptom-plot-id");
 const allergenPlotSuggestions = document.getElementById("allergen-plot-suggestions");
 const symptomPlotSuggestions = document.getElementById("symptom-plot-suggestions");
+const allergenIntInput = document.getElementById("allergen-intensity-input");
+const allergenIntIdInput = document.getElementById("allergen-intensity-id");
+const allergenIntSuggestions = document.getElementById("allergen-intensity-suggestions");
+const symptomIntInput = document.getElementById("symptom-intensity-input");
+const symptomIntIdInput = document.getElementById("symptom-intensity-id");
+const symptomIntSuggestions = document.getElementById("symptom-intensity-suggestions");
+
 
 let debouncePlotTimer;
 
@@ -351,7 +358,8 @@ allergenPlotInput.addEventListener("input", () => {
     300
   );
 });
-
+  
+let debouncePlotTimer2;
 symptomPlotInput.addEventListener("input", () => {
   const query = symptomPlotInput.value.trim();
   symptomPlotIdInput.value = "";
@@ -359,8 +367,38 @@ symptomPlotInput.addEventListener("input", () => {
 
   if (query.length < 1) return;
 
-  clearTimeout(debouncePlotTimer);
-  debouncePlotTimer = setTimeout(
+  clearTimeout(debouncePlotTimer2);
+  debouncePlotTimer2 = setTimeout(
+    () => fetchSymptomsForPlot(query),
+    300
+  );
+});
+
+let debouncePlotTimer3;
+symptomIntInput.addEventListener("input", () => {
+  const query = symptomIntInput.value.trim();
+  symptomIntIdInput.value = "";
+  symptomIntPlotSuggestions.innerHTML = "";
+
+  if (query.length < 1) return;
+
+  clearTimeout(debouncePlotTimer3);
+  debouncePlotTimer3 = setTimeout(
+    () => fetchSymptomsForPlot(query),
+    300
+  );
+});
+
+let debouncePlotTimer4;
+allergenIntInput.addEventListener("input", () => {
+  const query = allergenIntInput.value.trim();
+  allergenIntIdInput.value = "";
+  allergenIntPlotSuggestions.innerHTML = "";
+
+  if (query.length < 1) return;
+
+  clearTimeout(debouncePlotTimer4);
+  debouncePlotTimer4 = setTimeout(
     () => fetchSymptomsForPlot(query),
     300
   );
@@ -385,7 +423,46 @@ async function fetchAllergensForPlot(query) {
     allergenPlotSuggestions.appendChild(li);
   });
 }
+async function fetchAllergensForInt(query) {
+  const res = await fetch(`${API_URL}/allergens?q=${encodeURIComponent(query)}`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+  });
 
+  const data = await res.json();
+  allergenIntSuggestions.innerHTML = "";
+
+  data.forEach(a => {
+    const li = document.createElement("li");
+    li.textContent = a.allergen_name;
+    li.addEventListener("click", () => {
+      allergenIntInput.value = a.allergen_name;
+      allergenIntIdInput.value = a.allergen_id;
+      allergenIntSuggestions.innerHTML = "";
+    });
+    allergenIntSuggestions.appendChild(li);
+  });
+}
+
+async function fetchSymptomsForInt(query) {
+  const res = await fetch(`${API_URL}/symptoms?q=${encodeURIComponent(query)}`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+  });
+
+  const data = await res.json();
+  symptomIntPlotSuggestions.innerHTML = "";
+
+  data.forEach(s => {
+    const li = document.createElement("li");
+    li.textContent = s.symptom_name;
+    li.addEventListener("click", () => {
+      symptomIntInput.value = s.symptom_name;
+      symptomIntIdInput.value = s.symptom_id;
+      symptomIntPlotSuggestions.innerHTML = "";
+    });
+    symptomIntPlotSuggestions.appendChild(li);
+  });
+
+}
 async function fetchSymptomsForPlot(query) {
   const res = await fetch(`${API_URL}/symptoms?q=${encodeURIComponent(query)}`, {
     headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
@@ -405,6 +482,7 @@ async function fetchSymptomsForPlot(query) {
     symptomPlotSuggestions.appendChild(li);
   });
 }
+
 
 async function fetchAnalysisPlot() {
     const img = document.getElementById("analysis-plot");
@@ -455,23 +533,23 @@ async function fetchAnalysisPlot() {
 }
 
 document.getElementById("update-plot-btn").addEventListener("click", async () => {
-    const img = document.getElementById("analysis-plot");
+    const img = document.getElementById("analysis-intensity-volume-plot");
     
     try {
-        const symptom = symptomPlotInput.value || "Nausea";
-        const allergen = allergenPlotInput.value || "Dairy";
-        const start_date = dateInput.value ? dateInput.value.split("T")[0] : "2025-01-01";
+        const symptom_int = symptomIntInput.value || "Nausea";
+        const allergen_int = allergenIntInput.value || "Dairy";
 
-        const response = await fetch(`${API_URL}/analysis/intensity-volume?allergen=${allergen}&symptom=${symptom}`, {
+
+        const response_int = await fetch(`${API_URL}/analysis/intensity-volume?allergen_name=${allergen_int}&symptom_name=${symptom_int}`, {
             headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
         });
 
-        if (!response.ok) {
+        if (!response_int.ok) {
             console.error("Failed to fetch plot:", response.statusText);
             return;
         }
 
-        const blob = await response.blob();
+        const blob = await response_int.blob();
         img.src = URL.createObjectURL(blob);
 
     } catch (err) {
