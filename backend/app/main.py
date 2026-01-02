@@ -11,19 +11,8 @@ import app.api.routes.plot_eda as plot_eda
 import app.api.routes.stats_report as stats_report  
 from app.api.routes import units
 from app.api.routes import entries
-import base64
 
 app = FastAPI(title="Food–Body Connection API")
-
-# A tiny 16x16 transparent PNG (1x1 pixel)
-favicon_base64 = (
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII="
-)
-
-@app.get("/favicon.ico")
-async def favicon():
-    favicon_bytes = base64.b64decode(favicon_base64)
-    return Response(content=favicon_bytes, media_type="image/png")
 
 origins = [
     "https://alkohout.github.io",
