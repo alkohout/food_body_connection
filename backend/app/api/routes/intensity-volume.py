@@ -1,3 +1,4 @@
+# app/api/routes/intensity-volume.py
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -17,7 +18,7 @@ import traceback
 from fastapi import HTTPException
 from io import BytesIO
 
-logger = logging.getLogger("plot_eda")
+logger = logging.getLogger("backend/app/api/routes/intensity-volume.py")
 logging.basicConfig(level=logging.INFO)
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
@@ -30,9 +31,11 @@ def intensity_volume(
 ):
     try: 
         
-        # --- Determine overall min/max dates ---
+        # --- Fetch allergen and symptom events for user ---
         allergen_events = get_allergen_events(db, current_user.user_id)
         symptom_events = get_all_symptom_events(db, current_user.user_id)
+
+        # --- Determine overall min/max dates ---
         start_dt = min(allergen_events.date_time)
         end_dt = max(allergen_events.date_time)
 
