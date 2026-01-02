@@ -329,235 +329,114 @@ if (logForm2) {
 // -----------------------------------------------------------------------
 // -----------------------------------------------------------------------
 
-const symptomPlotInput = document.getElementById("symptom-plot-input");
-const allergenPlotInput = document.getElementById("allergen-plot-input");
-const allergenPlotIdInput = document.getElementById("allergen-plot-id");
-const symptomPlotIdInput = document.getElementById("symptom-plot-id");
-const allergenPlotSuggestions = document.getElementById("allergen-plot-suggestions");
-const symptomPlotSuggestions = document.getElementById("symptom-plot-suggestions");
-const allergenIntInput = document.getElementById("allergen-intensity-input");
-const allergenIntIdInput = document.getElementById("allergen-intensity-id");
-const allergenIntSuggestions = document.getElementById("allergen-intensity-suggestions");
-const symptomIntInput = document.getElementById("symptom-intensity-input");
-const symptomIntIdInput = document.getElementById("symptom-intensity-id");
-const symptomIntSuggestions = document.getElementById("symptom-intensity-suggestions");
-
-
-let debouncePlotTimer;
-
-allergenPlotInput.addEventListener("input", () => {
-  const query = allergenPlotInput.value.trim();
-  allergenPlotIdInput.value = "";
-  allergenPlotSuggestions.innerHTML = "";
-
-  if (query.length < 1) return;
-
-  clearTimeout(debouncePlotTimer);
-  debouncePlotTimer = setTimeout(
-    () => fetchAllergensForPlot(query),
-    300
-  );
-});
-  
-let debouncePlotTimer2;
-symptomPlotInput.addEventListener("input", () => {
-  const query = symptomPlotInput.value.trim();
-  symptomPlotIdInput.value = "";
-  symptomPlotSuggestions.innerHTML = "";
-
-  if (query.length < 1) return;
-
-  clearTimeout(debouncePlotTimer2);
-  debouncePlotTimer2 = setTimeout(
-    () => fetchSymptomsForPlot(query),
-    300
-  );
-});
-
-let debouncePlotTimer3;
-symptomIntInput.addEventListener("input", () => {
-  const query = symptomIntInput.value.trim();
-  symptomIntIdInput.value = "";
-  symptomIntPlotSuggestions.innerHTML = "";
-
-  if (query.length < 1) return;
-
-  clearTimeout(debouncePlotTimer3);
-  debouncePlotTimer3 = setTimeout(
-    () => fetchSymptomsForPlot(query),
-    300
-  );
-});
-
-let debouncePlotTimer4;
-allergenIntInput.addEventListener("input", () => {
-  const query = allergenIntInput.value.trim();
-  allergenIntIdInput.value = "";
-  allergenIntPlotSuggestions.innerHTML = "";
-
-  if (query.length < 1) return;
-
-  clearTimeout(debouncePlotTimer4);
-  debouncePlotTimer4 = setTimeout(
-    () => fetchSymptomsForPlot(query),
-    300
-  );
-});
-
-async function fetchAllergensForPlot(query) {
-  const res = await fetch(`${API_URL}/allergens?q=${encodeURIComponent(query)}`, {
-    headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
-  });
-
-  const data = await res.json();
-  allergenPlotSuggestions.innerHTML = "";
-
-  data.forEach(a => {
-    const li = document.createElement("li");
-    li.textContent = a.allergen_name;
-    li.addEventListener("click", () => {
-      allergenPlotInput.value = a.allergen_name;
-      allergenPlotIdInput.value = a.allergen_id;
-      allergenPlotSuggestions.innerHTML = "";
-    });
-    allergenPlotSuggestions.appendChild(li);
-  });
-}
-async function fetchAllergensForInt(query) {
-  const res = await fetch(`${API_URL}/allergens?q=${encodeURIComponent(query)}`, {
-    headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
-  });
-
-  const data = await res.json();
-  allergenIntSuggestions.innerHTML = "";
-
-  data.forEach(a => {
-    const li = document.createElement("li");
-    li.textContent = a.allergen_name;
-    li.addEventListener("click", () => {
-      allergenIntInput.value = a.allergen_name;
-      allergenIntIdInput.value = a.allergen_id;
-      allergenIntSuggestions.innerHTML = "";
-    });
-    allergenIntSuggestions.appendChild(li);
-  });
-}
-
-async function fetchSymptomsForInt(query) {
-  const res = await fetch(`${API_URL}/symptoms?q=${encodeURIComponent(query)}`, {
-    headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
-  });
-
-  const data = await res.json();
-  symptomIntPlotSuggestions.innerHTML = "";
-
-  data.forEach(s => {
-    const li = document.createElement("li");
-    li.textContent = s.symptom_name;
-    li.addEventListener("click", () => {
-      symptomIntInput.value = s.symptom_name;
-      symptomIntIdInput.value = s.symptom_id;
-      symptomIntPlotSuggestions.innerHTML = "";
-    });
-    symptomIntPlotSuggestions.appendChild(li);
-  });
-
-}
-async function fetchSymptomsForPlot(query) {
-  const res = await fetch(`${API_URL}/symptoms?q=${encodeURIComponent(query)}`, {
-    headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
-  });
-
-  const data = await res.json();
-  symptomPlotSuggestions.innerHTML = "";
-
-  data.forEach(s => {
-    const li = document.createElement("li");
-    li.textContent = s.symptom_name;
-    li.addEventListener("click", () => {
-      symptomPlotInput.value = s.symptom_name;
-      symptomPlotIdInput.value = s.symptom_id;
-      symptomPlotSuggestions.innerHTML = "";
-    });
-    symptomPlotSuggestions.appendChild(li);
-  });
-}
-
-
-async function fetchAnalysisPlot() {
-    const img = document.getElementById("analysis-plot");
-    
-    try {
-
-        // --------------------
-        // Fetch stats
-        // --------------------
-        const response_stat = await fetch(`${API_URL}/analysis/stats`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`
-          }
-        });
-
-        if (!response_stat.ok) {
-          console.error("Failed to fetch stats:", response_stat.statusText);
-          return;
-        }
-
-        const stats = await response_stat.json();
-
-        // Populate stats cards
-        const totalEntries =
-          stats["Total allergens logged"] + stats["Total symptoms logged"];
-
-        document.getElementById("stat-total-entries").textContent =
-          totalEntries;
-
-        document.getElementById("stat-days").textContent =
-          stats["Total days tracked"];
-
-        const response_plot = await fetch(`${API_URL}/analysis/plot-eda`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
-        });
-
-        if (!response_plot.ok) {
-            console.error("Failed to fetch plot:", response_plot.statusText);
-            return;
-        }
-
-        const blob = await response_plot.blob();
-        img.src = URL.createObjectURL(blob);
-
-    } catch (err) {
-        console.error("Error fetching default analysis:", err);
-    }
-}
-
-document.getElementById("update-plot-btn").addEventListener("click", async () => {
-    const img = document.getElementById("analysis-intensity-volume-plot");
-    
-    try {
-        const symptom_int = symptomIntInput.value || "Nausea";
-        const allergen_int = allergenIntInput.value || "Dairy";
-
-
-        const response_int = await fetch(`${API_URL}/analysis/intensity-volume?allergen_name=${allergen_int}&symptom_name=${symptom_int}`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
-        });
-
-        if (!response_int.ok) {
-            console.error("Failed to fetch plot:", response.statusText);
-            return;
-        }
-
-        const blob = await response_int.blob();
-        img.src = URL.createObjectURL(blob);
-
-    } catch (err) {
-        console.error("Error fetching plot:", err);
-    }
-});
-
 document.addEventListener("DOMContentLoaded", async () => {
   await init();
-  // set up updatePlot, event listeners here
+
+  // --- Analysis Inputs & Plots ---
+  const allergenIntInput = document.getElementById("allergen-intensity-input");
+  const allergenIntIdInput = document.getElementById("allergen-intensity-id");
+  const allergenIntSuggestions = document.getElementById("allergen-intensity-suggestions");
+
+  const symptomIntInput = document.getElementById("symptom-intensity-input");
+  const symptomIntIdInput = document.getElementById("symptom-intensity-id");
+  const symptomIntSuggestions = document.getElementById("symptom-intensity-suggestions");
+
+  const analysisPlotImg = document.getElementById("analysis-intensity-volume-plot");
+  const updatePlotBtn = document.getElementById("update-plot-btn");
+
+  let debounceTimer;
+
+  // --- Autocomplete for allergen input ---
+  allergenIntInput.addEventListener("input", () => {
+    const query = allergenIntInput.value.trim();
+    allergenIntIdInput.value = "";
+    allergenIntSuggestions.innerHTML = "";
+
+    if (query.length < 1) return;
+
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => fetchAllergensForInt(query), 300);
+  });
+
+  async function fetchAllergensForInt(query) {
+    try {
+      const res = await fetch(`${API_URL}/allergens?q=${encodeURIComponent(query)}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+      });
+      const data = await res.json();
+      allergenIntSuggestions.innerHTML = "";
+
+      data.forEach(a => {
+        const li = document.createElement("li");
+        li.textContent = a.allergen_name;
+        li.addEventListener("click", () => {
+          allergenIntInput.value = a.allergen_name;
+          allergenIntIdInput.value = a.allergen_id;
+          allergenIntSuggestions.innerHTML = "";
+        });
+        allergenIntSuggestions.appendChild(li);
+      });
+    } catch (err) {
+      console.error("Failed to fetch allergens for plot:", err);
+    }
+  }
+
+  // --- Autocomplete for symptom input ---
+  symptomIntInput.addEventListener("input", () => {
+    const query = symptomIntInput.value.trim();
+    symptomIntIdInput.value = "";
+    symptomIntSuggestions.innerHTML = "";
+
+    if (query.length < 1) return;
+
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => fetchSymptomsForInt(query), 300);
+  });
+
+  async function fetchSymptomsForInt(query) {
+    try {
+      const res = await fetch(`${API_URL}/symptoms?q=${encodeURIComponent(query)}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+      });
+      const data = await res.json();
+      symptomIntSuggestions.innerHTML = "";
+
+      data.forEach(s => {
+        const li = document.createElement("li");
+        li.textContent = s.symptom_name;
+        li.addEventListener("click", () => {
+          symptomIntInput.value = s.symptom_name;
+          symptomIntIdInput.value = s.symptom_id;
+          symptomIntSuggestions.innerHTML = "";
+        });
+        symptomIntSuggestions.appendChild(li);
+      });
+    } catch (err) {
+      console.error("Failed to fetch symptoms for plot:", err);
+    }
+  }
+
+  // --- Update plot button ---
+  updatePlotBtn.addEventListener("click", async () => {
+    const allergenName = allergenIntInput.value || "Dairy";
+    const symptomName = symptomIntInput.value || "Nausea";
+
+    try {
+      const res = await fetch(`${API_URL}/analysis/intensity-volume?allergen=${encodeURIComponent(allergenName)}&symptom=${encodeURIComponent(symptomName)}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+      });
+
+      if (!res.ok) {
+        console.error("Failed to fetch intensity-volume plot:", res.statusText);
+        return;
+      }
+
+      const blob = await res.blob();
+      analysisPlotImg.src = URL.createObjectURL(blob);
+    } catch (err) {
+      console.error("Error fetching plot:", err);
+    }
+  });
 });
+
+
