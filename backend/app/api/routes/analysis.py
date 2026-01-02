@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.api.routes.auth import get_current_user
-from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Symptom
+from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Symptom, Unit
 from app.schemas import AnalysisSummaryOut, AnalysisScope
 from io import BytesIO
 from datetime import date, datetime, time, timezone, timedelta
@@ -115,16 +115,11 @@ def intensity_volume(
         import pandas as pd
         from datetime import timedelta
 
-        # Example unit conversion dictionary to standard volume (mL or g)
-        unit_conversion = {
-            "ml": 1,         # already in mL
-            "Liters": 1000,   # 1 L = 1000 mL
-            "teaspoons": 5,        # 1 teaspoon = 5 mL
-            "tablespoons": 15,      # 1 tablespoon = 15 mL
-            "cups": 240,      # 1 cup = 240 mL
-            "grams": 1,          # grams for solids
-            # add more units as needed
-        }
+        if allergen:
+            allergen_id = allergen.allergen_id
+            logger.info("Allergen ID for %s is %s", allergen_name, allergen_id)
+        else:
+            logger.warning("No allergen found with name %s", allergen_name)
 
         rows = []
 
@@ -133,20 +128,15 @@ def intensity_volume(
             
             matching_symptoms = [s for s in symptom_events if allergen.date_time <= s.date_time <= window_end]
             
+            # Lookup the unit conversion from the database
             for s in matching_symptoms:
-                quantity = getattr(s, "quantity", None)
-                unit = getattr(s, "unit", None)
-                intensity = getattr(allergen, "intensity", None)
-                
-                # Convert to standard volume/weight
-                if quantity is not None and unit in unit_conversion:
-                    volume = quantity * unit_conversion[unit]
-                else:
-                    volume = None  # unknown unit or missing quantity
-                if unit in unit_conversion:
-                    logger.info("volume: %s, unit: %s, conversion: %f", volume, unit, unit_conversion[unit])
-                else:
-                    logger.info("Skipping allergen with missing or unknown unit: %s", unit)
+
+                quantity = getattr(allergen, "quantity", None)
+                unit = getattr(allergen, "unit", None)
+                intensity = getattr(s, "intensity", None)
+                unit_obj = db.query(Unit).filter(Unit.unit_name == unit).first()
+                conversion = unit_obj.conversion if unit_obj else None
+                volume = quantity*conversion
                 
                 rows.append({
                     "intensity": intensity,
