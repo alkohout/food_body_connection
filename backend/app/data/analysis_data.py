@@ -62,3 +62,23 @@ def get_unit(db: Session, unit_id=None, unit_name=None):
         return query.first()
     else:
         return None
+
+def get_allergen(db: Session, allergen_id=None, allergen_name=None):
+    if allergen_name:
+        query = db.query(Allergen).filter(Allergen.allergen_name == allergen_name)
+        return query.first()
+    elif allergen_id:
+        query = db.query(Allergen).filter(Allergen.allergen_id == allergen_id)
+        return query.first()
+    else:
+        return None
+
+def get_symptom(db: Session, symptom_id=None, symptom_name=None):
+    if symptom_name:
+        query = db.query(Symptom).filter(Symptom.symptom_name == symptom_name)
+        return query.first()
+    elif symptom_id:
+        query = db.query(Symptom).filter(Symptom.symptom_id == symptom_id)
+        return query.first()
+    else:
+        return None
