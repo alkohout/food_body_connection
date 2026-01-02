@@ -136,29 +136,21 @@ def intensity_volume(
             for s in matching_symptoms:
                 quantity = getattr(s, "quantity", None)
                 unit = getattr(s, "unit", None)
-                intensity = getattr(s, "intensity", None)
+                intensity = getattr(allergen, "intensity", None)
                 
                 # Convert to standard volume/weight
                 if quantity is not None and unit in unit_conversion:
                     volume = quantity * unit_conversion[unit]
                 else:
                     volume = None  # unknown unit or missing quantity
+                logger.info("volume: %s, unit: %s, conversion: %f", volume, unit, unit_conversion[unit])
                 
                 rows.append({
-                    "allergen_id": allergen.allergen_id,
-                    "allergen_name": getattr(allergen, "allergen_name", None),
-                    "symptom_id": s.symptom_id,
-                    "symptom_name": getattr(s, "symptom_name", None),
-                    "quantity": quantity,
-                    "unit": unit,
-                    "volume": volume,
                     "intensity": intensity,
-                    "allergen_time": allergen.date_time,
-                    "symptom_time": s.date_time,
+                    "volume": volume
                 })
 
         df = pd.DataFrame(rows)
-        df = df.dropna(subset=["volume", "intensity"])
         logger.info("Valid rows for plot: %d", len(df))
 
         # --- Plotting ---
