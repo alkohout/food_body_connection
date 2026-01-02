@@ -58,7 +58,6 @@ def analysis_stats(
     }
 @router.get('/intensity-volume')
 def intensity_volume(
-    symptom_name: str,
     allergen_name: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -72,22 +71,13 @@ def intensity_volume(
             logger.info("Allergen ID for %s is %s", allergen_name, allergen_id)
         else:
             logger.warning("No allergen found with name %s", allergen_name)
-        # Query for the symptom ID
-        symptom = db.query(Symptom).filter(Symptom.symptom_name == symptom_name).first()
-        if symptom:
-            symptom_id = symptom.symptom_id
-            logger.info("Symptom ID for %s is %s", symptom_name, symptom_id)
-        else:
-            logger.warning("No symptom found with name %s", symptom_name)
 
         # --- Determine overall min/max dates ---
         min_allergen = db.query(func.min(AllergenLog.date_time)).filter(AllergenLog.user_id == current_user.user_id).scalar()
         max_allergen = db.query(func.max(AllergenLog.date_time)).filter(AllergenLog.user_id == current_user.user_id).scalar()
-        min_symptom = db.query(func.min(SymptomLog.date_time)).filter(SymptomLog.user_id == current_user.user_id).scalar()
-        max_symptom = db.query(func.max(SymptomLog.date_time)).filter(SymptomLog.user_id == current_user.user_id).scalar()
 
-        start_dt = min(d for d in [min_allergen, min_symptom] if d is not None)
-        end_dt = max(d for d in [max_allergen, max_symptom] if d is not None)
+        start_dt = min_allergen
+        end_dt = max_allergen
 
         # --- Query allergen and symptom events within range ---
         allergen_events = db.query(AllergenLog).filter(
@@ -99,9 +89,8 @@ def intensity_volume(
 
         symptom_events = db.query(SymptomLog).filter(
             SymptomLog.user_id == current_user.user_id,
-            SymptomLog.symptom_id == symptom_id,
             SymptomLog.date_time >= start_dt,
-            SymptomLog.date_time <= end_dt
+            SymptomLog.date_time <= end_dt + timedelta(hours=24)
         ).all()
 
         logger.info("Generating EDA plot for user_id=%d", current_user.user_id)
@@ -120,7 +109,6 @@ def intensity_volume(
             logger.info("Allergen ID for %s is %s", allergen_name, allergen_id)
         else:
             logger.warning("No allergen found with name %s", allergen_name)
-
 
         rows = []
 
@@ -155,7 +143,7 @@ def intensity_volume(
 
         # Sort by count descending and take top 10
         sns.scatterplot(data=df, x="volume", y="burden_score", ax=axes)
-        axes.set_title(f"Symptom Burden Score vs Allergen Volume for {allergen_name} and {symptom_name}")
+        axes.set_title(f"Total symptom Burden Score vs Allergen Volume for {allergen_name}")
         axes.set_xlabel("Allergen Volume")
         axes.set_ylabel("Symptom Burden Score")
 
