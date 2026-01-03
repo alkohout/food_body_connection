@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query
 from fastapi import APIRouter, Depends, Query
 from app.models.table_class import User
 from app.analysis.temporal_stats import temporal_stats
+from app.analysis.temporal_stats_rate import temporal_stats_rate
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
 from app.database import get_db
 from app.api.routes.auth import get_current_user
@@ -26,7 +27,7 @@ def get_temporal_stats_rate(
 
     # Loop through all pairs
     for symptom in symptom_groups:
-        res = temporal_stats(
+        res = temporal_stats_rate(
             allergen_events = allergen_events,
             symptom_events = symptom_groups
         )
