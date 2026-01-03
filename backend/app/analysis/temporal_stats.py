@@ -10,7 +10,7 @@ from scipy.stats import binom_test
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
 import pandas as pd
 import logging
-from scipy.stats import binom_test
+from scipy.stats import binomtest
 
 def count_window(a_time, s_time, start_offset, end_offset):
     start = a_time + start_offset
@@ -33,7 +33,7 @@ def temporal_stats(
     pre_total = allergen_events['date_time'].apply(lambda a: count_window(a, symptom_events['date_time'], timedelta(hours=-24), timedelta(0))).sum()
     post_total = allergen_events['date_time'].apply(lambda a: count_window(a, symptom_events['date_time'], timedelta(0), timedelta(hours=24))).sum()
 
-    p_value = binom_test(post_total, n=post_total+pre_total, p=0.5, alternative='greater')
+    p_value = binomtest(post_total, n=post_total+pre_total, p=0.5, alternative='greater')
     evidence = "strong" if p_value < 0.01 else "moderate" if p_value < 0.05 else "weak"
 
     return {
