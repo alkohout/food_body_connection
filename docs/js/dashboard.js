@@ -220,7 +220,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const fetchTemporalStats = async (allergenName) => {
     try {
       const res = await fetch(
-        `${API_URL}/analysis/temporal_stats?allergen_name=${encodeURIComponent(allergenName)}`,
+        `${API_URL}/analysis/temporal_stats_rate?allergen_name=${encodeURIComponent(allergenName)}`,
         { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
       );
 
