@@ -76,7 +76,7 @@ def get_all_symptom_events(db: Session, user_id: int, start_dt=None, end_dt=None
         query = query.filter(SymptomLog.date_time <= end_dt + timedelta(hours=24))
     return query.all()
 
-def get_all_symptom_events_df(db: Session, user_id: int, start_dt=None, end_dt=None):
+def get_all_symptom_events_df(db: Session, user_id: int, symptom_name=None, start_dt=None, end_dt=None):
 
     events = get_all_symptom_events(db, user_id, start_dt, end_dt)
 
@@ -92,6 +92,9 @@ def get_all_symptom_events_df(db: Session, user_id: int, start_dt=None, end_dt=N
 
     df = pd.DataFrame(rows)
 
+    if symptom_name is not None:
+        df = df[df['symptom_name'] == symptom_name]
+
     return df
 
 def get_all_allergen_events(db: Session, user_id: int, start_dt=None, end_dt=None):
@@ -102,7 +105,7 @@ def get_all_allergen_events(db: Session, user_id: int, start_dt=None, end_dt=Non
         query = query.filter(AllergenLog.date_time <= end_dt)
     return query.all()
 
-def get_all_allergen_events_df(db: Session, user_id: int, start_dt=None, end_dt=None):
+def get_all_allergen_events_df(db: Session, user_id: int, allergen_name=None,start_dt=None, end_dt=None):
 
     events = get_all_allergen_events(db, user_id, start_dt, end_dt)
 
@@ -122,6 +125,9 @@ def get_all_allergen_events_df(db: Session, user_id: int, start_dt=None, end_dt=
         })        
 
     df = pd.DataFrame(rows)
+
+    if allergen_name is not None:
+        df = df[df['allergen_name'] == allergen_name]
 
     return df
 
