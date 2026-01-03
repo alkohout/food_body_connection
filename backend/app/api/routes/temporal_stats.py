@@ -7,9 +7,9 @@ from app.database import get_db
 from app.api.routes.auth import get_current_user
 import pandas as pd
 
-router = APIRouter()
+router = APIRouter(prefix="/analysis", tags=["analysis"])
 
-@router.get("/analysis/temporal_stats")
+@router.get("/temporal_stats")
 def get_temporal_stats(
     db = Depends(get_db),
     current_user: User = Depends(get_current_user)
