@@ -32,7 +32,9 @@ def temporal_stats(
     pre_total = allergen_events['date_time'].apply(lambda a: count_window(a, symptom_events['date_time'], timedelta(hours=-24), timedelta(0))).sum()
     post_total = allergen_events['date_time'].apply(lambda a: count_window(a, symptom_events['date_time'], timedelta(0), timedelta(hours=24))).sum()
 
-    p_value = binomtest(post_total, n=post_total+pre_total, p=0.5, alternative='greater')
+    result = binomtest(post_total, n=post_total + pre_total, p=0.5, alternative='greater')
+    p_value = result.pvalue
+
     evidence = "strong" if p_value < 0.01 else "moderate" if p_value < 0.05 else "weak"
 
     return {
