@@ -41,6 +41,7 @@ class Symptom(Base):
     
     symptom_id = Column(Integer, primary_key=True)
     symptom_name = Column(String(255), nullable=False)
+    symptom_group = Column(String(255), nullable=True)
     
     # Relationships
     symptom_log = relationship("SymptomLog", back_populates="symptom", cascade="all, delete-orphan")

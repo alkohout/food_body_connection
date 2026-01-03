@@ -44,86 +44,31 @@ def main():
             test_user = existing_user
 
         # Create symptoms
-        symptoms = [
-            # Gastrointestinal
-            "Abdominal Pain",
-            "Bloating",
-            "Constipation",
-            "Diarrhea",
-            "Gas",
-            "Heartburn",
-            "Indigestion",
-            "Nausea",
-            "Vomiting",
-            "Loss of Appetite",
-            "Increased Appetite",
+        # Symptom groups mapping
+        SYMPTOM_GROUPS = {
+            "Gastrointestinal": [
+                "Abdominal Pain","Bloating","Constipation","Diarrhea","Gas","Heartburn",
+                "Indigestion","Nausea","Vomiting","Loss of Appetite","Increased Appetite"
+            ],
+            "Neurological": [
+                "Headache","Migraine","Dizziness","Vertigo","Brain Fog","Light Sensitivity",
+                "Sound Sensitivity","Visual Disturbances","Tingling","Numbness"
+            ],
+            "Skin": ["Rash","Hives","Itching","Eczema","Acne","Flushing","Swelling","Dry Skin"],
+            "Respiratory": ["Cough","Sneezing","Runny Nose","Nasal Congestion","Shortness of Breath","Chest Tightness","Wheezing"],
+            "Cardiovascular": ["Palpitations","Rapid Heart Rate","Low Blood Pressure","High Blood Pressure","Cold Hands or Feet"],
+            "Systemic": ["Fatigue","Fever","Chills","Body Aches","Joint Pain","Muscle Pain","Weakness"],
+            "Sleep": ["Difficulty Falling Asleep","Difficulty Staying Asleep","Unrefreshing Sleep","Night Sweats"],
+            "Mood/Cognitive": ["Anxiety","Depression","Irritability","Low Mood","Poor Concentration"],
+            "Menstrual": ["Cramps","Cycle"]
+        }
 
-            # Neurological
-            "Headache",
-            "Migraine",
-            "Dizziness",
-            "Vertigo",
-            "Brain Fog",
-            "Light Sensitivity",
-            "Sound Sensitivity",
-            "Visual Disturbances",
-            "Tingling",
-            "Numbness",
+        # Create symptom objects with groups
+        symptom_objects = []
+        for group_name, symptoms in SYMPTOM_GROUPS.items():
+            for s in symptoms:
+                symptom_objects.append(Symptom(symptom_name=s, symptom_group=group_name))
 
-            # Skin
-            "Rash",
-            "Hives",
-            "Itching",
-            "Eczema",
-            "Acne",
-            "Flushing",
-            "Swelling",
-            "Dry Skin",
-
-            # Respiratory
-            "Cough",
-            "Sneezing",
-            "Runny Nose",
-            "Nasal Congestion",
-            "Shortness of Breath",
-            "Chest Tightness",
-            "Wheezing",
-
-            # Cardiovascular / Autonomic
-            "Palpitations",
-            "Rapid Heart Rate",
-            "Low Blood Pressure",
-            "High Blood Pressure",
-            "Cold Hands or Feet",
-
-            # Systemic / Inflammatory
-            "Fatigue",
-            "Fever",
-            "Chills",
-            "Body Aches",
-            "Joint Pain",
-            "Muscle Pain",
-            "Weakness",
-
-            # Sleep
-            "Difficulty Falling Asleep",
-            "Difficulty Staying Asleep",
-            "Unrefreshing Sleep",
-            "Night Sweats",
-
-            # Mood / Cognitive
-            "Anxiety",
-            "Depression",
-            "Irritability",
-            "Low Mood",
-            "Poor Concentration",
-
-            # Mentstrual
-            "Cramps",
-            "Cycle" ,
-        ]
-
-        symptom_objects = [Symptom(symptom_name=s) for s in symptoms]
         db.add_all(symptom_objects)
         db.commit()
         for s in symptom_objects:
