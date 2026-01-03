@@ -237,7 +237,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const formatP = p =>
       p === null ? "—" :
-      p < 1e-4 ? "< 1e-4" :
+      p < 1e-4 ? "0.0000" :
       p.toFixed(4);
 
     data.forEach(row => {
