@@ -31,9 +31,6 @@ def get_temporal_stats_rate(
             allergen_events = allergen_events,
             symptom_events = symptom_events[symptom_events["symptom_group"] == symptom]
         )
-        total_events = res['pre_count'] + res['post_count']
-        if total_events < 10:
-                continue
 
         results.append({
                 "allergen_name": allergen_name,
