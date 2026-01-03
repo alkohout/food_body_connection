@@ -7,7 +7,7 @@ import pandas as pd
 def get_allergen_events(db: Session, user_id: int, allergen_name: str, start_dt=None, end_dt=None):
     allergen = db.query(Allergen).filter(Allergen.allergen_name == allergen_name).first()
     if not allergen:
-        return [], None
+        return [] 
 
     query = db.query(AllergenLog).filter(
         AllergenLog.user_id == user_id,
@@ -54,7 +54,7 @@ def get_allergen_events_df(
 def get_symptom_events(db: Session, user_id: int, symptom_name: str, start_dt=None, end_dt=None):
     symptom = db.query(Symptom).filter(Symptom.symptom_name == symptom_name).first()
     if not symptom:
-        return [], None
+        return []
 
     query = db.query(SymptomLog).filter(
         SymptomLog.user_id == user_id,
