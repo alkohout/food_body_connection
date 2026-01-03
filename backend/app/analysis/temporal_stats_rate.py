@@ -16,18 +16,18 @@ def temporal_stats_rate(
     results = []
 
     # Ensure timestamps are sorted
-    allergen_events = allergen_events.sort_values("timestamp")
-    symptom_events = symptom_events.sort_values("timestamp")
+    allergen_events = allergen_events.sort_values("date_time")
+    symptom_events = symptom_events.sort_values("date_time")
 
     symptom_groups = symptom_events["symptom_group"].unique()
 
     for symptom in symptom_groups:
-        symptom_ts = symptom_events[symptom_events["symptom_group"] == symptom]["timestamp"]
+        symptom_ts = symptom_events[symptom_events["symptom_group"] == symptom]["date_time"]
 
         # Pre/post rates per allergen event
         pre_rates, post_rates = [], []
 
-        for t in allergen_events["timestamp"]:
+        for t in allergen_events["date_time"]:
             pre_window = ((symptom_ts >= t - pd.Timedelta(hours=pre_hours)) &
                           (symptom_ts < t))
             post_window = ((symptom_ts > t) &
