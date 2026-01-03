@@ -274,6 +274,37 @@ document.addEventListener("DOMContentLoaded", async () => {
     await fetchTemporalStats(allergenName);
   });
 
+  const fetchAnalysisPlot = async () => {
+  try {
+    // Stats
+    const statsRes = await fetch(`${API_URL}/analysis/stats`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    });
+
+    if (!statsRes.ok) throw new Error(statsRes.statusText);
+    const stats = await statsRes.json();
+
+    document.getElementById("stat-total-entries").textContent =
+      stats["Total allergens logged"] + stats["Total symptoms logged"];
+
+    document.getElementById("stat-days").textContent =
+      stats["Total days tracked"];
+
+    // Plot
+    const plotRes = await fetch(`${API_URL}/analysis/plot_eda`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    });
+
+    if (!plotRes.ok) throw new Error(plotRes.statusText);
+    const blob = await plotRes.blob();
+    analysisPlotImg.src = URL.createObjectURL(blob);
+
+  } catch (err) {
+    console.error("Failed to fetch analysis plot:", err);
+  }
+};
+
+
   // =========================================================
   // Tabs
   // =========================================================
