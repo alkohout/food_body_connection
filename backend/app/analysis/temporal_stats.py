@@ -11,10 +11,17 @@ import pandas as pd
 import logging
 from scipy.stats import binomtest
 
-def count_window(a_time, s_time, start_offset, end_offset):
-    start = a_time + start_offset
-    end   = a_time + end_offset
-    return ((s_time >= start) & (s_time < end)).sum()
+def count_window(anchor_time, event_times, start_delta, end_delta):
+    if event_times.empty:
+        return 0
+
+    start = anchor_time + start_delta
+    end = anchor_time + end_delta
+
+    return (
+        (event_times >= start) &
+        (event_times < end)
+    ).sum()
 
 def temporal_stats(
         current_user: User = Depends(get_current_user),
@@ -26,11 +33,27 @@ def temporal_stats(
     allergen_events = get_all_allergen_events_df(db, current_user.user_id, allergen_name=allergen_name)
     symptom_events  = get_all_symptom_events_df(db, current_user.user_id, symptom_group=symptom_group)
 
-    allergen_events['date_time'] = pd.to_datetime(allergen_events['date_time'])
-    symptom_events['date_time']  = pd.to_datetime(symptom_events['date_time'])
+    allergen_events['date_time'] = pd.to_datetime(allergen_events['date_time'], utc=True)
+    symptom_events['date_time'] = pd.to_datetime(symptom_events['date_time'], utc=True)
 
-    pre_total = allergen_events['date_time'].apply(lambda a: count_window(a, symptom_events['date_time'], timedelta(hours=-24), timedelta(0))).sum()
-    post_total = allergen_events['date_time'].apply(lambda a: count_window(a, symptom_events['date_time'], timedelta(0), timedelta(hours=24))).sum()
+    pre_counts = allergen_events['date_time'].apply(
+        lambda a: count_window(
+            a,
+            symptom_events['date_time'],
+            timedelta(hours=-24),
+            timedelta(0)
+        )
+    )
+    pre_total = int(pre_counts.sum())
+    post_counts = allergen_events['date_time'].apply(
+        lambda a: count_window(
+            a,
+            symptom_events['date_time'],
+            timedelta(hours=0),
+            timedelta(24)
+        )
+    )
+    post_total = int(post_counts.sum())
 
     if post_total + pre_total < 10:
         return {
