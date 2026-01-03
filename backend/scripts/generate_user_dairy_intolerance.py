@@ -2,6 +2,7 @@ import os
 import sys
 import random
 from datetime import datetime, timedelta, timezone
+import numpy as np
 
 # Ensure project root is in sys.path so 'app' can be imported
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
