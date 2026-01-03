@@ -235,18 +235,26 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      data.forEach(row => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${row.allergen_name}</td>
-          <td>${row.symptom_group}</td>
-          <td>${row.post_count}</td>
-          <td>${row.pre_count}</td>
-          <td>${row.p_value}</td>
-          <td>${row.evidence}</td>
-        `;
-        statsTableBody.appendChild(tr);
-      });
+    const formatP = p =>
+      p === null ? "—" :
+      p < 1e-4 ? "< 1e-4" :
+      p.toFixed(4);
+
+    data.forEach(row => {
+      const tr = document.createElement("tr");
+
+      tr.innerHTML = `
+        <td>${row.allergen_name}</td>
+        <td>${row.symptom_group}</td>
+        <td>${row.post_count}</td>
+        <td>${row.pre_count}</td>
+        <td>${formatP(row.p_value)}</td>
+        <td>${row.evidence}</td>
+      `;
+
+      statsTableBody.appendChild(tr);
+    });
+
     } catch (err) {
       console.error(err);
       statsTableBody.innerHTML =
