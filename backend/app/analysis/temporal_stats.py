@@ -6,7 +6,6 @@ from app.database import get_db
 from app.api.routes.auth import get_current_user
 from app.models.table_class import User
 from datetime import timedelta
-from scipy.stats import binom_test
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
 import pandas as pd
 import logging
