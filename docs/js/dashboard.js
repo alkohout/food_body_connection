@@ -43,6 +43,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const allergenIntSuggestions = document.getElementById("allergen-intensity-suggestions");
 
   const analysisPlotImg = document.getElementById("analysis-plot");
+  const histogramPlotImg = document.getElementById("group_histogram");
   const intensityVolumePlotImg = document.getElementById("analysis-intensity-volume-plot");
 
   const statsTableBody = document.querySelector("#temporal-stats-table tbody");
@@ -297,7 +298,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("stat-days").textContent =
       stats["Total days tracked"];
 
-    // Plot
+    // Symptom rate Plot
     const plotRes = await fetch(`${API_URL}/analysis/plot_eda`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
     });
@@ -306,8 +307,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     const blob = await plotRes.blob();
     analysisPlotImg.src = URL.createObjectURL(blob);
 
+    // Symptom Histogram Plot 
+    const group_hist = await fetch(`${API_URL}/analysis/system_group_histogram`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    });
+
+    if (!group_hist.ok) throw new Error(group_hist.statusText);
+    const blob_hist = await group_hist.blob();
+    histogramPlotImg.src = URL.createObjectURL(blob_hist);
+
   } catch (err) {
-    console.error("Failed to fetch analysis plot:", err);
+    console.error("Failed to fetch analysis plots:", err);
   }
 };
 
