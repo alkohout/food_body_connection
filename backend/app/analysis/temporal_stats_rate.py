@@ -57,6 +57,8 @@ def temporal_stats_rate(
         perm_diffs = np.array(perm_diffs)
         p_value = (np.abs(perm_diffs) >= np.abs(obs_diff)).mean()
 
+        p_value = float(p_value) if p_value is not None else np.nan
+
         results.append({
             "symptom_group": symptom,
             "pre_rate": pre_rates.mean(),
