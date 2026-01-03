@@ -82,7 +82,7 @@ print("Model training complete!")
 # ------------------------
 # 5. Save trained model
 # ------------------------
-MODEL_PATH = "food_symptom_model.pkl"
+MODEL_PATH = "app/models/food_symptom_model.pkl"
 joblib.dump(model, MODEL_PATH)
 print(f"Model saved to {MODEL_PATH}")
 
