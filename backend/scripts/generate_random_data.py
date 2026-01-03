@@ -14,7 +14,7 @@ def generate_random_allergen_data(
     user_email="random_user@example.com",
     days=90,
     entries_per_day=3,
-    symptom_intensity_range=(1, 5)
+    symptom_intensity_range=(0, 3)
 ):
     """
     Generate synthetic allergen/symptom data for a new user with no correlation
