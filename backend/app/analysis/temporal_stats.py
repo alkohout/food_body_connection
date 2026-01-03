@@ -43,7 +43,7 @@ def temporal_stats(
     return {
         "post_count": post_total,
         "pre_count": pre_total,
-        "p_value": round(p_value, 4),
+        "p_value": round(p_value, 4) if p_value is not None else None,
         "evidence": evidence
     }
 
