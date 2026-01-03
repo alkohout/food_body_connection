@@ -10,6 +10,7 @@ import app.api.routes.intensity_volume as intensity_volume
 import app.api.routes.plot_eda as plot_eda  
 import app.api.routes.stats_report as stats_report  
 import app.api.routes.temporal_stats as temporal_stats
+import app.api.routes.system_group_histogram as system_group_histogram
 from app.api.routes import units
 from app.api.routes import entries
 
@@ -38,6 +39,7 @@ app.include_router(intensity_volume.router)
 app.include_router(plot_eda.router)
 app.include_router(stats_report.router)
 app.include_router(temporal_stats.router)
+app.include_router(system_group_histogram.router)
 
 # Create tables (temporary — later use migrations)
 Base.metadata.create_all(bind=engine)
