@@ -27,7 +27,7 @@ def main():
         else:
             test_user = existing_user
     finally:
-    db.close()
+        db.close()
 
     db = SessionLocal()
     try:
