@@ -20,11 +20,11 @@ def temporal_stats(
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db),
         allergen_name: str=None,
-        symptom_name: str=None
+        symptom_group: str=None
     ):
 
     allergen_events = get_all_allergen_events_df(db, current_user.user_id, allergen_name=allergen_name)
-    symptom_events  = get_all_symptom_events_df(db, current_user.user_id, symptom_name=symptom_name)
+    symptom_events  = get_all_symptom_events_df(db, current_user.user_id, symptom_group=symptom_group)
 
     allergen_events['date_time'] = pd.to_datetime(allergen_events['date_time'])
     symptom_events['date_time']  = pd.to_datetime(symptom_events['date_time'])
