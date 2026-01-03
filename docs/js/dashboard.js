@@ -216,6 +216,54 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   };
 
+  const statsTableBody = document.querySelector("#temporal-stats-table tbody");
+
+  const fetchTemporalStats = async () => {
+    try {
+      const res = await fetch(`${API_URL}/analysis/temporal_stats`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+      });
+      if (!res.ok) throw new Error(res.statusText);
+
+      const data = await res.json();
+
+      // Clear existing rows
+      statsTableBody.innerHTML = "";
+
+      if (data.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 7;
+        td.textContent = "No significant relationships found.";
+        td.style.textAlign = "center";
+        tr.appendChild(td);
+        statsTableBody.appendChild(tr);
+        return;
+      }
+
+      // Populate table
+      data.forEach(row => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.allergen_name}</td>
+          <td>${row.symptom_name}</td>
+          <td>${row.post_count}</td>
+          <td>${row.pre_count}</td>
+          <td>${row.p_value}</td>
+          <td>${row.effect_direction}</td>
+          <td>${row.evidence}</td>
+        `;
+        statsTableBody.appendChild(tr);
+      });
+    } catch (err) {
+      console.error("Failed to fetch temporal stats:", err);
+      statsTableBody.innerHTML = `
+        <tr><td colspan="7" style="text-align:center;color:red;">
+        Error loading data: ${err.message}</td></tr>
+      `;
+    }
+  };
+
   // -------------------------
   // Tabs
   // -------------------------
