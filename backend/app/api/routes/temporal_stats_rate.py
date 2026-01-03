@@ -27,21 +27,22 @@ def get_temporal_stats_rate(
 
     # Loop through all pairs
     for symptom in symptom_groups:
-        res = temporal_stats_rate(
-            allergen_events = allergen_events,
-            symptom_events = symptom_events[symptom_events["symptom_group"] == symptom]
-        )
 
-        results.append({
-                "allergen_name": allergen_name,
-                **res
-        })
+        all_results = []
 
-    # Convert to DataFrame for nice table formatting (optional)
-    results_df = pd.DataFrame(results)
+        for allergen in allergen_events:
+            allergen_df = temporal_stats_rate(
+                allergen_events = allergen_events,
+                symptom_events = symptom_events
+            )
 
-    # Optionally sort by p-value ascending
-    results_df = results_df.sort_values("p_value").reset_index(drop=True)
+            all_results.append(allergen_df)
 
-    return results_df.to_dict(orient="records")
+        # Concatenate all allergen DataFrames
+        final_results_df = pd.concat(all_results, ignore_index=True)
+
+        # Optionally sort by q_value
+        final_results_df = final_results_df.sort_values("q_value").reset_index(drop=True)
+
+        return final_results_df.to_dict(orient="records")
 
