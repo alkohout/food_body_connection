@@ -76,7 +76,7 @@ def get_all_symptom_events(db: Session, user_id: int, start_dt=None, end_dt=None
         query = query.filter(SymptomLog.date_time <= end_dt + timedelta(hours=24))
     return query.all()
 
-def get_all_symptom_events_df(db: Session, user_id: int, symptom_name=None, start_dt=None, end_dt=None):
+def get_all_symptom_events_df(db: Session, user_id: int, symptom_name=None, symptom_group=None, start_dt=None, end_dt=None):
 
     events = get_all_symptom_events(db, user_id, start_dt, end_dt)
 
@@ -87,6 +87,7 @@ def get_all_symptom_events_df(db: Session, user_id: int, symptom_name=None, star
             "date_time": e.date_time,
             "symptom_id": e.symptom_id,
             "symptom_name": symptom.symptom_name,
+            "symptom_group": symptom.symptom_group,
             "symptom_intensity": e.symptom_intensity,
         })        
 
@@ -94,6 +95,9 @@ def get_all_symptom_events_df(db: Session, user_id: int, symptom_name=None, star
 
     if symptom_name is not None:
         df = df[df['symptom_name'] == symptom_name]
+
+    if symptom_group is not None:
+        df = df[df['symptom_group'] == symptom_group]
 
     return df
 
