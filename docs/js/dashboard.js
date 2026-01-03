@@ -239,11 +239,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${row.allergen_name}</td>
-          <td>${row.symptom_name}</td>
+          <td>${row.symptom_group}</td>
           <td>${row.post_count}</td>
           <td>${row.pre_count}</td>
           <td>${row.p_value}</td>
-          <td>${row.effect_direction}</td>
           <td>${row.evidence}</td>
         `;
         statsTableBody.appendChild(tr);

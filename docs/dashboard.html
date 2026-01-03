@@ -117,7 +117,31 @@
             <input type="text" id="allergen-intensity-input" autocomplete="off" />
             <input type="hidden" id="allergen-intensity-id" />
             <ul id="allergen-intensity-suggestions" class="suggestions"></ul>
-            <button type="button" id="update-plot-btn">Generate Scatter Plot</button>
+            <button type="button" id="update-plot-btn">Generate Analysis on Chosen Allergen</button>
+
+            <!-- ===================== -->
+            <!-- Time lag analysis -->
+            <!-- ===================== -->
+            <section class="analysis-section">
+              <section class="analysis-section">
+              <h3>Significant Food–Symptom Relationships Identified</h3>
+              <table id="temporal-stats-table" class="analysis-table">
+                <thead>
+                  <tr>
+                    <th>Allergen</th>
+                    <th>Symptom Group</th>
+                    <th>Post Count</th>
+                    <th>Pre Count</th>
+                    <th>P-value</th>
+                    <th>Evidence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- rows will be populated dynamically -->
+                </tbody>
+              </table>
+            </section>
+
             <img id="analysis-intensity-volume-plot" src="" alt="Intensity-Volume Plot" style="width:90%; height:auto;" />
 
         </section>
@@ -164,29 +188,6 @@
             </div>
         </section>
 
-        <!-- ===================== -->
-        <!-- Time lag analysis -->
-        <!-- ===================== -->
-        <section class="analysis-section">
-          <section class="analysis-section">
-          <h3>Significant Food–Symptom Relationships</h3>
-          <table id="temporal-stats-table" class="analysis-table">
-            <thead>
-              <tr>
-                <th>Allergen</th>
-                <th>Symptom</th>
-                <th>Post Count</th>
-                <th>Pre Count</th>
-                <th>P-value</th>
-                <th>Effect</th>
-                <th>Evidence</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- rows will be populated dynamically -->
-            </tbody>
-          </table>
-        </section>
 
         </section>
 
