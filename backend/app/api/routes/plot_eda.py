@@ -72,11 +72,12 @@ def plot_eda(
             )
         )
 
+        # --- Filter allergens with no symptoms and too few exposures---
+        df = df[df["total_symptoms"] > 0]
+        df = df[df["total_exposures"] >= 5]
+
         # --- Compute rate ---
         df["symptom_rate"] = df["total_symptoms"] / df["total_exposures"]
-
-        # Optional cleanup
-        df = df[df["total_symptoms"] > 0]
 
         # Top 10 by rate
         df = df.sort_values("symptom_rate", ascending=False).head(10)
