@@ -78,7 +78,7 @@ def generate_dairy_intolerance_data(user_email="test@example.com", days=90, entr
                 expected_symptoms = max(0, sensitivity - 1.0)
 
                 n_symptoms = min(
-                    random.poisson(lam=expected_symptoms)
+                    np.random.poisson(lam=expected_symptoms)
                     if expected_symptoms > 0 else 0,
                     3
                 )
