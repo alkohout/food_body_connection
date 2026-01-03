@@ -92,6 +92,7 @@ def get_all_symptom_events_df(db: Session, user_id: int, symptom_name=None, symp
         })        
 
     df = pd.DataFrame(rows)
+    df["date_time"] = pd.to_datetime(df["date_time"], utc=True)
 
     if symptom_name is not None:
         df = df[df['symptom_name'] == symptom_name]
@@ -129,6 +130,7 @@ def get_all_allergen_events_df(db: Session, user_id: int, allergen_name=None,sta
         })        
 
     df = pd.DataFrame(rows)
+    df["date_time"] = pd.to_datetime(df["date_time"], utc=True)
 
     if allergen_name is not None:
         df = df[df['allergen_name'] == allergen_name]
