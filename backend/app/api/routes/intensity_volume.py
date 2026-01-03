@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.api.routes.auth import get_current_user
 from app.database import get_db
 from app.models.table_class import User
-from app.data.analysis_data import get_all_symptom_events, get_allergen_events, get_unit
+from app.data.analysis_data import get_all_symptom_events_df, get_all_allergen_events_df, get_unit
 from datetime import datetime, timedelta
 import pandas as pd
 import seaborn as sns
@@ -17,6 +17,7 @@ import logging
 import traceback
 from fastapi import HTTPException
 from io import BytesIO
+import pandas as pd
 
 logger = logging.getLogger("backend/app/api/routes/intensity_volume.py")
 logging.basicConfig(level=logging.INFO)
@@ -31,44 +32,62 @@ def intensity_volume(
 ):
     try: 
         
-        # --- Fetch allergen and symptom events for user ---
-        allergen_events = get_allergen_events(db, current_user.user_id, allergen_name=allergen_name)
-        symptom_events = get_all_symptom_events(db, current_user.user_id)
+        # --- Fetch allergen and symptom events (already DataFrames) ---
+        allergen_df = get_all_allergen_events_df(
+            db,
+            current_user.user_id,
+            allergen_name=allergen_name
+        )
+
+        symptom_df = get_all_symptom_events_df(
+            db,
+            current_user.user_id
+        )
+
+        # --- Guard against empty data ---
+        if allergen_df.empty:
+            logger.warning("No allergen events found")
+            return None  # or empty plot
+
+        # Ensure datetime dtype
+        allergen_df["date_time"] = pd.to_datetime(allergen_df["date_time"], utc=True)
+        symptom_df["date_time"] = pd.to_datetime(symptom_df["date_time"], utc=True)
 
         # --- Determine overall min/max dates ---
-        allergen_times = [a.date_time for a in allergen_events]
-        if allergen_times:  # make sure there is data
-            start_dt = min(allergen_times)
-            end_dt = max(allergen_times)
-        else:
-            # fallback if no data
-            start_dt = end_dt = datetime.now()
+        start_dt = allergen_df["date_time"].min()
+        end_dt = allergen_df["date_time"].max()
 
         logger.info("Generating EDA plot for user_id=%d", current_user.user_id)
-        logger.info("Start date: %s, End date: %s", start_dt, end_dt)   
-        logger.info("Allergen events: %d, Symptom events: %d", len(allergen_events), len(symptom_events))
+        logger.info("Start date: %s, End date: %s", start_dt, end_dt)
+        logger.info(
+            "Allergen events: %d, Symptom events: %d",
+            len(allergen_df),
+            len(symptom_df),
+        )
 
-        # --- Time series: count of symptom events within 24h of each allergen ---
+        # --- Pre-sort for faster window filtering ---
+        symptom_df = symptom_df.sort_values("date_time")
+
         rows = []
-        for allergen in allergen_events:
 
-            window_end = allergen.date_time + timedelta(hours=24)
-            
-            matching_symptoms = [s for s in symptom_events if allergen.date_time <= s.date_time <= window_end]
-            
-            # Lookup the unit conversion from the database
-            quantity = allergen.quantity
-            unit_id = allergen.unit_id
-            unit_obj = get_unit(db, unit_id=unit_id)
-            conversion = unit_obj.unit_conversion if unit_obj else None
-            volume = quantity * conversion if quantity and conversion else None
+        for _, allergen in allergen_df.iterrows():
+            start = allergen["date_time"]
+            end = start + timedelta(hours=24)
 
-            # Sum intensity and square it
-            total_intensity = sum(s.symptom_intensity or 0 for s in matching_symptoms)
-            burden_score = total_intensity ** 2  # emphasize larger clusters
+            # Filter symptoms in window
+            window_symptoms = symptom_df[
+                (symptom_df["date_time"] >= start) &
+                (symptom_df["date_time"] <= end)
+            ]
+
+            # Sum intensity
+            total_intensity = window_symptoms["symptom_intensity"].fillna(0).sum()
+
+            # Emphasize clusters
+            burden_score = total_intensity ** 2
 
             rows.append({
-                "volume": volume,
+                "volume": allergen["volume"],
                 "burden_score": burden_score,
             })
 
