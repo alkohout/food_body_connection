@@ -31,59 +31,65 @@ def plot_eda(
 
     try: 
 
-        # --- Fetch allergen and symptom events for user ---
-        allergen_events = get_all_allergen_events(db, current_user.user_id)
-        symptom_events = get_all_symptom_events(db, current_user.user_id)
-        
-        # --- Determine overall min/max dates ---
-        allergen_times = [a.date_time for a in allergen_events]
-        symptom_times = [s.date_time for s in symptom_events]
+        # --- Fetch events as DataFrames ---
+        allergen_events = get_all_allergen_events_df(db, current_user.user_id)
+        symptom_events = get_all_symptom_events_df(db, current_user.user_id)
 
-        # Combine and take min/max
-        all_times = allergen_times + symptom_times
-        if all_times:  # make sure there is data
-            start_dt = min(all_times)
-            end_dt = max(all_times)
-        else:
-            # fallback if no data
-            start_dt = end_dt = datetime.now()
+        if allergen_events.empty or symptom_events.empty:
+            raise HTTPException(status_code=400, detail="Not enough data to plot")
 
-
-        logger.info("Generating EDA plot for user_id=%d", current_user.user_id)
-        logger.info("Start date: %s, End date: %s", start_dt, end_dt)   
-        logger.info("Allergen events: %d, Symptom events: %d", len(allergen_events), len(symptom_events))
+        # Ensure datetime dtype
+        allergen_events["date_time"] = pd.to_datetime(allergen_events["date_time"], utc=True)
+        symptom_events["date_time"] = pd.to_datetime(symptom_events["date_time"], utc=True)
 
         rows = []
-        for a in allergen_events:
-            window_end = a.date_time + timedelta(hours=24)
-            
-            # Count symptoms in the 24h window
-            count = sum(1 for s in symptom_events if a.date_time <= s.date_time <= window_end)
-            allergen_obj = get_allergen(db, allergen_id=a.allergen_id)
-            
-            # Append a row
+
+        # --- Per-exposure symptom counting ---
+        for _, a in allergen_events.iterrows():
+            window_start = a["date_time"]
+            window_end = window_start + pd.Timedelta(hours=24)
+
+            symptom_count = symptom_events[
+                (symptom_events["date_time"] >= window_start) &
+                (symptom_events["date_time"] <= window_end)
+            ].shape[0]
+
             rows.append({
-                "allergen": allergen_obj.allergen_name if allergen_obj else "Unknown",
-                "count": count
+                "allergen": a["allergen_name"],   # see note below if missing
+                "symptom_count": symptom_count,
+                "exposures": 1,
             })
 
-        # Convert to DataFrame
         df = pd.DataFrame(rows)
-        df = df.groupby(["allergen"])["count"].sum().reset_index()
 
+        # --- Aggregate to allergen level ---
+        df = (
+            df
+            .groupby("allergen", as_index=False)
+            .agg(
+                total_symptoms=("symptom_count", "sum"),
+                total_exposures=("exposures", "sum"),
+            )
+        )
+
+        # --- Compute rate ---
+        df["symptom_rate"] = df["total_symptoms"] / df["total_exposures"]
+
+        # Optional cleanup
+        df = df[df["total_symptoms"] > 0]
+
+        # Top 10 by rate
+        df = df.sort_values("symptom_rate", ascending=False).head(10)
+ 
         # --- Plotting ---
         sns.set(style="whitegrid")
         fig, axes = plt.subplots(1, 1, figsize=(12, 10), gridspec_kw={'height_ratios': [3]})
-
-        # Remove allergens with 0 count
-        df = df[df["count"] > 0]
-
         # Sort by count descending and take top 10
-        df = df.sort_values("count", ascending=False).head(10)
-        sns.barplot(data=df, x="allergen", y="count", ax=axes)
-        axes.set_title(f"Number of symptoms within 24h of allergen exposures (top 10 allergens)")
+        df = df.sort_values("symptom_rate", ascending=False).head(10)
+        sns.barplot(data=df, x="allergen", y="symptom_rate", ax=axes)
+        axes.set_title(f"Symptom rate within 24h of allergen exposure (top 10)")
         axes.set_xlabel("Allergen")
-        axes.set_ylabel("Symptom Count")
+        axes.set_ylabel("Symptoms per Exposure")
 
         plt.tight_layout()
 
