@@ -34,7 +34,7 @@ def get_temporal_stats(
                 symptom_name=symptom
             )
             # Only keep significant results (p < 0.05)
-            if res['p_value'] is not None and res['p_value'] < 0.05:
+            if res['p_value'] is not None and res['p_value'] < 1:#0.05:
                 results.append({
                     "allergen_name": allergen,
                     "symptom_name": symptom,
