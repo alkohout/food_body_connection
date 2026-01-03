@@ -68,9 +68,15 @@ def temporal_stats_rate(
     # Convert to DataFrame
     results_df = pd.DataFrame(results)
 
+    # Drop rows with missing p-values
+    results_df = results_df.dropna(subset=["p_value"])
+
     # Multiple testing correction
     if not results_df.empty:
         results_df["q_value"] = multipletests(results_df["p_value"], method="fdr_bh")[1]
+        # Sort by q_value
+        results_df = results_df.sort_values("q_value").reset_index(drop=True)
 
-    return results_df.sort_values("q_value").reset_index(drop=True)
+    return results_df
+
 
