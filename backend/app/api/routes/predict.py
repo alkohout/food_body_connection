@@ -7,7 +7,7 @@ from app.utils.preprocessing import preprocess_input
 router = APIRouter()
 
 # Load the model once when the app starts
-MODEL_PATH = "backend/app/models/food_symptom_model.pkl"
+MODEL_PATH = "app/models/food_symptom_model.pkl"
 model = joblib.load(MODEL_PATH)
 
 # Define the expected input schema
