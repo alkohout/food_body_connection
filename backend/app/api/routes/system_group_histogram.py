@@ -41,15 +41,15 @@ def system_group_histogram(
 
         logger.info("Generating system group histogram for user_id=%d", current_user.user_id)
 
-        system_counts = symptom_events.groupby("system_group").size().reset_index(name="count")
+        system_counts = symptom_events.groupby("symptom_group").size().reset_index(name="count")
         system_counts = system_counts.sort_values("count", ascending=False)
 
         sns.set(style="whitegrid")
         fig, ax = plt.subplots(figsize=(10,6))
 
-        sns.barplot(data=system_counts, x="system_group", y="count", ax=ax, palette="pastel")
-        ax.set_title("Symptom Counts by System Group")
-        ax.set_xlabel("System Group")
+        sns.barplot(data=system_counts, x="symptom_group", y="count", ax=ax, palette="pastel")
+        ax.set_title("Symptom Counts by Symptom Group")
+        ax.set_xlabel("Symptom Group")
         ax.set_ylabel("Number of Symptoms Logged")
         plt.xticks(rotation=45, ha="right")
 
