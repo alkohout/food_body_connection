@@ -18,7 +18,7 @@ def main():
         existing_user = db.query(User).filter(User.email == "significant_stat@example.com").first()
         if not existing_user:
             test_user = User(
-                email="significant_user@example.com",
+                email="significant_stat@example.com",
                 password_hash=hash_password("password123")
             )
             db.add(test_user)
