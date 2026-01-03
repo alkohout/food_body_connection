@@ -15,6 +15,22 @@ def main():
     # Create a session
     db = SessionLocal()
     try:
+        existing_user = db.query(User).filter(User.email == "random_user@example.com").first()
+        if not existing_user:
+            test_user = User(
+                email="random_user@example.com",
+                password_hash=hash_password("password123")
+            )
+            db.add(test_user)
+            db.commit()
+            db.refresh(test_user)
+        else:
+            test_user = existing_user
+    finally:
+    db.close()
+
+    db = SessionLocal()
+    try:
         existing_user = db.query(User).filter(User.email == "significant_stat@example.com").first()
         if not existing_user:
             test_user = User(
