@@ -168,16 +168,26 @@
         <!-- Time lag analysis -->
         <!-- ===================== -->
         <section class="analysis-section">
-            <h3>Time Lag</h3>
+          <section class="analysis-section">
+          <h3>Significant Food–Symptom Relationships</h3>
+          <table id="temporal-stats-table" class="analysis-table">
+            <thead>
+              <tr>
+                <th>Allergen</th>
+                <th>Symptom</th>
+                <th>Post Count</th>
+                <th>Pre Count</th>
+                <th>P-value</th>
+                <th>Effect</th>
+                <th>Evidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- rows will be populated dynamically -->
+            </tbody>
+          </table>
+        </section>
 
-            <label>
-            Max lag (hours)
-            <input type="number" id="max-lag" value="24" min="1" max="72">
-            </label>
-
-            <div class="plot-container" id="lag-plot">
-            <!-- lag histogram / density -->
-            </div>
         </section>
 
         <!-- ===================== -->
