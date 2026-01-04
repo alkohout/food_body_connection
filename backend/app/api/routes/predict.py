@@ -35,7 +35,10 @@ FEATURE_COLUMNS = model.feature_names_in_  # this keeps all columns including on
 # Prediction endpoint
 # ------------------------
 @router.post("/predict")
-def predict():
+def predict(
+    db: Session = Depends(SessionLocal),
+    current_user = Depends(get_current_user)    
+):
 
     db = SessionLocal()
     current_user = Depends(get_current_user)
