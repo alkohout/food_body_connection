@@ -4,6 +4,20 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 import joblib
 import pandas as pd
+from app.database import SessionLocal
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+import joblib
+from fastapi import Depends
+from sqlalchemy.orm import Session
+from app.models.table_class import Unit
+from app.api.routes.auth import get_current_user
+from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
+from datetime import timedelta, datetime
+import pandas as pd
+import numpy as np
+import logging
+
 
 logger = logging.getLogger("app/api/routes/stats_report.py")
 logging.basicConfig(level=logging.INFO)
@@ -22,18 +36,6 @@ FEATURE_COLUMNS = model.feature_names_in_  # this keeps all columns including on
 # ------------------------
 @router.post("/predict")
 def predict():
-
-    from app.database import SessionLocal
-    import pandas as pd
-    from sklearn.ensemble import RandomForestClassifier
-    import joblib
-    from fastapi import Depends
-    from sqlalchemy.orm import Session
-    from app.models.table_class import Unit
-    from app.api.routes.auth import get_current_user
-    from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
-    from datetime import timedelta, datetime
-    import pandas as pd
 
     db = SessionLocal()
     current_user = Depends(get_current_user)
