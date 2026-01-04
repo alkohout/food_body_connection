@@ -50,8 +50,7 @@ def predict(
 
 
     prediction =  1
-    probalitiy = .85
-
+    probability = .85
 
     #prediction = model.predict(X)[0]
     #probability = model.predict_proba(X)[0].tolist()
