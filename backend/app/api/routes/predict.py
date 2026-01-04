@@ -9,6 +9,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 import joblib
 from fastapi import Depends
+from app.database import get_db
 from sqlalchemy.orm import Session
 from app.models.table_class import Unit
 from app.api.routes.auth import get_current_user
