@@ -45,8 +45,8 @@ def predict(
     symptom_df = get_all_symptom_events_df(db, current_user.user_id)
 
     # Convert datetime columns to datetime type
-    allergen_df["allergen_date_time"] = pd.to_datetime(allergen_df["allergen_date_time"], utc=True)
-    symptom_df["symptom_date_time"] = pd.to_datetime(symptom_df["symptom_date_time"], utc=True)
+    allergen_df["allergen_date_time"] = pd.to_datetime(allergen_df["date_time"], utc=True)
+    symptom_df["symptom_date_time"] = pd.to_datetime(symptom_df["date_time"], utc=True)
 
     # Compute volume for each allergen exposure
     allergen_df["volume"] = allergen_df["quantity"] * allergen_df["unit_conversion"].fillna(1)
