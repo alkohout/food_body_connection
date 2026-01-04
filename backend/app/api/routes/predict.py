@@ -40,8 +40,6 @@ def predict(
     current_user = Depends(get_current_user)    
 ):
 
-    db = SessionLocal()
-    current_user = Depends(get_current_user)
     allergen_df = get_all_allergen_events_df(db, current_user.user_id)
     symptom_df = get_all_symptom_events_df(db, current_user.user_id)
 
