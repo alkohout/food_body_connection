@@ -48,48 +48,11 @@ def predict(
     allergen_df["allergen_date_time"] = pd.to_datetime(allergen_df["date_time"], utc=True)
     symptom_df["symptom_date_time"] = pd.to_datetime(symptom_df["date_time"], utc=True)
 
-    # Merge allergen exposures with symptoms within 24 hours
-    merged = allergen_df.merge(
-        symptom_df,
-        how="left",
-        left_on=[],  # empty = cross join
-        right_on=[],
-        suffixes=("_allergen", "_symptom")
-    )
 
-    # Keep only symptoms within 24 hours of exposure
-    merged["time_diff"] = merged["symptom_date_time"] - merged["allergen_date_time"]
-    merged_24h = merged[(merged["time_diff"].dt.total_seconds() >= 0) &
-                        (merged["time_diff"].dt.total_seconds() <= 24*3600)]
+    prediction =  1
+    probalitiy = .85
 
-    # Aggregate features per allergen exposure
-    features = merged_24h.groupby(
-        ["allergen_date_time", "allergen_name", "quantity", "unit_conversion", "volume"]
-    ).agg(
-        max_intensity=("intensity", "max"),
-        num_symptoms=("symptom_name", "count")
-    ).reset_index()
 
-    # Fill NaN for exposures with no symptoms
-    features["max_intensity"] = features["max_intensity"].fillna(0)
-    features["num_symptoms"] = features["num_symptoms"].fillna(0)
-
-    # Boolean target: any symptom within 24h
-    features["y"] = features["num_symptoms"] > 0
-
-    # X: include volume, max_intensity, num_symptoms, and allergen_name as one-hot
-    X = pd.get_dummies(features[["volume", "max_intensity", "num_symptoms", "allergen_name"]],
-                    columns=["allergen_name"], drop_first=True)
-    y = features["y"]
-
-    print(X.head())
-    print(f"Features shape: {X.shape}, Target shape: {y.shape}")
-
-    # ------------------------
-    # 4. Prepare features
-    # ------------------------
-    X = allergen_df.drop(columns=["allergen_date_time", "symptom_date_time", "symptom_name", "symptom_group"])
-
-    prediction = model.predict(X)[0]
-    probability = model.predict_proba(X)[0].tolist()
+    #prediction = model.predict(X)[0]
+    #probability = model.predict_proba(X)[0].tolist()
     return {"prediction": int(prediction), "probability": probability}
