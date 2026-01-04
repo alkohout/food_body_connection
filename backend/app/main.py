@@ -41,7 +41,7 @@ app.include_router(plot_eda.router)
 app.include_router(stats_report.router)
 app.include_router(temporal_stats.router)
 app.include_router(system_group_histogram.router)
-app.include_router(predict.router, prefix="/api")
+app.include_router(predict.router)
 
 # Create tables (temporary — later use migrations)
 Base.metadata.create_all(bind=engine)
