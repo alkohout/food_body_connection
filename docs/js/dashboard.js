@@ -238,13 +238,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-    const formatP = p =>
-      p === null ? "—" :
-      p < 1e-4 ? "0.0000" :
-      p.toFixed(4);
+      const formatP = p =>
+        p === null ? "—" :
+        p < 1e-4 ? "0.0000" :
+        p.toFixed(4);
 
-    data.forEach(row => {
-      const tr = document.createElement("tr");
+      data.forEach(row => {
+        const tr = document.createElement("tr");
 
       tr.innerHTML = `
         <td>${row.allergen_name}</td>
@@ -321,12 +321,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Model Predict output 
     const predict = await fetch(`${API_URL}/analysis/predict`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`
+      }
     });
 
     if (!predict.ok) throw new Error(predict.statusText);
-    const blob_predict = await predict.blob();
-    predictOut.src = URL.createObjectURL(blob_predict);
+
+    const predictionText = await predict.text();
+    predictOut.textContent = predictionText;
+
 
   } catch (err) {
     console.error("Failed to fetch analysis plots:", err);
