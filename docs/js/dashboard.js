@@ -320,6 +320,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Model Predict output 
     const predict = await fetch(`${API_URL}/analysis/predict`, {
+      method: "POST",
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
     });
 
