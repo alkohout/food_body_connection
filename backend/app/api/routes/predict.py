@@ -48,9 +48,6 @@ def predict(
     allergen_df["allergen_date_time"] = pd.to_datetime(allergen_df["date_time"], utc=True)
     symptom_df["symptom_date_time"] = pd.to_datetime(symptom_df["date_time"], utc=True)
 
-    # Compute volume for each allergen exposure
-    allergen_df["volume"] = allergen_df["quantity"] * allergen_df["unit_conversion"].fillna(1)
-
     # Merge allergen exposures with symptoms within 24 hours
     merged = allergen_df.merge(
         symptom_df,
