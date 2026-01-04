@@ -40,35 +40,62 @@ query = (
 symptom_df = pd.read_sql(query.statement, db.bind)
 db.close()
 
+
+# 2. Prepare features
+# ------------------------
+
+# Convert datetime columns to datetime type
 allergen_df["allergen_date_time"] = pd.to_datetime(allergen_df["allergen_date_time"], utc=True)
 symptom_df["symptom_date_time"] = pd.to_datetime(symptom_df["symptom_date_time"], utc=True)
 
-df = pd.concat([allergen_df, symptom_df], axis=1)
-df['volume'] = df['quantity'] * df['unit_conversion']
+# Compute volume for each allergen exposure
+allergen_df["volume"] = allergen_df["quantity"] * allergen_df["unit_conversion"].fillna(1)
 
-df = (
-    df
-    .groupby(
-        [
-            "allergen_date_time",
-            "allergen_name",
-            "quantity",
-            "unit_conversion",
-            "volume",
-        ],
-        as_index=False
-    )
-    .agg(
-        symptom_occurred=("intensity", lambda x: (x > 0).any()),
-        max_intensity=("intensity", "max"),
-        n_symptoms=("intensity", lambda x: (x > 0).sum()),
-    )
+# Merge allergen exposures with symptoms within 24 hours
+merged = allergen_df.merge(
+    symptom_df,
+    how="left",
+    left_on=[],  # empty = cross join
+    right_on=[],
+    suffixes=("_allergen", "_symptom")
 )
 
-X = df.drop(columns=["symptom_occurred", "allergen_date_time", "quantity", "unit_conversion"])
-X = pd.get_dummies(df[["allergen_name"]], drop_first=True)
-y = df["symptom_occurred"]
+# Keep only symptoms within 24 hours of exposure
+merged["time_diff"] = merged["symptom_date_time"] - merged["allergen_date_time"]
+merged_24h = merged[(merged["time_diff"].dt.total_seconds() >= 0) &
+                    (merged["time_diff"].dt.total_seconds() <= 24*3600)]
 
+# Aggregate features per allergen exposure
+features = merged_24h.groupby(
+    ["allergen_date_time", "allergen_name", "quantity", "unit_conversion", "volume"]
+).agg(
+    max_intensity=("intensity", "max"),
+    num_symptoms=("symptom_name", "count")
+).reset_index()
+
+# Fill NaN for exposures with no symptoms
+features["max_intensity"] = features["max_intensity"].fillna(0)
+features["num_symptoms"] = features["num_symptoms"].fillna(0)
+
+# Boolean target: any symptom within 24h
+features["y"] = features["num_symptoms"] > 0
+
+# X: include volume, max_intensity, num_symptoms, and allergen_name as one-hot
+X = pd.get_dummies(features[["volume", "max_intensity", "num_symptoms", "allergen_name"]],
+                   columns=["allergen_name"], drop_first=True)
+y = features["y"]
+
+print(X.head())
+print(f"Features shape: {X.shape}, Target shape: {y.shape}")
+
+# ------------------------
+# 4. Prepare features
+# ------------------------
+X = allergen_df.drop(columns=["allergen_date_time", "symptom_date_time", "symptom_name", "symptom_group"])
+
+y = allergen_df["symptom_occurred"]
+
+print(X.head())
 print(f"Features shape: {X.shape}, Target shape: {y.shape}")
 
 # ------------------------

@@ -46,6 +46,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const histogramPlotImg = document.getElementById("group_histogram");
   const intensityVolumePlotImg = document.getElementById("analysis-intensity-volume-plot");
 
+  const predictOut = document.getElementById("predict-out");
+
   const statsTableBody = document.querySelector("#temporal-stats-table tbody");
 
   // =========================================================
@@ -315,6 +317,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!group_hist.ok) throw new Error(group_hist.statusText);
     const blob_hist = await group_hist.blob();
     histogramPlotImg.src = URL.createObjectURL(blob_hist);
+
+    // Model Predict output 
+    const predict = await fetch(`${API_URL}/analysis/predict`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    });
+
+    if (!predict.ok) throw new Error(predict.statusText);
+    const blob_predict = await predict.blob();
+    predictOut.src = URL.createObjectURL(blob_predict);
 
   } catch (err) {
     console.error("Failed to fetch analysis plots:", err);
