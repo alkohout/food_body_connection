@@ -326,7 +326,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (!plotHeatmap.ok) throw new Error(plotHeatmap.statusText);
     const blobHeatmap = await plotHeatmap.blob();
-    analysisPlotHeatmap.src = URL.createObjectURL(blobHeatmap);
+    heatmapPlotImg.src = URL.createObjectURL(blobHeatmap);
 
     // Model Predict output 
     const predict = await fetch(`${API_URL}/analysis/predict`, {
