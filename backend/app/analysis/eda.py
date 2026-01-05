@@ -24,7 +24,8 @@ def eda_plot_heatmap(
     df = pd.concat([X, y], axis=1)
     
     plt.figure(figsize=(10, 6))
-    sns.heatmap(df.corr(), annot=True, fmt=".2f", cmap='coolwarm')
+    numeric_df = df.select_dtypes(include="number")
+    sns.heatmap(numeric_df.corr(), annot=True, fmt=".2f", cmap='coolwarm')
     plt.title("Correlation Heatmap")
 
         # --- Save to PNG ---
