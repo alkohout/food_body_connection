@@ -13,15 +13,15 @@ def get_xy(
     targets = []
     for _, allergen_event in allergen_df.iterrows():
 
-        exposure_time = allergen_event["allergen_date_time"]
+        exposure_time = allergen_event["date_time"]
         allergen_id = allergen_event["allergen_id"]
         volume = allergen_event.get("volume", 0.0) # return 0.0 if volume not present
 
         # Find symptoms that occurred after this allergen exposure
         window_end = exposure_time + pd.Timedelta(hours=24)
         relevant_symptoms = symptom_df[
-            (symptom_df["symptom_date_time"] > exposure_time) &
-            (symptom_df["symptom_date_time"] <= window_end)
+            (symptom_df["date_time"] > exposure_time) &
+            (symptom_df["date_time"] <= window_end)
         ]
 
         row = X(
