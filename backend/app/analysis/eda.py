@@ -6,7 +6,8 @@ from app.database import get_db
 from app.api.routes.auth import get_current_user
 from app.schemas.analyse import X,y
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
-from app.analysis.eda import get_xy
+from app.analysis.get_xy import get_xy
+from io import BytesIO
 import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
@@ -32,7 +33,6 @@ def eda(
         # --- Save to PNG ---
     buf = BytesIO()
     plt.savefig(buf, format="png", bbox_inches="tight")
-    plt.close(fig)
     buf.seek(0)
 
     return buf
