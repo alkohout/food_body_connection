@@ -1,4 +1,4 @@
-import myutils.eda as eda       
+     
 from app.models.table_class import User   
 from fastapi import Depends
 from sqlalchemy.orm import Session
