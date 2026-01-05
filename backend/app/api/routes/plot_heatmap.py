@@ -25,8 +25,8 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 
 @router.get("/plot_heatmap")
 def plot_heatmap(
-        current_user: User = Depends(get_current_user),
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
     ):
 
     try: 

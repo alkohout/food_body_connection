@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns       
 
 def eda_plot_heatmap(
-    current_user: int,
-    db: Session 
+    db: Session,
+    current_user: int
 ):
 
     allergen_events = get_all_allergen_events_df(db, current_user)
