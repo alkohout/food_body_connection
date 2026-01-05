@@ -10,7 +10,7 @@ from app.models.table_class import User
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
 from datetime import timedelta, datetime
 import traceback
-import app.analysis.eda as eda
+from app.analysis.eda import eda_plot_heatmap
 from io import BytesIO
 import matplotlib
 matplotlib.use("Agg")
@@ -31,7 +31,7 @@ def plot_heatmap(
 
     try: 
 
-        buf = eda(
+        buf = eda_plot_heatmap(
             db,
             current_user.user_id
         )
