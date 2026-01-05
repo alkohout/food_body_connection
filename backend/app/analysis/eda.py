@@ -14,7 +14,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns       
 
-def eda(
+def eda_plot_heatmap(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
