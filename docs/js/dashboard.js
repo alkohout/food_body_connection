@@ -44,6 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const analysisPlotImg = document.getElementById("analysis-plot");
   const histogramPlotImg = document.getElementById("group_histogram");
+  const heatmapPlotImg = document.getElementById("heatmap-plot");
   const intensityVolumePlotImg = document.getElementById("analysis-intensity-volume-plot");
 
   const predictOut = document.getElementById("predict-out");
@@ -317,6 +318,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!group_hist.ok) throw new Error(group_hist.statusText);
     const blob_hist = await group_hist.blob();
     histogramPlotImg.src = URL.createObjectURL(blob_hist);
+
+    // Heatmap Plot 
+    const plotHeatmap = await fetch(`${API_URL}/analysis/plot_heatmap`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    });
+
+    if (!plotHeatmap.ok) throw new Error(plotHeatmap.statusText);
+    const blobHeatmap = await plotHeatmap.blob();
+    analysisPlotHeatmap.src = URL.createObjectURL(blobHeatmap);
 
     // Model Predict output 
     const predict = await fetch(`${API_URL}/analysis/predict`, {

@@ -8,6 +8,14 @@ class AnalysisScope(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
 
+class X(BaseModel):
+    allergen_id: int
+    exposure_volume: float
+    hours_since_exposure: float
+
+class y(BaseModel):
+    symptom_occurred: int
+    symptom_max_intensity: Optional[int] = None
 class AnalysisSummaryOut(BaseModel):
     total_exposures: int
     total_symptoms: int
