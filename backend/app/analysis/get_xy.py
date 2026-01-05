@@ -40,4 +40,4 @@ def get_xy(
             ),
         )
 
-    return pd.DataFrame([r.model_dump() for r in rows]), pd.DataFrame([t.model_dump() for t in targets])
+    return pd.DataFrame(rows), pd.DataFrame(targets) 
