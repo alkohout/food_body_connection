@@ -10,6 +10,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns       
+import logging
+
+logger = logging.getLogger("app/analysis/eda.py")
+logging.basicConfig(level=logging.INFO)
 
 def eda_plot_heatmap(
     db: Session,
@@ -20,7 +24,9 @@ def eda_plot_heatmap(
     symptom_events = get_all_symptom_events_df(db, current_user)
 
     X,y = get_xy(allergen_events, symptom_events)
-    X = pd.get_dummies(df, columns=["allergen_id"], drop_first=False)
+    logger.info("X shape pre encoding: %s", str(X.shape())) 
+    X = pd.get_dummies(X, columns=["allergen_id"], drop_first=False)
+    logger.info("X shape post encoding: %s", str(X.shape())) 
 
     df = pd.concat([X, y], axis=1)
     
