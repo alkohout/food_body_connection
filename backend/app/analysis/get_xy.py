@@ -34,7 +34,7 @@ def get_xy(
         targets = y(
             symptom_occurred=int(len(relevant_symptoms) > 0),
             symptom_max_intensity=(
-                relevant_symptoms["intensity"].max()
+                relevant_symptoms["symptom_intensity"].max()
                 if not relevant_symptoms.empty
                 else None
             ),
