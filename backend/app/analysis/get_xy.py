@@ -1,7 +1,7 @@
 from app.schemas.analyse import X as XModel, y as YModel
 import pandas as pd
 
-def get_xy(allergen_df: pd.DataFrame, symptom_df: pd.DataFrame):
+def get_xy(allergen_df: pd.DataFrame, symptom_df: pd.DataFrame, allergen: pd.DataFrame):
     """
     Constructs the feature matrix X for prediction based on allergen and symptom dataframes.
     """
@@ -11,6 +11,12 @@ def get_xy(allergen_df: pd.DataFrame, symptom_df: pd.DataFrame):
     for _, allergen_event in allergen_df.iterrows():
         exposure_time = allergen_event["date_time"]
         allergen_id = allergen_event["allergen_id"]
+        # Look up allergen name
+        allergen_name = allergen.loc[allergen['allergen_id'] == allergen_id, 'allergen_name']
+        if not allergen_name.empty:
+            allergen_name = allergen_name.values[0]
+        else:
+            allergen_name = None  # or "Unknown"
         volume = allergen_event.get("volume", 0.0)  # return 0.0 if volume not present
 
         # Find symptoms that occurred within 24 hours
@@ -23,7 +29,7 @@ def get_xy(allergen_df: pd.DataFrame, symptom_df: pd.DataFrame):
         # Append X row
         rows.append(
             XModel(
-                allergen_id=allergen_id,
+                allergen_name=allergen_name,
                 exposure_volume=volume,
                 hours_since_exposure=24,
             )

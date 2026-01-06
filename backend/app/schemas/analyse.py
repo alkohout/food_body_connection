@@ -10,6 +10,7 @@ class AnalysisScope(BaseModel):
 
 class X(BaseModel):
     allergen_id: int
+    allergen_name: str
     exposure_volume: float
     hours_since_exposure: float
 

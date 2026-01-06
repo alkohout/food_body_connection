@@ -157,6 +157,21 @@ def get_allergen(db: Session, allergen_id=None, allergen_name=None):
     else:
         return None
 
+def get_allergen_df(db: Session, user_id: int):
+
+    events = get_allergen(db, user_id)
+
+    rows = []
+    for e in events:
+        rows.append({
+            "allergen_id": e.allergen_id,
+            "allergen_name": e.allergen_name,
+        })        
+
+    df = pd.DataFrame(rows)
+
+    return df
+
 def get_symptom(db: Session, symptom_id=None, symptom_name=None):
     if symptom_name:
         query = db.query(Symptom).filter(Symptom.symptom_name == symptom_name)

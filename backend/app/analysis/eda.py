@@ -2,7 +2,7 @@
 from app.models.table_class import User   
 from sqlalchemy.orm import Session
 from app.schemas.analyse import X,y
-from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
+from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df, get_allergen_df
 from app.analysis.get_xy import get_xy
 from io import BytesIO
 import pandas as pd
@@ -22,8 +22,9 @@ def eda_plot_heatmap(
 
     allergen_events = get_all_allergen_events_df(db, current_user)
     symptom_events = get_all_symptom_events_df(db, current_user)
+    allergen = get_allergen_df(db, current_user)
 
-    X,y = get_xy(allergen_events, symptom_events)
+    X,y = get_xy(allergen_events, symptom_events, allergen)
     X = pd.get_dummies(X, columns=["allergen_id"], drop_first=False)
 
     df = pd.concat([X, y], axis=1)
