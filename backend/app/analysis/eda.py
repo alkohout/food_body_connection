@@ -24,7 +24,7 @@ def eda_plot_heatmap(
     symptom_events = get_all_symptom_events_df(db, current_user)
 
     X,y = get_xy(allergen_events, symptom_events)
-    logger.info("X shape pre encoding: %s", str(X.shape)) 
+    logger.info("X shape pre encoding: %s", str(X.head())) 
     X = pd.get_dummies(X, columns=["allergen_id"], drop_first=False)
     logger.info("X shape post encoding: %s", str(X.shape)) 
 
