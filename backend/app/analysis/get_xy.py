@@ -30,6 +30,7 @@ def get_xy(
             hours_since_exposure=24,
         )
         rows.append(row)
+        X_df = pd.DataFrame([r.model_dump() for r in rows])
 
         targets = y(
             symptom_occurred=int(len(relevant_symptoms) > 0),
@@ -39,5 +40,6 @@ def get_xy(
                 else None
             ),
         )
+        y_df = pd.DataFrame([t.model_dump() for t in targets])
 
-    return pd.DataFrame(rows), pd.DataFrame(targets) 
+    return X_df, y_df
