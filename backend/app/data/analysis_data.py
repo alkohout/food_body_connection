@@ -166,3 +166,15 @@ def get_symptom(db: Session, symptom_id=None, symptom_name=None):
         return query.first()
     else:
         return None
+
+def get_allergen_name_str(db: Session, allergen_id=None):
+    if allergen_id:
+        obj = (
+            db.query(Allergen)
+            .filter(Allergen.allergen_id == allergen_id)
+            .first()
+        )
+    else:
+        return None
+
+    return obj.allergen_name if obj else None
