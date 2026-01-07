@@ -29,7 +29,7 @@ def eda_plot_heatmap(
     X_encoded = pd.get_dummies(X["allergen_name"])
    
     # Combine into one DataFrame
-    df_corr = pd.concat([X_encoded, y[0]], axis=1)
+    df_corr = pd.concat([X_encoded, y['symptom_occurrence']], axis=1)
     print(y.head(10))
 
     # Compute correlations between allergens and symptoms
