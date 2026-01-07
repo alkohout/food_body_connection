@@ -14,7 +14,7 @@ def get_xy(db: Session, allergen_df: pd.DataFrame, symptom_df: pd.DataFrame):
     for _, allergen_event in allergen_df.iterrows():
         exposure_time = allergen_event["date_time"]
         allergen_id = allergen_event["allergen_id"]
-        allergen_name = get_allergen(db, allergen_id) 
+        allergen = get_allergen(db, allergen_id) 
         volume = allergen_event.get("volume", 0.0)  # return 0.0 if volume not present
 
         # Find symptoms that occurred within 24 hours
@@ -27,7 +27,7 @@ def get_xy(db: Session, allergen_df: pd.DataFrame, symptom_df: pd.DataFrame):
         # Append X row
         rows.append(
             XModel(
-                allergen_name=allergen_name,
+                allergen_name=allergen.allergen_name,
                 exposure_volume=volume,
                 hours_since_exposure=24,
             )
