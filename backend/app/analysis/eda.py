@@ -34,17 +34,29 @@ def eda_plot_heatmap(
             mean_intensity=("symptom_max_intensity", "mean"),
         )
     )
+    # Convert categorical variables to 0/1
+    X_encoded = pd.get_dummies(df["allergen_name"])
+    y_encoded = df["symptom_occurred"]  # or multiple columns if multiple symptoms
+
+    # Combine into one DataFrame
+    df_corr = pd.concat([X_encoded, y_encoded], axis=1)
+
+    # Compute correlation matrix
+    corr_matrix = df_corr.corr()
+
+
+
 
     print("X columns:", X.columns.tolist())
     print(X.head())
-    #X = pd.get_dummies(summary, columns=["allergen_name"], drop_first=False)
     agg = agg.sort_values("n_exposures", ascending=False).head(20)
     plt.figure(figsize=(10, 6))
-    sns.heatmap(
-    agg[["symptom_rate", "mean_intensity"]],
-    annot=True,
-    cmap="coolwarm",
-)
+    sns.heatmap(corr_matrix, annot=False, cmap="coolwarm")
+    #sns.heatmap(
+    #    agg[["symptom_rate", "mean_intensity"]],
+    #    annot=True,
+    #    cmap="coolwarm",
+    #)
     plt.title("Correlation Heatmap")
 
         # --- Save to PNG ---
