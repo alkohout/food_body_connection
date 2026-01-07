@@ -24,7 +24,7 @@ def eda_plot_heatmap(
     symptom_events = get_all_symptom_events_df(db, current_user)
 
     X,y = get_xy(db, allergen_events, symptom_events)
-    X = pd.get_dummies(X, columns=["allergen_id"], drop_first=False)
+    X = pd.get_dummies(X, columns=["allergen_name"], drop_first=False)
 
     df = pd.concat([X, y], axis=1)
     
