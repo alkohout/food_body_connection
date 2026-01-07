@@ -25,19 +25,18 @@ def eda_plot_heatmap(
 
     X,y = get_xy(db, allergen_events, symptom_events)
 
-    # Convert categorical variables to 0/1
+    # One-hot encode allergens only
     X_encoded = pd.get_dummies(X["allergen_name"])
-   
-    # Combine into one DataFrame
-    df_corr = pd.concat([X_encoded, y['symptom_occurred']], axis=1)
-    print(y.head(10))
+
+    # Use the symptom DataFrame as-is (no get_dummies)
+    df_corr = pd.concat([X_encoded, y], axis=1)
 
     # Compute correlations between allergens and symptoms
-    corr_matrix = df_corr.corr().loc[X_encoded.columns, y['symptom_occurred']]
+    corr_matrix = df_corr.corr().loc[X_encoded.columns, y.columns]
 
     # Optional: sort allergens by max absolute correlation to symptoms
-    max_corr_per_allergen = corr_matrix.abs().max(axis=1).sort_values(ascending=False)
-    corr_matrix = corr_matrix.loc[max_corr_per_allergen.index]
+    corr_matrix = corr_matrix.loc[corr_matrix.abs().max(axis=1).sort_values(ascending=False).index,
+                                corr_matrix.abs().max(axis=0).sort_values(ascending=False).index]
 
     # Plot
     plt.figure(figsize=(12, 8))
