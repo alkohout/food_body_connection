@@ -33,7 +33,7 @@ def eda_plot_heatmap(
     print(y.head(10))
 
     # Compute correlations between allergens and symptoms
-    corr_matrix = df_corr.corr().loc[X_encoded.columns, y.columns]
+    corr_matrix = df_corr.corr().loc[X_encoded.columns, y['symptom_occurred']]
 
     # Optional: sort allergens by max absolute correlation to symptoms
     max_corr_per_allergen = corr_matrix.abs().max(axis=1).sort_values(ascending=False)
