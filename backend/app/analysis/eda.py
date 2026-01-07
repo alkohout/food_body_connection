@@ -38,9 +38,13 @@ def eda_plot_heatmap(
     print("X columns:", X.columns.tolist())
     print(X.head())
     #X = pd.get_dummies(summary, columns=["allergen_name"], drop_first=False)
-    
+    agg = agg.sort_values("n_exposures", ascending=False).head(20)
     plt.figure(figsize=(10, 6))
-    sns.heatmap(summary.corr(), annot=True, fmt=".2f", cmap='coolwarm')
+    sns.heatmap(
+    agg[["symptom_rate", "mean_intensity"]],
+    annot=True,
+    cmap="coolwarm",
+)
     plt.title("Correlation Heatmap")
 
         # --- Save to PNG ---
