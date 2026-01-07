@@ -26,10 +26,21 @@ def eda_plot_heatmap(
     X,y = get_xy(db, allergen_events, symptom_events)
     X = pd.get_dummies(X, columns=["allergen_name"], drop_first=False)
 
-    df = pd.concat([X, y], axis=1)
+    summary = (
+    pd.concat([X, y], axis=1)
+    .groupby("allergen_name")
+    .agg(
+        n_exposures=("symptom_occurred", "count"),
+        symptom_rate=("symptom_occurred", "mean"),
+    )
+    .query("n_exposures >= 5")
+    .sort_values("symptom_rate", ascending=False)
+    .head(15)
+)
+
     
     plt.figure(figsize=(10, 6))
-    sns.heatmap(df.corr(), annot=True, fmt=".2f", cmap='coolwarm')
+    sns.heatmap(summary.corr(), annot=True, fmt=".2f", cmap='coolwarm')
     plt.title("Correlation Heatmap")
 
         # --- Save to PNG ---
