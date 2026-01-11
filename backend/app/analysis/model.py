@@ -16,7 +16,8 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 import traceback 
 from fastapi import HTTPException
-
+import pandas as pd
+import statsmodels.api as sm
 
 logger = logging.getLogger("app/analysis/model.py")
 logging.basicConfig(level=logging.INFO)
@@ -42,7 +43,8 @@ def model_classification(
             'C': [1, 10, 100]
         }
         best_params = param_optimization(model,lr_params,X_train, y_train, X_test, y_test)
-        model,fpr,tpr,roc_auc = supervised_classification(X,y,method='logistic_regression',params=best_params)
+        model,roc_auc,recall,samples = supervised_classification(X,y,method='logistic_regression',params=best_params)
+        print('roc_auc %f',roc_auc)
 
         coefs = model.coef_.ravel()
 
@@ -51,7 +53,6 @@ def model_classification(
             "coefficient": coefs,
             "odds_ratio": np.exp(coefs)
         }).sort_values("coefficient", ascending=False)
-
 
         # Plot
         plt.figure(figsize=(10, 6))
@@ -67,6 +68,23 @@ def model_classification(
         plt.title("Allergens Most Likely to Trigger Symptoms")
         plt.xticks(rotation=45, ha="right")  # 45 degrees, right-aligned
         plt.tight_layout()
+
+        performance_text = (
+            f"Model performance\n"
+            f"ROC AUC: {roc_auc:.2f}\n"
+            f"Symptom recall: {recall:.2f}\n"
+            f"Samples: {samples:.0f}"
+        )
+
+        plt.text(
+            0.02, 0.98,
+            performance_text,
+            transform=plt.gca().transAxes,
+            fontsize=10,
+            verticalalignment="top",
+            bbox=dict(boxstyle="round,pad=0.4", facecolor="white", alpha=0.9)
+        )
+
 
         # --- Save to PNG ---
         buf = BytesIO()
