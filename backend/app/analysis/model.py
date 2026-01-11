@@ -15,7 +15,7 @@ import logging
 from sklearn.model_selection import train_test_split
 import numpy as np
 
-logger = logging.getLogger("app/analysis/eda.py")
+logger = logging.getLogger("app/analysis/model.py")
 logging.basicConfig(level=logging.INFO)
 
 def model_classification(
@@ -34,11 +34,11 @@ def model_classification(
     X_train,  X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
     model, fpr,tpr,roc_auc = supervised_classification(X,y,method='logistic_regression')
     lr_params = {
-        'penalty': ['l1','l2'],
+        'penalty': ['l1'],
         'C': [1, 10, 100]
     }
     best_params = param_optimization(model,lr_params,X_train, y_train, X_test, y_test)
-    model,fpr,tpr,roc_auc = supervised_classification(X,y,method='logistic_regression',params='best_params')
+    model,fpr,tpr,roc_auc = supervised_classification(X,y,method='logistic_regression',params=best_params)
 
     coefs = model.coef_.ravel()
 
