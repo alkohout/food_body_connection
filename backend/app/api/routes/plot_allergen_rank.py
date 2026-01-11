@@ -10,7 +10,7 @@ from app.models.table_class import User
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
 from datetime import timedelta, datetime
 import traceback
-from app.analysis.eda import eda_plot_heatmap
+from app.analysis.model import model_classification 
 from io import BytesIO
 import matplotlib
 matplotlib.use("Agg")
@@ -18,20 +18,20 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
-logger = logging.getLogger("app/api/routes/plot_heatmap.py")
+logger = logging.getLogger("app/api/routes/plot_allergen_rank.py")
 logging.basicConfig(level=logging.INFO)
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
-@router.get("/plot_heatmap")
-def plot_heatmap(
+@router.get("/plot_allergen_rank")
+def plot_allergen_rank(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
     ):
 
     try: 
 
-        buf = eda_plot_heatmap(
+        buf = model_classification(
             db,
             current_user.user_id
         )
