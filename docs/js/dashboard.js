@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const analysisPlotImg = document.getElementById("analysis-plot");
   const histogramPlotImg = document.getElementById("group_histogram");
-  const heatmapPlotImg = document.getElementById("heatmap-plot");
+  const allergenrankPlotImg = document.getElementById("allergenrank-plot");
   const intensityVolumePlotImg = document.getElementById("analysis-intensity-volume-plot");
 
   const predictOut = document.getElementById("predict-out");
@@ -319,14 +319,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     const blob_hist = await group_hist.blob();
     histogramPlotImg.src = URL.createObjectURL(blob_hist);
 
-    // Heatmap Plot 
-    const plotHeatmap = await fetch(`${API_URL}/analysis/plot_heatmap`, {
+    // Allergen Rank Plot 
+    const plotAllergenRank = await fetch(`${API_URL}/analysis/plot_allergen_rank`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
     });
 
-    if (!plotHeatmap.ok) throw new Error(plotHeatmap.statusText);
-    const blobHeatmap = await plotHeatmap.blob();
-    heatmapPlotImg.src = URL.createObjectURL(blobHeatmap);
+    if (!plotAllergenRank.ok) throw new Error(plotAllergenRank.statusText);
+    const blobAllergenRank = await plotAllergenRank.blob();
+    allergenrankPlotImg.src = URL.createObjectURL(blobAllergenRank);
 
     // Model Predict output 
     const predict = await fetch(`${API_URL}/analysis/predict`, {
