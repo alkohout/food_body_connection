@@ -61,10 +61,11 @@ def model_classification(
             x="allergen",
             y="odds_ratio"
         )
-        plt.axvline(1.0, linestyle="--")  # no-effect line
-        plt.xlabel("Odds Ratio (symptoms within 24h)")
-        plt.ylabel("Allergen")
+        plt.axhline(1.0, linestyle="--")  # no-effect line
+        plt.ylabel("Odds Ratio (symptoms within 24h)")
+        plt.xlabel("Allergen")
         plt.title("Allergens Most Likely to Trigger Symptoms")
+        plt.xticks(rotation=45, ha="right")  # 45 degrees, right-aligned
         plt.tight_layout()
 
         # --- Save to PNG ---
