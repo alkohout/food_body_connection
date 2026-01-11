@@ -17,7 +17,7 @@ def supervised_classification(X,y,method='logistic_regression',params=None):
 
     if method == 'logistic_regression':
         from sklearn.linear_model import LogisticRegression
-        model = LogisticRegression(**params)
+        model = LogisticRegression(**params, solver="liblinear")
     elif method == 'svm':
         from sklearn import svm
         model = svm.SVC(**params, probability=True)
