@@ -12,7 +12,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns       
 import logging
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
+from sklearn.metrics import make_scorer, recall_score
+
 import numpy as np
 import traceback 
 from fastapi import HTTPException
@@ -34,7 +36,6 @@ def model_classification(
         X,y = get_xy(db, allergen_events, symptom_events)
         X = pd.get_dummies(X["allergen_name"])
         y = y['symptom_occurred']
-        
 
         X_train,  X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
         model, fpr,tpr,roc_auc = supervised_classification(X,y,method='logistic_regression')
@@ -44,7 +45,22 @@ def model_classification(
         }
         best_params = param_optimization(model,lr_params,X_train, y_train, X_test, y_test)
         model,roc_auc,recall,samples = supervised_classification(X,y,method='logistic_regression',params=best_params)
-        print('roc_auc %f',roc_auc)
+        cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+        auc_scores = cross_val_score(
+            model, X, y, cv=cv, scoring="roc_auc"
+        )
+
+        recall_scorer = make_scorer(recall_score, pos_label=1)
+
+        recall_scores = cross_val_score(
+            model, X, y, cv=cv, scoring=recall_scorer
+        )
+
+        mean_auc = auc_scores.mean()
+        std_auc = auc_scores.std()
+        mean_recall = recall_scores.mean()
+        std_recall = recall_scores.std()
 
         coefs = model.coef_.ravel()
 
@@ -71,8 +87,8 @@ def model_classification(
 
         performance_text = (
             f"Model performance\n"
-            f"ROC AUC: {roc_auc:.2f}\n"
-            f"Symptom recall: {recall:.2f}\n"
+            f"ROC AUC: {mean_auc:.2f} ± {std_auc:.2f}\n"
+            f"Symptom recall: {mean_recall:.2f} ± {std_recall:.2f}\n"
             f"Samples: {samples:.0f}"
         )
 
