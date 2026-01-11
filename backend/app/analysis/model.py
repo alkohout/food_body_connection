@@ -77,14 +77,14 @@ def model_classification(
         )
 
         plt.text(
-            0.02, 0.98,
+            0.98, 0.98,
             performance_text,
             transform=plt.gca().transAxes,
             fontsize=10,
             verticalalignment="top",
+            horizontalalignment="right",
             bbox=dict(boxstyle="round,pad=0.4", facecolor="white", alpha=0.9)
         )
-
 
         # --- Save to PNG ---
         buf = BytesIO()
