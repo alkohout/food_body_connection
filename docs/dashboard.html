@@ -130,6 +130,25 @@
 
             </p>
             <img id="allergenrank-plot" src="" alt="Allergen Rank Plot" style="width:90%; height:auto;" />
+            <div class="plot-container" style="position: relative;">
+              <img id="allergenrank-plot" src="/analysis/plot_allergen_rank" />
+              <div
+                id="model-info-box"
+                onclick="window.location.href='/docs/model-metrics';"
+                title="Click to learn what these metrics mean"
+                style="
+                  position: absolute;
+                  top: 12px;
+                  right: 12px;
+                  padding: 10px;
+                  cursor: pointer;
+                  background: rgba(255,255,255,0.0);
+                  width: 220px;
+                  height: 120px;
+                "
+              ></div>
+            </div>
+
             <h2>Symptom frequency</h2>
             <img id="analysis-plot" src="" alt="Analysis Plot" style="width:90%; height:auto;" />
             <h2>Grouping symptoms</h2>
