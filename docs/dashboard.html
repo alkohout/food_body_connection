@@ -119,10 +119,20 @@
         <!-- ===================== -->
 
             <h3>Exploratory Plots</h3>
-            <p>Overview of logged allergens and symptoms. Explore these plots to gain insights.</p>
-            <img id="analysis-plot" src="" alt="Analysis Plot" style="width:90%; height:auto;" />
-            <img id="group_histogram" src="" alt="System Group Histogram" style="width:90%; height:auto;" />
+            <p>Overview of logged allergens and symptoms. Explore these plots to gain insights. </p>
+            <h2>Allergen Importance</h2>
+            <p>
+            This plot shows which allergens are most likely to trigger symptoms within 24 hours of exposure. 
+            The bars represent the strength of association, called the "odds ratio," which indicates how much 
+            more likely symptoms are when the allergen is consumed. An odds ratio greater than 1 suggests 
+            the allergen may increase symptom risk, while an odds ratio around 1 indicates little or no effect. 
+            Use this information to explore potential triggers, but remember this shows association, not a diagnosis.
+            </p>
             <img id="allergenrank-plot" src="" alt="Allergen Rank Plot" style="width:90%; height:auto;" />
+            <h2>Symptom frequency</h2>
+            <img id="analysis-plot" src="" alt="Analysis Plot" style="width:90%; height:auto;" />
+            <h2>Grouping symptoms</h2>
+            <img id="group_histogram" src="" alt="System Group Histogram" style="width:90%; height:auto;" />
 
             <label>Using the plots above select and allergen you want to explore deeper:</label>
             <input type="text" id="allergen-intensity-input" autocomplete="off" />

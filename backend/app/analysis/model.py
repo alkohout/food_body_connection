@@ -55,11 +55,11 @@ def model_classification(
 
         # Plot
         plt.figure(figsize=(10, 6))
-        plot_df = allergen_importance.sort_values("odds_ratio", ascending=True)
+        plot_df = allergen_importance.sort_values("odds_ratio", ascending=False)
         sns.barplot(
             data=plot_df,
-            x="odds_ratio",
-            y="allergen"
+            x="allergen",
+            y="odds_ratio"
         )
         plt.axvline(1.0, linestyle="--")  # no-effect line
         plt.xlabel("Odds Ratio (symptoms within 24h)")
@@ -76,7 +76,7 @@ def model_classification(
 
     except Exception as e:
 
-        traceback.print_exc()   # 🔴 THIS IS CRITICAL
+        traceback.print_exc()   
         raise HTTPException(status_code=500, detail=str(e))
 
     # agg = (
