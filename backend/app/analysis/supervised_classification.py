@@ -8,7 +8,7 @@ def supervised_classification(X,y,method='logistic_regression',params=None):
     import matplotlib.pyplot as plt
     from sklearn.model_selection import train_test_split
     from sklearn import metrics
-    from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, auc, classification_report
+    from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, auc, classification_report, recall_score
 
     if params is None:
         params = {}  # default to empty dictionary
@@ -69,6 +69,9 @@ def supervised_classification(X,y,method='logistic_regression',params=None):
     fpr, tpr, _ = metrics.roc_curve(y_test, y_pred_prob_df['class_1_pp'])
     # Find auc
     roc_auc = metrics.auc(fpr, tpr)
+    recall = recall_score(y_test, y_pred, pos_label=1)
+    n_samples = len(y_test)
+
     '''
     # Plot of a ROC curve for class 1 
     plt.figure(figsize=[8,8])
@@ -84,7 +87,7 @@ def supervised_classification(X,y,method='logistic_regression',params=None):
     plt.show()
     '''
     
-    return model,fpr,tpr,roc_auc
+    return model,roc_auc, recall, n_samples
 
 def param_optimization(model,parameters,X_train, y_train, X_test, y_test):
     """
