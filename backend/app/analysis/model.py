@@ -27,6 +27,9 @@ def model_classification(
     symptom_events = get_all_symptom_events_df(db, current_user)
 
     X,y = get_xy(db, allergen_events, symptom_events)
+    X = pd.get_dummies(X["allergen_name"])
+    y = y['symptom_occurred']
+    
 
     X_train,  X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
     model, fpr,tpr,roc_auc = supervised_classification(X,y,method='logistic_regression')
