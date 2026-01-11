@@ -15,6 +15,8 @@ import logging
 from sklearn.model_selection import train_test_split
 import numpy as np
 import traceback 
+from fastapi import HTTPException
+
 
 logger = logging.getLogger("app/analysis/model.py")
 logging.basicConfig(level=logging.INFO)
