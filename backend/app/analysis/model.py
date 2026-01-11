@@ -22,53 +22,59 @@ def model_classification(
     db: Session,
     current_user: int
 ):
+    try:
 
-    allergen_events = get_all_allergen_events_df(db, current_user)
-    symptom_events = get_all_symptom_events_df(db, current_user)
+        allergen_events = get_all_allergen_events_df(db, current_user)
+        symptom_events = get_all_symptom_events_df(db, current_user)
 
-    X,y = get_xy(db, allergen_events, symptom_events)
-    X = pd.get_dummies(X["allergen_name"])
-    y = y['symptom_occurred']
-    
+        X,y = get_xy(db, allergen_events, symptom_events)
+        X = pd.get_dummies(X["allergen_name"])
+        y = y['symptom_occurred']
+        
 
-    X_train,  X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-    model, fpr,tpr,roc_auc = supervised_classification(X,y,method='logistic_regression')
-    lr_params = {
-        'penalty': ['l1'],
-        'C': [1, 10, 100]
-    }
-    best_params = param_optimization(model,lr_params,X_train, y_train, X_test, y_test)
-    model,fpr,tpr,roc_auc = supervised_classification(X,y,method='logistic_regression',params=best_params)
+        X_train,  X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+        model, fpr,tpr,roc_auc = supervised_classification(X,y,method='logistic_regression')
+        lr_params = {
+            'penalty': ['l1'],
+            'C': [1, 10, 100]
+        }
+        best_params = param_optimization(model,lr_params,X_train, y_train, X_test, y_test)
+        model,fpr,tpr,roc_auc = supervised_classification(X,y,method='logistic_regression',params=best_params)
 
-    coefs = model.coef_.ravel()
+        coefs = model.coef_.ravel()
 
-    allergen_importance = pd.DataFrame({
-        "allergen": X.columns,
-        "coefficient": coefs,
-        "odds_ratio": np.exp(coefs)
-    }).sort_values("coefficient", ascending=False)
+        allergen_importance = pd.DataFrame({
+            "allergen": X.columns,
+            "coefficient": coefs,
+            "odds_ratio": np.exp(coefs)
+        }).sort_values("coefficient", ascending=False)
 
 
-    # Plot
-    plt.figure(figsize=(10, 6))
-    plot_df = allergen_importance.sort_values("odds_ratio", ascending=True)
-    sns.barplot(
-        data=plot_df,
-        x="odds_ratio",
-        y="allergen"
-    )
-    plt.axvline(1.0, linestyle="--")  # no-effect line
-    plt.xlabel("Odds Ratio (symptoms within 24h)")
-    plt.ylabel("Allergen")
-    plt.title("Allergens Most Likely to Trigger Symptoms")
-    plt.tight_layout()
+        # Plot
+        plt.figure(figsize=(10, 6))
+        plot_df = allergen_importance.sort_values("odds_ratio", ascending=True)
+        sns.barplot(
+            data=plot_df,
+            x="odds_ratio",
+            y="allergen"
+        )
+        plt.axvline(1.0, linestyle="--")  # no-effect line
+        plt.xlabel("Odds Ratio (symptoms within 24h)")
+        plt.ylabel("Allergen")
+        plt.title("Allergens Most Likely to Trigger Symptoms")
+        plt.tight_layout()
 
-    # --- Save to PNG ---
-    buf = BytesIO()
-    plt.savefig(buf, format="png", bbox_inches="tight")
-    buf.seek(0)
+        # --- Save to PNG ---
+        buf = BytesIO()
+        plt.savefig(buf, format="png", bbox_inches="tight")
+        buf.seek(0)
 
-    return buf
+        return buf
+
+    except Exception as e:
+
+        traceback.print_exc()   # 🔴 THIS IS CRITICAL
+        raise HTTPException(status_code=500, detail=str(e))
 
     # agg = (
     #    df
