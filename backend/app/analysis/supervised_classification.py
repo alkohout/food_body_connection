@@ -9,6 +9,7 @@ def supervised_classification(X,y,method='logistic_regression',params=None):
     from sklearn.model_selection import train_test_split
     from sklearn import metrics
     from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, auc, classification_report
+    import traceback
 
     if params is None:
         params = {}  # default to empty dictionary
