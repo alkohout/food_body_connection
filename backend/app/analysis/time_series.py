@@ -34,12 +34,42 @@ def time_series(db: 'Session', current_user: int, allergen_name: str):
         allergen_events = get_all_allergen_events_df(db, current_user, allergen_name)
         symptom_events = get_all_symptom_events_df(db, current_user)
 
+        symptom_events["days"] = symptom_events["date_time"].dt.floor("D")
+
+        daily_symptoms = (
+            symptom_events
+            .groupby("date_time")
+            .agg(
+                symptom_count=("symptom_id", "count"),
+                mean_severity=("symptom_intensity", "mean")
+            )
+            .reset_index()
+        )
+
+        allergen_events["days"] = allergen_events["date_time"].dt.floor("D")
+
+        exposure_days = allergen_events["days"].unique()
+
+
         # --- Plot ---
         plt.figure(figsize=(10, 6))
-        plt.axhline(1.0, linestyle="--", color="red", alpha=0.7)  # no-effect line
-        plt.ylabel("Symptoms")
-        plt.xlabel("Time")
-        plt.title("Symptoms time series")
+
+        # symptom time series
+        plt.plot(
+            daily_symptoms["days"],
+            daily_symptoms["symptom_count"],
+            label="Symptoms",
+            linewidth=2
+        )
+
+        # allergen exposures
+        for d in exposure_days:
+            plt.axvline(d, linestyle="--", alpha=0.3)
+
+        plt.title(f"Symptoms over time with {allergen_name} exposure")
+        plt.xlabel("Date")
+        plt.ylabel("Symptom count")
+        plt.legend()
         plt.xticks(rotation=45, ha="right")
         plt.tight_layout()
 
