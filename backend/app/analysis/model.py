@@ -97,13 +97,18 @@ def model_classification(db: 'Session', current_user: int):
         plt.xticks(rotation=45, ha="right")
         plt.tight_layout()
 
-        # Performance textbox
+        # Get colors for metrics
+        auc_color = get_color(mean_auc, "auc")
+        recall_color = get_color(mean_recall, "recall")
+        samples_color = get_color(samples, "samples")
+
         performance_text = (
             f"Model performance\n"
-            f"ROC AUC: {mean_auc:.2f} ± {std_auc:.2f}\n"
-            f"Symptom recall: {mean_recall:.2f} ± {std_recall:.2f}\n"
-            f"Samples: {samples}"
+            f"ROC AUC: {mean_auc:.2f} ± {std_auc:.2f} \u25CF {auc_color}\n"
+            f"Symptom recall: {mean_recall:.2f} ± {std_recall:.2f} \u25CF {recall_color}\n"
+            f"Samples: {samples} \u25CF {samples_color}"
         )
+
         plt.text(
             0.98, 0.98,
             performance_text,
@@ -123,3 +128,29 @@ def model_classification(db: 'Session', current_user: int):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+ def get_color(value, metric):
+    """
+    Return traffic light color based on metric thresholds.
+    """
+    if metric == "auc":
+        if value >= 0.75:
+            return "green"
+        elif value >= 0.65:
+            return "orange"
+        else:
+            return "red"
+    elif metric == "recall":
+        if value >= 0.70:
+            return "green"
+        elif value >= 0.55:
+            return "orange"
+        else:
+            return "red"
+    elif metric == "samples":
+        if value >= 200:
+            return "green"
+        elif value >= 75:
+            return "orange"
+        else:
+            return "red"
