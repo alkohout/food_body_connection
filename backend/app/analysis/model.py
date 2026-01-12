@@ -132,14 +132,21 @@ def model_classification(db: 'Session', current_user: int):
                 color=color,  # <--- color the text itself
                 zorder=3
             )
+            plt.text(
+                .98, .9, "Model Performance:",
+                transform=ax.transAxes,
+                fontsize=12,
+                color='black',  # <--- color the text itself
+                zorder=4
+            )
 
             from matplotlib.patches import Rectangle
 
 
             # rectangle behind metrics in top-right corner
             rect = Rectangle(
-                (0.5, 0.5),  # lower-left corner
-                0.5, 0.5,                        # width, height
+                (0.7, 0.7),  # lower-left corner
+                0.3, 0.3,                        # width, height
                 transform=ax.transAxes,
                 color='white',
                 alpha=0.8,
