@@ -106,7 +106,7 @@ def model_classification(db: 'Session', current_user: int):
         from matplotlib.patches import Circle
 
         # Coordinates for the top-right corner
-        x_text = 0.7
+        x_text = 1.0 
         y_start = 0.95
         y_step = 0.05
 
