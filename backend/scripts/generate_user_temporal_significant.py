@@ -81,12 +81,6 @@ def generate_significant_allergen_data(
                     allergen = rng.choice(neutral_objs)
                     symptom_prob = 0.05
                 
-                if allergen in significant_objs:
-                    symptom_prob = 0.9
-                else:
-                    symptom_prob = 0.01
-
-
                 allergen_log = AllergenLog(
                     user_id=user.user_id,
                     date_time=exposure_time,
