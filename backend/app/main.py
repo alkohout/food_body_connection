@@ -13,6 +13,7 @@ import app.api.routes.temporal_stats as temporal_stats
 import app.api.routes.system_group_histogram as system_group_histogram
 import app.api.routes.predict as predict
 import app.api.routes.plot_allergen_rank as plot_allergen_rank
+import app.api.routes.plot_time_series as plot_time_series
 from app.api.routes import units
 from app.api.routes import entries
 
@@ -44,6 +45,7 @@ app.include_router(temporal_stats.router)
 app.include_router(system_group_histogram.router)
 app.include_router(predict.router)
 app.include_router(plot_allergen_rank.router)
+app.include_router(plot_time_series.router)
 
 # Create tables (temporary — later use migrations)
 Base.metadata.create_all(bind=engine)
