@@ -192,7 +192,7 @@ def bootstrap_or_ci(model_cls, X, y, feature_names, params=None, n_boot=1000):
     # convert results to DataFrame
     results_df = pd.DataFrame([
         {
-            "feature": f,
+            "allergen": f,
             "odds_ratio": np.mean(values),
             "ci_lower": np.percentile(values, 2.5),
             "ci_upper": np.percentile(values, 97.5)
