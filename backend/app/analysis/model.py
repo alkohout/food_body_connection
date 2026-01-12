@@ -138,8 +138,8 @@ def model_classification(db: 'Session', current_user: int):
 
             # rectangle behind metrics in top-right corner
             rect = Rectangle(
-                (0.85, 0.85),  # lower-left corner
-                0.4, 0.4,                        # width, height
+                (0.85, 0.85 - len(metrics)*0.05),  # lower-left corner
+                0.8, 0.8,                        # width, height
                 transform=ax.transAxes,
                 color='white',
                 alpha=0.8,
