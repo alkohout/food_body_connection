@@ -111,7 +111,7 @@ def model_classification(db: 'Session', current_user: int):
         y_step = 0.05
 
         metrics = [
-            ("Model Performance:",None,None,None)
+            ("Model Performance:",None,None,None),
             ("ROC AUC", mean_auc, std_auc, get_color(mean_auc, "auc")),
             ("Symptom recall", mean_recall, std_recall, get_color(mean_recall, "recall")),
             ("Samples", samples, None, get_color(samples, "samples"))
