@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.schemas.analyse import X,y
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
 from app.analysis.get_xy import get_xy
-from app.analysis.supervised_classification import supervised_classification, param_optimization
+from app.analysis.supervised_classification import supervised_classification, param_optimization, bootstrap_or_ci
 from io import BytesIO
 import pandas as pd
 import matplotlib
@@ -14,6 +14,7 @@ import seaborn as sns
 import logging
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
 from sklearn.metrics import make_scorer, recall_score
+from sklearn.linear_model import LogisticRegression
 
 import numpy as np
 import traceback 
@@ -38,7 +39,7 @@ def model_classification(
         y = y['symptom_occurred']
 
         X_train,  X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-        model, fpr,tpr,roc_auc = supervised_classification(X,y,method='logistic_regression')
+        model, roc_auc, recall, samples = supervised_classification(X,y,method='logistic_regression')
         lr_params = {
             'penalty': ['l1'],
             'C': [1, 10, 100]
@@ -70,14 +71,43 @@ def model_classification(
             "odds_ratio": np.exp(coefs)
         }).sort_values("coefficient", ascending=False)
 
+        or_results = bootstrap_or_ci(
+            model_cls=LogisticRegression,
+            X=X,
+            y=y,
+            feature_names=X.columns,
+            params=best_params,
+            n_boot=500
+        )
+
+
         # Plot
         plt.figure(figsize=(10, 6))
-        plot_df = allergen_importance.sort_values("odds_ratio", ascending=False)
-        sns.barplot(
+        plot_df = (
+            allergen_importance
+            .merge(or_results, on="allergen", how="inner")
+            .sort_values("odds_ratio", ascending=False)
+        )
+        plot_df["err_lower"] = plot_df["odds_ratio"] - plot_df["ci_lower"]
+        plot_df["err_upper"] = plot_df["ci_upper"] - plot_df["odds_ratio"]
+
+        ax = sns.barplot(
             data=plot_df,
             x="allergen",
             y="odds_ratio"
         )
+
+        ax.errorbar(
+            x=range(len(plot_df)),
+            y=plot_df["odds_ratio"],
+            yerr=[plot_df["err_lower"], plot_df["err_upper"]],
+            fmt="none",
+            ecolor="black",
+            elinewidth=1.5,
+            capsize=4
+        )
+
+        plt.axhline(1.0, linestyle="--", color="red", alpha=0.7)
         plt.axhline(1.0, linestyle="--")  # no-effect line
         plt.ylabel("Odds Ratio (symptoms within 24h)")
         plt.xlabel("Allergen")

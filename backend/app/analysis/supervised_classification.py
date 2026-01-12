@@ -168,3 +168,27 @@ def predictions(X,y,model):
     
     return model,fpr,tpr,roc_auc
     
+import numpy as np
+
+def bootstrap_or_ci(model_cls, X, y, feature_names, params=None, n_boot=1000):
+    ors = {f: [] for f in feature_names}
+
+    for _ in range(n_boot):
+        idx = np.random.choice(len(X), len(X), replace=True)
+        X_b = X.iloc[idx]
+        y_b = y.iloc[idx]
+
+        model = model_cls(**(params or {}))
+        model.fit(X_b, y_b)
+
+        for f, coef in zip(feature_names, model.coef_[0]):
+            ors[f].append(np.exp(coef))
+
+    results = {}
+    for f, values in ors.items():
+        results[f] = {
+            "OR": np.mean(values),
+            "CI": np.percentile(values, [2.5, 97.5])
+        }
+
+    return results
