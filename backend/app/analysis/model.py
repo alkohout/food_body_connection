@@ -132,13 +132,20 @@ def model_classification(db: 'Session', current_user: int):
                 color=color  # <--- color the text itself
             )
 
-            plt.gca().add_patch(
-            plt.Rectangle(
-                (0.7, 0.7), 0.5, 0.5,
-                transform=ax.transAxes, color='white', alpha=0.9, zorder=0
-            )
-)
+            from matplotlib.patches import Rectangle
 
+            # Create rectangle patch
+            rect = Rectangle(
+                (0.7, 0.7),    # lower-left corner in axes coordinates
+                0.25, 0.15,    # width, height
+                transform=ax.transAxes,  # use axes coords (0-1)
+                color='white',
+                alpha=0.9,
+                zorder=0
+            )
+
+            # Add patch to axes
+            ax.add_patch(rect)
 
         # Save to buffer
         buf = BytesIO()
