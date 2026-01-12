@@ -1,55 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Model Metrics Guide</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      line-height: 1.6;
-      margin: 20px;
-      max-width: 800px;
-    }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Food–Body Connection | Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" type="image/png" href="assets/images/background.png">
+  <link rel="apple-touch-icon" href="/food_body_connection/assets/images/background_iphone.png">
 
-    h1, h2 {
-      color: #333;
-    }
-
-    hr {
-      margin: 20px 0;
-    }
-
-    ul {
-      list-style: none;
-      padding-left: 0;
-    }
-
-    li {
-      margin-bottom: 15px;
-    }
-
-    .indicator {
-      font-size: 1.2em;
-      margin-left: 8px;
-      vertical-align: middle;
-    }
-
-    .green { color: #2e7d32; }
-    .orange { color: #ef6c00; }
-    .red { color: #c62828; }
-
-    .metric-title {
-      font-weight: bold;
-    }
-
-    .metric-description {
-      margin-left: 20px;
-      color: #555;
-    }
-  </style>
 </head>
 <body>
+  <main class="container">
+
+    <header class="dashboard-header">
+      <h1>Model Metrics Guide</h1>
+      <p id="user-email" class="subtle"></p>
+      <button id="logout-btn" class="secondary">Log out</button>
+    </header>
+
   <h1>Understanding Model Performance</h1>
 
   <p>
