@@ -129,7 +129,7 @@ def model_classification(db: 'Session', current_user: int):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
- def get_color(value, metric):
+def get_color(value, metric):
     """
     Return traffic light color based on metric thresholds.
     """
