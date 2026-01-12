@@ -1,0 +1,48 @@
+<h1>Model performance</h1>
+
+<p>
+This model analyses your logged allergen and symptom history to identify
+patterns. It does <strong>not</strong> diagnose medical causes.
+Results should be interpreted as guidance, not certainty.
+</p>
+
+<hr />
+
+<h2>Overall performance</h2>
+
+<ul>
+  <li>
+    <strong>ROC AUC:</strong> 0.78 ± 0.04
+    <span class="indicator green">●</span><br />
+    <small>
+      The model separates likely vs unlikely allergens well.
+    </small>
+  </li>
+
+  <li>
+    <strong>Symptom recall:</strong> 0.72 ± 0.06
+    <span class="indicator green">●</span><br />
+    <small>
+      Most symptom-associated allergens are captured.
+    </small>
+  </li>
+
+  <li>
+    <strong>Samples:</strong> 134
+    <span class="indicator orange">●</span><br />
+    <small>
+      Moderate data volume — patterns are emerging but still evolving.
+    </small>
+  </li>
+</ul>
+
+<hr />
+
+<h2>What do these colours mean?</h2>
+
+<ul>
+  <li><span class="indicator green">●</span> Strong, reliable signal</li>
+  <li><span class="indicator orange">●</span> Some signal, interpret cautiously</li>
+  <li><span class="indicator red">●</span> Weak or insufficient data</li>
+</ul>
+
