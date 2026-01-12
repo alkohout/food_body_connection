@@ -106,7 +106,7 @@ def model_classification(db: 'Session', current_user: int):
 
         # Coordinates for the top-right corner
         x_text = 0.95 
-        y_start = 0.92
+        y_start = 0.91
         y_step = 0.06
 
         metrics = [
@@ -133,7 +133,7 @@ def model_classification(db: 'Session', current_user: int):
                 zorder=3
             )
             plt.text(
-                .67, .955, "Model Performance:",
+                .67, .945, "Model Performance:",
                 transform=ax.transAxes,
                 fontsize=12,
                 color='black',  # <--- color the text itself
@@ -145,8 +145,8 @@ def model_classification(db: 'Session', current_user: int):
 
             # rectangle behind metrics in top-right corner
             rect = Rectangle(
-                (0.65, 0.65),  # lower-left corner
-                0.35, 0.35,                        # width, height
+                (0.65, 0.75),  # lower-left corner
+                0.35, 0.25,                        # width, height
                 transform=ax.transAxes,
                 color='white',
                 alpha=0.8,
