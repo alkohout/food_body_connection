@@ -130,6 +130,7 @@ def model_classification(db: 'Session', current_user: int):
                 verticalalignment="top",
                 horizontalalignment="right",
                 color=color  # <--- color the text itself
+                zorder=3
             )
 
             from matplotlib.patches import Rectangle
@@ -142,7 +143,7 @@ def model_classification(db: 'Session', current_user: int):
                 transform=ax.transAxes,
                 color='white',
                 alpha=0.8,
-                zorder=0
+                zorder=2
             )
 
             # Add patch to axes
