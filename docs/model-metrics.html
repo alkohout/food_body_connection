@@ -40,6 +40,7 @@
       </div>
     </li>
 
+    <p></p>
     <li>
       <span class="metric-title">Symptom Recall</span>: the proportion of symptom-linked allergens the model correctly identifies.
       <div class="metric-description">
@@ -49,6 +50,7 @@
       </div>
     </li>
 
+    <p></p>
     <li>
       <span class="metric-title">Sample Size</span>: the number of logged allergen–symptom events used by the model.
       <div class="metric-description">
@@ -73,5 +75,22 @@
   <p>
     <em>Note:</em> Variability (±) in metrics indicates model performance across different subsets of your data. More data and consistent logging improve reliability.
   </p>
+  <hr />
+
+<h2>Understanding Confidence Intervals</h2>
+<p>
+Many metrics, like <strong>ROC AUC</strong> and <strong>Symptom Recall</strong>, are reported with a ± value (e.g., 0.78 ± 0.04). This represents a <strong>confidence interval</strong>, which shows how much the metric varies across different subsets of your data.
+</p>
+
+<ul>
+  <li><strong>Narrow intervals (small ± value)</strong>: The model’s performance is consistent — results are more reliable.</li>
+  <li><strong>Wide intervals (large ± value)</strong>: The model’s performance varies more depending on which data is used — interpret with caution.</li>
+  <li>In your plots, the <strong>error bars</strong> on allergen odds ratios show a similar concept: longer bars indicate greater uncertainty in how strongly a particular allergen is associated with symptoms.</li>
+</ul>
+
+<p>
+In practice, confidence intervals help you understand not just the average performance, but also the <em>certainty</em> of that performance. Metrics with green traffic-light colors and narrow intervals are the most trustworthy, while metrics with orange/red colors or wide intervals should be interpreted cautiously.
+</p>
+
 </body>
 </html>
