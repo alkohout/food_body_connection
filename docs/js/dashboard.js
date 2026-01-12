@@ -288,7 +288,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       );
       if (!res_ts.ok) throw new Error(res_ts.statusText);
-        const blob_ts = await res.blob_ts();
+        const blob_ts = await res_ts.blob();
         timeSeriesPlotImg.src = URL.createObjectURL(blob_ts);
 
     } catch (err) {
