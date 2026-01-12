@@ -134,13 +134,14 @@ def model_classification(db: 'Session', current_user: int):
 
             from matplotlib.patches import Rectangle
 
-            # Create rectangle patch
+
+            # rectangle behind metrics in top-right corner
             rect = Rectangle(
-                (0.7, 0.7),    # lower-left corner in axes coordinates
-                0.25, 0.15,    # width, height
-                transform=ax.transAxes,  # use axes coords (0-1)
+                (0.94, 0.92 - len(metrics)*0.05),  # lower-left corner
+                0.28, 0.16,                        # width, height
+                transform=ax.transAxes,
                 color='white',
-                alpha=0.9,
+                alpha=0.8,
                 zorder=0
             )
 
