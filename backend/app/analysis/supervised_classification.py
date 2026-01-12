@@ -168,34 +168,38 @@ def predictions(X,y,model):
     
     return model,fpr,tpr,roc_auc
     
-import numpy as np
-
 def bootstrap_or_ci(model_cls, X, y, feature_names, params=None, n_boot=1000):
-    ors = {f: [] for f in feature_names}
-
     import numpy as np
     import pandas as pd
-    coefs_boot = []
 
+    ors = {f: [] for f in feature_names}
     params = params or {}
 
     for _ in range(n_boot):
+        # bootstrap sample
         idx = np.random.choice(len(X), len(X), replace=True)
         X_b = X.iloc[idx]
         y_b = y.iloc[idx]
 
+        # enforce solver for L1
         solver = 'liblinear' if params.get('penalty') == 'l1' else 'lbfgs'
-        model = model_cls(**(params or {}),solver=solver)
+        model = model_cls(**params, solver=solver)
         model.fit(X_b, y_b)
 
         for f, coef in zip(feature_names, model.coef_[0]):
             ors[f].append(np.exp(coef))
 
-    results = {}
-    for f, values in ors.items():
-        results[f] = {
-            "OR": np.mean(values),
-            "CI": np.percentile(values, [2.5, 97.5])
+    # convert results to DataFrame
+    results_df = pd.DataFrame([
+        {
+            "feature": f,
+            "odds_ratio": np.mean(values),
+            "ci_lower": np.percentile(values, 2.5),
+            "ci_upper": np.percentile(values, 97.5)
         }
+        for f, values in ors.items()
+    ])
 
-    return results
+    # sort by odds ratio descending
+    results_df = results_df.sort_values("odds_ratio", ascending=False).reset_index(drop=True)
+    return results_df
