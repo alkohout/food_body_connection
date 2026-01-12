@@ -275,21 +275,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         `${API_URL}/analysis/intensity_volume?allergen_name=${encodeURIComponent(allergenName)}`,
         { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
       );
-
       if (!res.ok) throw new Error(res.statusText);
-      const blob = await res.blob();
-      intensityVolumePlotImg.src = URL.createObjectURL(blob);
+        const blob = await res.blob();
+        intensityVolumePlotImg.src = URL.createObjectURL(blob);
+
+      const res_ts = await fetch(
+        `${API_URL}/analysis/plot_time_series?allergen_name=${encodeURIComponent(allergenName)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`
+          }
+        }
+      );
+      if (!res_ts.ok) throw new Error(res_ts.statusText);
+        const blob_ts = await res.blob_ts();
+        timeSeriesPlotImg.src = URL.createObjectURL(blob_ts);
+
     } catch (err) {
       console.error(err);
     }
-      const res_ts = await fetch(
-        `${API_URL}/analysis/time_series?allergen_name=${encodeURIComponent(allergenName)}`,
-        { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
-      );
-      if (!res_ts.ok) throw new Error(res_ts.statusText);
-      const blob_ts = await res.blob_ts();
-      timeSeriesPlotImg.src = URL.createObjectURL(blob_ts);
-
     await fetchTemporalStats(allergenName);
   });
 
