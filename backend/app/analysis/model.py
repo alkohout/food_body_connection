@@ -72,7 +72,7 @@ def model_classification(
         }).sort_values("coefficient", ascending=False)
 
         or_results = bootstrap_or_ci(
-            model_cls=LogisticRegression(solver="liblinear", penalty="l1", **params),
+            model_cls=LogisticRegression(solver="liblinear", penalty="l1"),
             X=X,
             y=y,
             feature_names=X.columns,
