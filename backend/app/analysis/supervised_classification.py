@@ -205,11 +205,12 @@ def bootstrap_or_ci(model_cls, X, y, feature_names, params=None, n_boot=500, min
     results_df = pd.DataFrame([
         {
             "allergen": f,
-            "odds_ratio": np.mean(values),
-            "ci_lower": np.percentile(values, 2.5),
-            "ci_upper": np.percentile(values, 97.5)
+            "odds_ratio": np.mean(values) if len(values) > 0 else np.nan,
+            "ci_lower": np.percentile(values, 2.5) if len(values) > 0 else np.nan,
+            "ci_upper": np.percentile(values, 97.5) if len(values) > 0 else np.nan
         }
         for f, values in ors.items()
+        if len(values) > 0
     ])
 
     # Optional: clip ORs for readability
