@@ -106,11 +106,12 @@ def model_classification(db: 'Session', current_user: int):
         from matplotlib.patches import Circle
 
         # Coordinates for the top-right corner
-        x_text = 1.0
-        y_start = 0.98
+        x_text = 0.8
+        y_start = 0.95
         y_step = 0.05
 
         metrics = [
+            ("Model Performance:",None,None,None)
             ("ROC AUC", mean_auc, std_auc, get_color(mean_auc, "auc")),
             ("Symptom recall", mean_recall, std_recall, get_color(mean_recall, "recall")),
             ("Samples", samples, None, get_color(samples, "samples"))
