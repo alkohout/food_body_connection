@@ -1,48 +1,109 @@
-<h1>Model performance</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Model Metrics Guide</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 20px;
+      max-width: 800px;
+    }
 
-<p>
-This model analyses your logged allergen and symptom history to identify
-patterns. It does <strong>not</strong> diagnose medical causes.
-Results should be interpreted as guidance, not certainty.
-</p>
+    h1, h2 {
+      color: #333;
+    }
 
-<hr />
+    hr {
+      margin: 20px 0;
+    }
 
-<h2>Overall performance</h2>
+    ul {
+      list-style: none;
+      padding-left: 0;
+    }
 
-<ul>
-  <li>
-    <strong>ROC AUC:</strong> 0.78 ± 0.04
-    <span class="indicator green">●</span><br />
-    <small>
-      The model separates likely vs unlikely allergens well.
-    </small>
-  </li>
+    li {
+      margin-bottom: 15px;
+    }
 
-  <li>
-    <strong>Symptom recall:</strong> 0.72 ± 0.06
-    <span class="indicator green">●</span><br />
-    <small>
-      Most symptom-associated allergens are captured.
-    </small>
-  </li>
+    .indicator {
+      font-size: 1.2em;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
 
-  <li>
-    <strong>Samples:</strong> 134
-    <span class="indicator orange">●</span><br />
-    <small>
-      Moderate data volume — patterns are emerging but still evolving.
-    </small>
-  </li>
-</ul>
+    .green { color: #2e7d32; }
+    .orange { color: #ef6c00; }
+    .red { color: #c62828; }
 
-<hr />
+    .metric-title {
+      font-weight: bold;
+    }
 
-<h2>What do these colours mean?</h2>
+    .metric-description {
+      margin-left: 20px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>Understanding Model Performance</h1>
 
-<ul>
-  <li><span class="indicator green">●</span> Strong, reliable signal</li>
-  <li><span class="indicator orange">●</span> Some signal, interpret cautiously</li>
-  <li><span class="indicator red">●</span> Weak or insufficient data</li>
-</ul>
+  <p>
+    This guide explains how to interpret the performance of the allergen ranking model. 
+    The model analyses your logged allergen and symptom data to highlight potential patterns. 
+    It is a tool for guidance, not a medical diagnosis.
+  </p>
 
+  <hr />
+
+  <h2>Metrics and Interpretation</h2>
+
+  <ul>
+    <li>
+      <span class="metric-title">ROC AUC</span>: measures the model's ability to distinguish likely from unlikely allergens.
+      <div class="metric-description">
+        <span class="indicator green">●</span> ≥ 0.75: Good – strong separation<br>
+        <span class="indicator orange">●</span> 0.65 – 0.74: Moderate – some useful signal<br>
+        <span class="indicator red">●</span> < 0.65: Weak – limited reliability
+      </div>
+    </li>
+
+    <li>
+      <span class="metric-title">Symptom Recall</span>: the proportion of symptom-linked allergens the model correctly identifies.
+      <div class="metric-description">
+        <span class="indicator green">●</span> ≥ 0.70: Good – most triggers captured<br>
+        <span class="indicator orange">●</span> 0.55 – 0.69: Moderate – some triggers may be missed<br>
+        <span class="indicator red">●</span> < 0.55: Low – use results with caution
+      </div>
+    </li>
+
+    <li>
+      <span class="metric-title">Sample Size</span>: the number of logged allergen–symptom events used by the model.
+      <div class="metric-description">
+        <span class="indicator green">●</span> ≥ 200: Good – reliable patterns<br>
+        <span class="indicator orange">●</span> 75 – 199: Moderate – patterns emerging<br>
+        <span class="indicator red">●</span> < 75: Low – preliminary, results may be unstable
+      </div>
+    </li>
+  </ul>
+
+  <hr />
+
+  <h2>Traffic Light Summary</h2>
+  <p>
+    <span class="indicator green">●</span> Strong / reliable<br>
+    <span class="indicator orange">●</span> Moderate / interpret cautiously<br>
+    <span class="indicator red">●</span> Weak / limited confidence
+  </p>
+
+  <hr />
+
+  <p>
+    <em>Note:</em> Variability (±) in metrics indicates model performance across different subsets of your data. More data and consistent logging improve reliability.
+  </p>
+</body>
+</html>
