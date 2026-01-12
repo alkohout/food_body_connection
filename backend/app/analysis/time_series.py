@@ -1,30 +1,3 @@
-     
-from app.models.table_class import User   
-from sqlalchemy.orm import Session
-from app.schemas.analyse import X,y
-from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
-from app.analysis.get_xy import get_xy
-from app.analysis.supervised_classification import supervised_classification, param_optimization, bootstrap_or_ci
-from io import BytesIO
-import pandas as pd
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import seaborn as sns       
-import logging
-from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
-from sklearn.metrics import make_scorer, recall_score
-from sklearn.linear_model import LogisticRegression
-
-import numpy as np
-import traceback 
-from fastapi import HTTPException
-import pandas as pd
-import statsmodels.api as sm
-
-logger = logging.getLogger("app/analysis/time_series.py")
-logging.basicConfig(level=logging.INFO)
-
 def time_series(db: 'Session', current_user: int, allergen_name: str):
     """
     Basic time series plot.
@@ -34,11 +7,14 @@ def time_series(db: 'Session', current_user: int, allergen_name: str):
         allergen_events = get_all_allergen_events_df(db, current_user, allergen_name)
         symptom_events = get_all_symptom_events_df(db, current_user)
 
+        # Floor to days
         symptom_events["days"] = symptom_events["date_time"].dt.floor("D")
+        allergen_events["days"] = allergen_events["date_time"].dt.floor("D")
 
+        # --- Aggregate symptoms per day ---
         daily_symptoms = (
             symptom_events
-            .groupby("date_time")
+            .groupby("days")
             .agg(
                 symptom_count=("symptom_id", "count"),
                 mean_severity=("symptom_intensity", "mean")
@@ -46,15 +22,26 @@ def time_series(db: 'Session', current_user: int, allergen_name: str):
             .reset_index()
         )
 
-        allergen_events["days"] = allergen_events["date_time"].dt.floor("D")
+        # --- Ensure continuous date range ---
+        full_days = pd.date_range(
+            start=daily_symptoms["days"].min(),
+            end=daily_symptoms["days"].max(),
+            freq="D"
+        )
+
+        daily_symptoms = (
+            daily_symptoms
+            .set_index("days")
+            .reindex(full_days, fill_value=0)
+            .rename_axis("days")
+            .reset_index()
+        )
 
         exposure_days = allergen_events["days"].unique()
-
 
         # --- Plot ---
         plt.figure(figsize=(10, 6))
 
-        # symptom time series
         plt.plot(
             daily_symptoms["days"],
             daily_symptoms["symptom_count"],
@@ -62,7 +49,6 @@ def time_series(db: 'Session', current_user: int, allergen_name: str):
             linewidth=2
         )
 
-        # allergen exposures
         for d in exposure_days:
             plt.axvline(d, linestyle="--", alpha=0.3)
 
@@ -73,9 +59,9 @@ def time_series(db: 'Session', current_user: int, allergen_name: str):
         plt.xticks(rotation=45, ha="right")
         plt.tight_layout()
 
-        # Save to buffer
         buf = BytesIO()
         plt.savefig(buf, format="png", bbox_inches="tight")
+        plt.close()
         buf.seek(0)
         return buf
 
