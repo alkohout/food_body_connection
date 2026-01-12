@@ -1,3 +1,17 @@
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import logging
+from sqlalchemy.orm import Session
+from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
+import traceback 
+from fastapi import HTTPException
+import pandas as pd
+from io import BytesIO
+
+logger = logging.getLogger("app/analysis/time_series.py")
+logging.basicConfig(level=logging.INFO)
+
 def time_series(db: 'Session', current_user: int, allergen_name: str):
     """
     Basic time series plot.
@@ -67,4 +81,5 @@ def time_series(db: 'Session', current_user: int, allergen_name: str):
 
     except Exception as e:
         traceback.print_exc()
+        logger.exception("Error generating time series plot")
         raise HTTPException(status_code=500, detail=str(e))
