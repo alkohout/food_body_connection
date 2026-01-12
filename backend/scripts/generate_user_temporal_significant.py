@@ -60,6 +60,8 @@ def generate_significant_allergen_data(
             for _ in range(n_entries):
                 if day_offset % 3 == 0:  # every 3rd day
                     allergen = random.choice(neutral_allergens)
+                    symptom_chance_before = 0.05
+                    symptom_chance_after = 0.1
                 elif random.random() < 0.6:  # ~60% chance of significant allergen
                     allergen = random.choice(significant_allergen_objs)
                     symptom_chance_before = 0.1  # Before exposure
@@ -68,6 +70,7 @@ def generate_significant_allergen_data(
                     allergen = random.choice(neutral_allergens)
                     symptom_chance_before = 0.05
                     symptom_chance_after = 0.1
+
 
                 unit = random.choice(units)
                 quantity = random.randint(1, 5)
