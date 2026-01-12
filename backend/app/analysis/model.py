@@ -134,7 +134,7 @@ def model_classification(db: 'Session', current_user: int):
 
             plt.gca().add_patch(
             plt.Rectangle(
-                (0.8, 0.8), 0.3, 0.3,
+                (0.7, 0.7), 0.5, 0.5,
                 transform=ax.transAxes, color='white', alpha=0.9, zorder=0
             )
 )
