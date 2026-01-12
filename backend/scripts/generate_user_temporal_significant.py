@@ -76,7 +76,7 @@ def generate_significant_allergen_data(
                 # Decide allergen type
                 if rng.random() < 0.4:
                     allergen = rng.choice(significant_objs)
-                    symptom_prob = 0.65
+                    symptom_prob = 0.9
                 else:
                     allergen = rng.choice(neutral_objs)
                     symptom_prob = 0.05
