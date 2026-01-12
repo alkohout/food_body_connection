@@ -63,13 +63,6 @@ def model_classification(
         mean_recall = recall_scores.mean()
         std_recall = recall_scores.std()
 
-        coefs = model.coef_.ravel()
-
-        allergen_importance = pd.DataFrame({
-            "allergen": X.columns,
-            "coefficient": coefs,
-        }).sort_values("coefficient", ascending=False)
-
         or_results = bootstrap_or_ci(
             model_cls=LogisticRegression,
             X=X,
@@ -82,11 +75,7 @@ def model_classification(
 
         # Plot
         plt.figure(figsize=(10, 6))
-        plot_df = (
-            allergen_importance
-            .merge(or_results, on="allergen", how="inner")
-            .sort_values("odds_ratio", ascending=False)
-        )
+        plot_df = or_results.sort_values("odds_ratio", ascending=False)
         plot_df["err_lower"] = plot_df["odds_ratio"] - plot_df["ci_lower"]
         plot_df["err_upper"] = plot_df["ci_upper"] - plot_df["odds_ratio"]
 
