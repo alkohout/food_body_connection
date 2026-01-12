@@ -129,7 +129,7 @@ def model_classification(db: 'Session', current_user: int):
                 fontsize=12,
                 verticalalignment="top",
                 horizontalalignment="right",
-                color=color  # <--- color the text itself
+                color=color,  # <--- color the text itself
                 zorder=3
             )
 
