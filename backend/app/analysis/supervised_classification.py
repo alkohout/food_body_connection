@@ -173,12 +173,19 @@ import numpy as np
 def bootstrap_or_ci(model_cls, X, y, feature_names, params=None, n_boot=1000):
     ors = {f: [] for f in feature_names}
 
+    import numpy as np
+    import pandas as pd
+    coefs_boot = []
+
+    params = params or {}
+
     for _ in range(n_boot):
         idx = np.random.choice(len(X), len(X), replace=True)
         X_b = X.iloc[idx]
         y_b = y.iloc[idx]
 
-        model = model_cls(**(params or {}))
+        solver = 'liblinear' if params.get('penalty') == 'l1' else 'lbfgs'
+        model = model_cls(**(params or {}),solver=solver)
         model.fit(X_b, y_b)
 
         for f, coef in zip(feature_names, model.coef_[0]):
