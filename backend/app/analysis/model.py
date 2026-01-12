@@ -111,37 +111,34 @@ def model_classification(db: 'Session', current_user: int):
         y_step = 0.05
 
         metrics = [
-            ("ROC AUC", mean_auc, std_auc, get_color(mean_auc, "auc")),
-            ("Symptom recall", mean_recall, std_recall, get_color(mean_recall, "recall")),
-            ("Samples", samples, None, get_color(samples, "samples"))
+            ("ROC AUC", mean_auc, std_auc, auc_color),
+            ("Symptom recall", mean_recall, std_recall, recall_color),
+            ("Samples", samples, None, samples_color)
         ]
 
-        # Optional background box
-        ax.add_patch(
-            plt.Rectangle((0.96, 0.92 - len(metrics)*0.05), 0.25, 0.16,
-                        transform=ax.transAxes, color='white', alpha=0.9, zorder=1)
-        )
-
         for i, (name, val, std, color) in enumerate(metrics):
-            y = y_start - i*y_step
+            y = y_start - i * y_step
             
-            # Draw colored circle
-            circle = Circle((x_text, y), 0.008, transform=ax.transAxes, color=color, zorder=2)
-            ax.add_patch(circle)
-            
-            # Add the text next to circle
             if std is not None:
                 text = f"{name}: {val:.2f} ± {std:.2f}"
             else:
                 text = f"{name}: {val}"
+            
             plt.text(
-                x_text + 0.02, y, text,
+                x_text, y, text,
                 transform=ax.transAxes,
                 fontsize=12,
-                verticalalignment="center",
-                horizontalalignment="left",
-                zorder=3
+                verticalalignment="top",
+                horizontalalignment="right",
+                color=color  # <--- color the text itself
             )
+
+            plt.gca().add_patch(
+            plt.Rectangle(
+                (0.95, 0.92 - len(metrics)*0.05), 0.28, 0.16,
+                transform=ax.transAxes, color='white', alpha=0.8, zorder=0
+            )
+)
 
 
         # Save to buffer
