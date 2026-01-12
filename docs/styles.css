@@ -195,3 +195,11 @@ button.primary {
   font-weight: 500;
 }
 
+.indicator {
+  font-size: 1.2em;
+  margin-left: 6px;
+}
+
+.green { color: #2e7d32; }
+.orange { color: #ef6c00; }
+.red { color: #c62828; }
