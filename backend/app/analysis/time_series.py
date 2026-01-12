@@ -30,6 +30,7 @@ def time_series(db: 'Session', current_user: int, allergen_name: str):
             symptom_events
             .groupby("days")
             .agg(
+                burden=("symptom_intensity", "sum"),
                 symptom_count=("symptom_id", "count"),
                 mean_severity=("symptom_intensity", "mean")
             )
@@ -50,28 +51,59 @@ def time_series(db: 'Session', current_user: int, allergen_name: str):
             .rename_axis("days")
             .reset_index()
         )
-
+        
         exposure_days = allergen_events["days"].unique()
 
-        # --- Plot ---
-        plt.figure(figsize=(10, 6))
+        volumes = allergen_events["volume"].astype(float)
 
-        plt.plot(
+        # scale marker sizes (tweak 50–500 as needed)
+        marker_sizes = 50 + 450 * (volumes / volumes.max())
+
+
+        # --- Plot ---
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax2 = ax.twinx()
+
+        # Symptom burden (left axis)
+        ax.plot(
             daily_symptoms["days"],
-            daily_symptoms["symptom_count"],
-            label="Symptoms",
-            linewidth=2
+            daily_symptoms["burden"],
+            label="Symptom burden",
+            linewidth=2,
+            color="tab:blue"
+)
+
+        # Exposure timing lines
+        for d in exposure_days:
+            ax.axvline(d, linestyle="--", alpha=0.2)
+
+        # Exposure volumes (right axis)
+        volumes = allergen_events["volume"].astype(float)
+        marker_sizes = 50 + 450 * (volumes / volumes.max())
+
+        ax2.scatter(
+            allergen_events["days"],
+            volumes,
+            s=marker_sizes,
+            alpha=0.6,
+            color="tab:orange",
+            label="Exposure volume"
         )
 
-        for d in exposure_days:
-            plt.axvline(d, linestyle="--", alpha=0.3)
+        # Labels & titles
+        ax.set_title(f"Symptoms over time with {allergen_name} exposure")
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Symptom burden")
+        ax2.set_ylabel("Allergen volume")
 
-        plt.title(f"Symptoms over time with {allergen_name} exposure")
-        plt.xlabel("Date")
-        plt.ylabel("Symptom count")
-        plt.legend()
-        plt.xticks(rotation=45, ha="right")
-        plt.tight_layout()
+        ax.tick_params(axis="x", rotation=45)
+
+        # Combined legend
+        lines, labels = ax.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax.legend(lines + lines2, labels + labels2, loc="upper left")
+
+        fig.tight_layout()
 
         buf = BytesIO()
         plt.savefig(buf, format="png", bbox_inches="tight")
