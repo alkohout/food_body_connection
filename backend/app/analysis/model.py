@@ -68,7 +68,6 @@ def model_classification(
         allergen_importance = pd.DataFrame({
             "allergen": X.columns,
             "coefficient": coefs,
-            "odds_ratio": np.exp(coefs)
         }).sort_values("coefficient", ascending=False)
 
         or_results = bootstrap_or_ci(
