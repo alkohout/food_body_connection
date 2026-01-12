@@ -102,22 +102,47 @@ def model_classification(db: 'Session', current_user: int):
         recall_color = get_color(mean_recall, "recall")
         samples_color = get_color(samples, "samples")
 
-        performance_text = (
-            f"Model performance\n"
-            f"ROC AUC: {mean_auc:.2f} ± {std_auc:.2f} \u25CF {auc_color}\n"
-            f"Symptom recall: {mean_recall:.2f} ± {std_recall:.2f} \u25CF {recall_color}\n"
-            f"Samples: {samples} \u25CF {samples_color}"
+
+        from matplotlib.patches import Circle
+
+        # Coordinates for the top-right corner
+        x_text = 1.0
+        y_start = 0.98
+        y_step = 0.05
+
+        metrics = [
+            ("ROC AUC", mean_auc, std_auc, get_color(mean_auc, "auc")),
+            ("Symptom recall", mean_recall, std_recall, get_color(mean_recall, "recall")),
+            ("Samples", samples, None, get_color(samples, "samples"))
+        ]
+
+        # Optional background box
+        ax.add_patch(
+            plt.Rectangle((0.96, 0.92 - len(metrics)*0.05), 0.25, 0.16,
+                        transform=ax.transAxes, color='white', alpha=0.9, zorder=1)
         )
 
-        plt.text(
-            0.98, 0.98,
-            performance_text,
-            transform=plt.gca().transAxes,
-            fontsize=10,
-            verticalalignment="top",
-            horizontalalignment="right",
-            bbox=dict(boxstyle="round,pad=0.4", facecolor="white", alpha=0.9)
-        )
+        for i, (name, val, std, color) in enumerate(metrics):
+            y = y_start - i*y_step
+            
+            # Draw colored circle
+            circle = Circle((x_text, y), 0.008, transform=ax.transAxes, color=color, zorder=2)
+            ax.add_patch(circle)
+            
+            # Add the text next to circle
+            if std is not None:
+                text = f"{name}: {val:.2f} ± {std:.2f}"
+            else:
+                text = f"{name}: {val}"
+            plt.text(
+                x_text + 0.02, y, text,
+                transform=ax.transAxes,
+                fontsize=10,
+                verticalalignment="center",
+                horizontalalignment="left",
+                zorder=3
+            )
+
 
         # Save to buffer
         buf = BytesIO()
