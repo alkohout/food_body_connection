@@ -46,6 +46,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const histogramPlotImg = document.getElementById("group_histogram");
   const allergenrankPlotImg = document.getElementById("allergenrank-plot");
   const intensityVolumePlotImg = document.getElementById("analysis-intensity-volume-plot");
+  const timeSeriesPlotImg = document.getElementById("analysis-time-series-plot");
 
   const predictOut = document.getElementById("predict-out");
 
@@ -281,6 +282,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (err) {
       console.error(err);
     }
+      const res_ts = await fetch(
+        `${API_URL}/analysis/time_series?allergen_name=${encodeURIComponent(allergenName)}`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
+      );
+      if (!res_ts.ok) throw new Error(res_ts.statusText);
+      const blob_ts = await res.blob_ts();
+      timeSeriesPlotImg.src = URL.createObjectURL(blob_ts);
 
     await fetchTemporalStats(allergenName);
   });
