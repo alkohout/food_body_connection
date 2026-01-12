@@ -106,12 +106,11 @@ def model_classification(db: 'Session', current_user: int):
         from matplotlib.patches import Circle
 
         # Coordinates for the top-right corner
-        x_text = 0.8
+        x_text = 0.7
         y_start = 0.95
         y_step = 0.05
 
         metrics = [
-            ("Model Performance:",None,None,None),
             ("ROC AUC", mean_auc, std_auc, get_color(mean_auc, "auc")),
             ("Symptom recall", mean_recall, std_recall, get_color(mean_recall, "recall")),
             ("Samples", samples, None, get_color(samples, "samples"))
@@ -138,7 +137,7 @@ def model_classification(db: 'Session', current_user: int):
             plt.text(
                 x_text + 0.02, y, text,
                 transform=ax.transAxes,
-                fontsize=10,
+                fontsize=12,
                 verticalalignment="center",
                 horizontalalignment="left",
                 zorder=3
