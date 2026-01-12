@@ -102,13 +102,12 @@ def model_classification(db: 'Session', current_user: int):
         recall_color = get_color(mean_recall, "recall")
         samples_color = get_color(samples, "samples")
 
-
         from matplotlib.patches import Circle
 
         # Coordinates for the top-right corner
         x_text = 0.95 
         y_start = 0.95
-        y_step = 0.05
+        y_step = 0.06
 
         metrics = [
             ("ROC AUC", mean_auc, std_auc, auc_color),
