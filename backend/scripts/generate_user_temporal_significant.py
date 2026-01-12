@@ -2,6 +2,7 @@ import os
 import sys
 import random
 from datetime import datetime, timedelta, timezone
+import numpy as np
 
 # Ensure project root is in sys.path so 'app' can be imported
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
@@ -47,14 +48,19 @@ def generate_significant_allergen_data(
         ]]
 
         # Generate diary entries
+        seed = 42
+        random.seed(seed)
+        np.random.seed(seed)
         start_date = datetime.now(timezone.utc) - timedelta(days=days)
         for day_offset in range(days):
+            
             date = start_date + timedelta(days=day_offset)
             n_entries = random.randint(max(1, entries_per_day - 1), entries_per_day + 1)
 
             for _ in range(n_entries):
-                # Randomly pick significant vs neutral allergen
-                if random.random() < 0.6:  # ~60% chance of significant allergen
+                if day_offset % 3 == 0:  # every 3rd day
+                    allergen = random.choice(neutral_allergens)
+                elif random.random() < 0.6:  # ~60% chance of significant allergen
                     allergen = random.choice(significant_allergen_objs)
                     symptom_chance_before = 0.1  # Before exposure
                     symptom_chance_after = 0.7   # After exposure → significant increase

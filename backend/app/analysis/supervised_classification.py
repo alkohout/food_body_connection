@@ -13,7 +13,7 @@ def supervised_classification(X,y,method='logistic_regression',params=None):
     if params is None:
         params = {}  # default to empty dictionary
 
-    X_train,  X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    X_train,  X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y,random_state=42)
 
     if method == 'logistic_regression':
         from sklearn.linear_model import LogisticRegression
@@ -62,7 +62,7 @@ def supervised_classification(X,y,method='logistic_regression',params=None):
                         columns=['predicted 0', 'predicted 1 '],
                         index=['is 0', 'is 1'])
     print(cm_df)    
-    print(classification_report(y_test, y_pred))
+    print(classification_report(y_test, y_pred, zero_division=0))
     y_pred_prob = model.predict_proba(X_test)
     y_pred_prob_df = pd.DataFrame(y_pred_prob, columns=['class_0_pp', 'class_1_pp'])
     # Find fpr, tpr
