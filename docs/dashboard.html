@@ -109,10 +109,12 @@
         <!-- ===================== -->
         <!-- Model - Predictions -->
         <!-- ===================== -->
-            <div class="stat-card stat-card--secondary stat-inline">
+<!--           
+                <div class="stat-card stat-card--secondary stat-inline">
                 <span class="stat-label">Model Prections</span>
                 <span class="stat-value" id="predict-out">—</span>
             </div>
+-->
 
         <!-- ===================== -->
         <!-- Bar plot - Symptom Frequency -->
@@ -121,14 +123,11 @@
             <h3>Exploratory Plots</h3>
             <p>Overview of logged allergens and symptoms. Explore these plots to gain insights. </p>
             <h4>Allergen Importance</h4>
-            <p>
-            This allergen ranking plot shows which allergens are most likely to trigger symptoms within 24 hours of exposure. 
+            The allergens you have been exposed to are ranked (Figure ), showing which allergens are most likely to trigger symptoms within 24 hours of exposure. 
             The bars represent the strength of association, called the "odds ratio," which indicates how much 
             more likely symptoms are when the allergen is consumed. An odds ratio greater than 1 suggests 
             the allergen may increase symptom risk, while an odds ratio around 1 (dashed line) indicates little or no effect. 
             Use this information to explore potential triggers, but remember this shows association, not a diagnosis.
-
-            </p>
             <div class="plot-container" style="position: relative;">
               <img id="allergenrank-plot" src="" alt="Allergen Rank Plot" style="width:90%; height:auto;" />
               <div
@@ -147,12 +146,19 @@
                 "
               ></div>
             </div>
+            <figcaption>Figure : The alergen odds ratio versus allergen. 
+              The performance metrics of the model used to calculate the odds ratio is provided in the top right corner. 
+              Red text indicates a weak model with low reliability, orange text indicates a moderate model to treat cautiously and green text indicates a strong reliable model
+              To learn more about the meaning of the metrics click on the model performance results.
+            </figcaption>
+            </p>
 
             <h2>Symptom frequency</h2>
             <img id="analysis-plot" src="" alt="Analysis Plot" style="width:90%; height:auto;" />
             <h2>Grouping symptoms</h2>
             <img id="group_histogram" src="" alt="System Group Histogram" style="width:90%; height:auto;" />
 
+            <h3>Allergen Analysis</h3>
             <label>Using the plots above select an allergen you want to explore deeper:</label>
             <input type="text" id="allergen-intensity-input" autocomplete="off" />
             <input type="hidden" id="allergen-intensity-id" />
@@ -162,8 +168,7 @@
             <!-- ===================== -->
             <!-- Time lag analysis -->
             <!-- ===================== -->
-            <section class="analysis-section">
-              <section class="analysis-section">
+ <!--           <section class="analysis-section">
               <h3>Significant Food–Symptom Relationships Identified</h3>
               <table id="temporal-stats-table" class="analysis-table">
                 <thead>
@@ -177,21 +182,31 @@
                   </tr>
                 </thead>
                 <tbody>
+-->
                   <!-- rows will be populated dynamically -->
-                </tbody>
+<!--                </tbody>
               </table>
             </section>
-
-            <img id="analysis-intensity-volume-plot" src="" alt="Intensity-Volume Plot" style="width:90%; height:auto;" />
+-->
+            <h4>Time Series Plot</h4>
             <img id="analysis-time-series-plot" src="" alt="Allergen Time Series Plot" style="width:90%; height:auto;" />
+            <figcaption> Figure : Sympton burden blue time series (left axis) and allergen volume exposure orange markers (right axis). 
+              The size of the markers correspond to the volume exposed to. 
+            </figcaption>
+            <h4>Dose Response Scatter Plot</h4>
+            <img id="analysis-intensity-volume-plot" src="" alt="Intensity-Volume Plot" style="width:90%; height:auto;" />
+            <figcaption> Figure : Relationship between allergen intake and symptom severity.
+              This scatter plot shows how symptom burden within 24 hours changes with increasing allergen volume. 
+              Each point corresponds to one exposure event, with symptom burden calculated from the summed symptom intensities following that exposure. 
+              An upward trend suggests a dose-dependent response. 
+            </figcaption>
 
         </section>
-
-
 
         <!-- ===================== -->
         <!-- Symptom distribution -->
         <!-- ===================== -->
+         <!--
         <section class="analysis-section">
             <h3>Symptom Distribution</h3>
 
@@ -205,13 +220,14 @@
             </label>
 
             <div class="plot-container" id="symptom-distribution-plot">
-            <!-- bar / histogram goes here -->
             </div>
         </section>
+        -->
 
         <!-- ===================== -->
         <!-- Dose-response -->
         <!-- ===================== -->
+        <!--
         <section class="analysis-section">
             <h3>Dose–Response</h3>
 
@@ -225,16 +241,17 @@
             </label>
 
             <div class="plot-container" id="dose-response-plot">
-            <!-- scatter / smooth curve -->
             </div>
         </section>
 
 
         </section>
+        -->
 
         <!-- ===================== -->
         <!-- Notes / interpretation -->
         <!-- ===================== -->
+         <!--
         <section class="analysis-section">
             <h3>Notes</h3>
             <textarea
@@ -243,6 +260,7 @@
             rows="4"
             ></textarea>
         </section>
+        -->
 
     </form>
 

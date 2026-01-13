@@ -72,11 +72,6 @@ def time_series(db: 'Session', current_user: int, allergen_name: str):
             linewidth=2,
             color="tab:blue"
 )
-
-        # Exposure timing lines
-        for d in exposure_days:
-            ax.axvline(d, linestyle="--", alpha=0.2)
-
         # Exposure volumes (right axis)
         volumes = allergen_events["volume"].astype(float)
         marker_sizes = 50 + 450 * (volumes / volumes.max())
@@ -101,7 +96,7 @@ def time_series(db: 'Session', current_user: int, allergen_name: str):
         # Combined legend
         lines, labels = ax.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
-        ax.legend(lines + lines2, labels + labels2, loc="upper left")
+        ax.legend(lines + lines2, labels + labels2, loc="upper right")
 
         fig.tight_layout()
 

@@ -84,7 +84,7 @@ def intensity_volume(
             total_intensity = window_symptoms["symptom_intensity"].fillna(0).sum()
 
             # Emphasize clusters
-            burden_score = total_intensity ** 2
+            burden_score = total_intensity
 
             rows.append({
                 "volume": allergen["volume"],
