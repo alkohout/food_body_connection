@@ -204,7 +204,7 @@ button.primary {
 .orange { color: #ef6c00; }
 .red { color: #c62828; }
 
-.figcaption {
+figcaption {
   font-size: 0.5em;
   color: #666;
   text-align: center;
