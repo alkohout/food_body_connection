@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from io import BytesIO
 import logging
 import traceback
+import numpy as np
 
 # GAM import
 from pygam import LinearGAM, s
@@ -73,7 +74,7 @@ def intensity_volume(
         y = df["burden_score"].values
 
         gam = LinearGAM(s(0)).fit(X, y)
-        X_range = pd.np.linspace(df["volume"].min(), df["volume"].max(), 200).reshape(-1, 1)  # smooth X
+        X_range = np.linspace(df["volume"].min(), df["volume"].max(), 200).reshape(-1, 1)  # smooth X
         y_pred = gam.predict(X_range)
         y_conf = gam.confidence_intervals(X_range)
 
