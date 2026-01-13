@@ -61,7 +61,7 @@ def time_series(db: 'Session', current_user: int, allergen_name: str):
 
 
         # --- Plot ---
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=(12, 10))
         ax2 = ax.twinx()
 
         # Symptom burden (left axis)

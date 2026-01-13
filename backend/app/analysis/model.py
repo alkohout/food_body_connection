@@ -74,7 +74,7 @@ def model_classification(db: 'Session', current_user: int):
         )
 
         # --- Plot ---
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=(12, 10))
         plot_df = or_results.copy()
         plot_df["err_lower"] = plot_df["odds_ratio"] - plot_df["ci_lower"]
         plot_df["err_upper"] = plot_df["ci_upper"] - plot_df["odds_ratio"]
