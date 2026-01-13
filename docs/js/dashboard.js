@@ -232,12 +232,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!res.ok) throw new Error(res.statusText);
       const data = await res.json();
 
-      statsTableBody.innerHTML = "";
+      //statsTableBody.innerHTML = "";
 
-      if (!data.length) {
-        statsTableBody.innerHTML =
-          `<tr><td colspan="7" style="text-align:center">No significant relationships found.</td></tr>`;
-        return;
+      if (statsTableBody){
+        if (!data.length) {
+          statsTableBody.innerHTML =
+            `<tr><td colspan="7" style="text-align:center">No significant relationships found.</td></tr>`;
+          return;
+        }
       }
 
       const formatP = p =>
@@ -351,7 +353,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!predict.ok) throw new Error(predict.statusText);
 
     const predictionText = await predict.text();
-    predictOut.textContent = predictionText;
+    if (predictOut){
+      predictOut.textContent = predictionText;
+    }
 
 
   } catch (err) {
