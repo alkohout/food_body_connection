@@ -208,6 +208,6 @@ figcaption {
   font-size: 0.6em;
   color: #666;
   text-align: left;
-  margin: .5rem auto;
+  margin: auto;
   max-width: 80%;
 }
