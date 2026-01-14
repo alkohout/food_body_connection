@@ -138,7 +138,7 @@ def intensity_volume(
         ]
 
         y_start = 0.91
-        y_step = 0.055
+        y_step = 0.04
 
         for i, (name, _, color, text_val) in enumerate(metrics):
             ax.text(
