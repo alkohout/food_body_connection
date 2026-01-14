@@ -215,9 +215,10 @@ button.primary {
 }
 
 .img-figure figcaption {
+  display: block;          /* remove inline spacing */
   font-size: 0.6em;
   color: #666;
   text-align: justify;
-  max-width: 90%;
+  max-width: 10%;
 }
 
