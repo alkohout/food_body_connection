@@ -207,8 +207,8 @@ button.primary {
 figcaption {
   font-size: 0.6em;
   color: #666;
-  text-align: left;
+  text-align: justify;
   margin-left: 0;
-  margin-right: 5em;
+  margin-right: 4.8em;
   /*max-width: 95%;*/
 }
