@@ -218,5 +218,6 @@ button.primary {
   font-size: 0.6em;
   color: #666;
   text-align: justify;
+  max-width: 90%;
 }
 
