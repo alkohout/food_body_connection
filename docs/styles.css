@@ -205,7 +205,7 @@ button.primary {
 .red { color: #c62828; }
 
 .img-figure {
-  display: block;   /* shrink-wrap to image */
+  display: inline-block;   /* shrink-wrap to image */
 }
 
 .img-figure img {
