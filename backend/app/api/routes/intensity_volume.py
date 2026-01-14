@@ -158,7 +158,7 @@ def intensity_volume(
         ax.fill_between(X_range.flatten(), y_conf[:,0], y_conf[:,1], color="red", alpha=0.2, label="95% CI")
 
         ax.set_title(f"Symptom Burden vs Allergen Volume for {allergen_name}")
-        ax.set_xlabel("Allergen Volume")
+        ax.set_xlabel("Allergen Volume (gm)")
         ax.set_ylabel("Symptom Burden Score")
         ax.legend()
 
