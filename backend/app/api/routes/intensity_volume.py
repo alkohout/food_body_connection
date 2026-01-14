@@ -92,8 +92,9 @@ def intensity_volume(
         from matplotlib.patches import Rectangle
 
         # --- Metrics ---
-        pseudo_r2 = gam.statistics_["pseudo_r2"]
-        edof = gam.statistics_["edof"]
+        stats = gam.statistics_
+        pseudo_r2 = stats["pseudo_r2"].get("explained_deviance", 0.0)
+        edof = stats.get("edof", 0.0)
         samples = len(df)
 
         r2_color = get_color(pseudo_r2, "pseudo_r2")
