@@ -204,11 +204,19 @@ button.primary {
 .orange { color: #ef6c00; }
 .red { color: #c62828; }
 
-figcaption {
+.img-figure {
+  display: inline-block;   /* shrink-wrap to image */
+}
+
+.img-figure img {
+  display: block;          /* remove inline spacing */
+  max-width: 100%;
+  height: auto;
+}
+
+.img-figure figcaption {
   font-size: 0.6em;
   color: #666;
   text-align: justify;
-  margin-left: 0;
-  margin-right: 5.8em;
-  /*max-width: 95%;*/
 }
+

@@ -130,33 +130,46 @@
               the allergen may increase symptom risk, while an odds ratio around 1 (dashed line) indicates little or no effect. 
               Use this information to explore potential triggers, but remember this shows association, not a diagnosis.
               </p>
-            <div class="plot-container" style="position: relative;">
-              <img id="allergenrank-plot" src="" alt="Allergen Rank Plot" style="width:90%; height:auto;" />
-              <div
-                id="model-info-box"
-                onclick="window.location.href='model-metrics';"
-                title="Click to learn what these metrics mean"
-                style="
-                  position: absolute;
-                  top: 12px;
-                  right: 12px;
-                  padding: 10px;
-                  cursor: pointer;
-                  background: rgba(255,255,255,0.0);
-                  width: 220px;
-                  height: 120px;
-                "
-              ></div>
+              <div class="plot-container" style="position: relative;">
+              <figure>
+                <img id="allergenrank-plot" src="" alt="Allergen Rank Plot" style="width:90%; height:auto;" />
+                <div
+                  id="model-info-box"
+                  onclick="window.location.href='model-metrics';"
+                  title="Click to learn what these metrics mean"
+                  style="
+                    position: absolute;
+                    top: 12px;
+                    right: 12px;
+                    padding: 10px;
+                    cursor: pointer;
+                    background: rgba(255,255,255,0.0);
+                    width: 220px;
+                    height: 120px;
+                  "
+                ></div>
+              <figcaption>Figure : The alergen odds ratio versus allergen. 
+                The performance metrics of the model used to calculate the odds ratio is provided in the top right corner. 
+                Red text indicates a weak model with low reliability, orange text indicates a moderate model to treat cautiously and green text indicates a strong reliable model
+                To learn more about the meaning of the metrics click on the model performance results.
+              </figcaption>
+            </figure>
             </div>
-            <figcaption>Figure : The alergen odds ratio versus allergen. 
-              The performance metrics of the model used to calculate the odds ratio is provided in the top right corner. 
-              Red text indicates a weak model with low reliability, orange text indicates a moderate model to treat cautiously and green text indicates a strong reliable model
-              To learn more about the meaning of the metrics click on the model performance results.
-            </figcaption>
             </p>
 
-            <h2>Symptom frequency</h2>
-            <img id="analysis-plot" src="" alt="Analysis Plot" style="width:90%; height:auto;" />
+            <h4>Symptom frequency</h4>
+            <p>
+            This chart summarises how often symptoms are recorded after exposure to different allergens.
+            For each allergen, we count symptoms that occur within 24 hours of an exposure and normalise
+            by how often that allergen was consumed, allowing fair comparison across foods.
+            </p>
+            <figure>
+              <img id="analysis-plot" src="" alt="Analysis Plot" style="width:90%; height:auto;" />
+              <figcaption>Figure : Top 10 allergens ranked by symptom rate within 24 hours of exposure.
+                The symptom rate is calculated as the total number of logged symptoms occurring within 24 hours of an allergen exposure, divided by the total number of exposures. 
+                Only allergens with at least five recorded exposures and at least one associated symptom are shown.
+              </figcaption>
+              </figure>
             <h2>Grouping symptoms</h2>
             <img id="group_histogram" src="" alt="System Group Histogram" style="width:90%; height:auto;" />
 
