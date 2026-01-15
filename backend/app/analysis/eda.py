@@ -23,7 +23,7 @@ def eda_plot_heatmap(
     allergen_events = get_all_allergen_events_df(db, current_user)
     symptom_events = get_all_symptom_events_df(db, current_user)
 
-    X,y = get_xy(db, allergen_events, symptom_events)
+    X,y = get_xy(db, allergen_events, symptom_events, lag_window = (6,24))
 
     # One-hot encode allergens only
     X_encoded = pd.get_dummies(X["allergen_name"])

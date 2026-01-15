@@ -33,7 +33,7 @@ def model_classification(db: 'Session', current_user: int):
         # --- Load data ---
         allergen_events = get_all_allergen_events_df(db, current_user)
         symptom_events = get_all_symptom_events_df(db, current_user)
-        X, y = get_xy(db, allergen_events, symptom_events)
+        X, y = get_xy(db, allergen_events, symptom_events, lag_window=(6,24))
 
         # One-hot encode allergens
         X = pd.get_dummies(X["allergen_name"])
