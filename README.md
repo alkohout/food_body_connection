@@ -84,6 +84,12 @@ The goal of the project is **decision support**, not diagnosis: to surface patte
 * Current approaches include:
 
   * Logistic regression
+    - Binary target ( symptom occurred (1) versus not (0))
+    - Can calculate odds ratio (exponential of coefficient) which is easily interpretable
+    - Works with categorical data
+    - Stable with small and imbalanced datasets 
+    - L1 or L2 used to prevent overfitting
+    - Fast computation
   * Nested Cross Validation
     - Dataset is relatively small
     - Performance metrics will be shown to users
