@@ -36,7 +36,7 @@ def model_classification(db: 'Session', current_user: int):
         allergen_events = get_all_allergen_events_df(db, current_user)
         symptom_events = get_all_symptom_events_df(db, current_user)
         lag_windows = [(0, 6), (6, 24), (24, 48)]
-        fig, axes = plt.subplots(1, 3, figsize=(24, 10), sharey=True)
+        fig, axes = plt.subplots(3, 1, figsize=(24, 10), sharey=True)
 
         for ax, lag_window in zip(axes, lag_windows):
             # --- Load data ---
