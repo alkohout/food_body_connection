@@ -30,131 +30,137 @@ def model_classification(db: 'Session', current_user: int):
     Perform logistic regression, bootstrap ORs, and return plot buffer.
     """
     try:
-        # --- Load data ---
+
         allergen_events = get_all_allergen_events_df(db, current_user)
         symptom_events = get_all_symptom_events_df(db, current_user)
-        X, y = get_xy(db, allergen_events, symptom_events, lag_window=(6,24))
+        lag_windows = [(0, 6), (6, 24), (24, 48)]
+        fig, axes = plt.subplots(1, 3, figsize=(24, 10), sharey=True)
 
-        # One-hot encode allergens
-        X = pd.get_dummies(X["allergen_name"])
-        y = y['symptom_occurred']
+        for ax, lag_window in zip(axes, lag_windows):
 
-        # Split for supervised classification
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+            # --- Load data ---
+            X, y = get_xy(db, allergen_events, symptom_events, lag_window)
 
-        unique_classes = np.unique(y_train)
-        if len(unique_classes) < 2:
-            raise HTTPException(
-                status_code=400,
-                detail="Not enough class variation to train model (need both symptom and no-symptom cases)."
+            # One-hot encode allergens
+            X = pd.get_dummies(X["allergen_name"])
+            y = y['symptom_occurred']
+
+            # Split for supervised classification
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+            unique_classes = np.unique(y_train)
+            if len(unique_classes) < 2:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Not enough class variation to train model (need both symptom and no-symptom cases)."
+                )
+
+            # Fit logistic regression
+            model = LogisticRegression(penalty='l1', C=1.0, solver='liblinear', max_iter=1000)
+            model.fit(X_train, y_train)
+
+            # --- Cross-validation metrics ---
+            cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+            auc_scores = cross_val_score(model, X, y, cv=cv, scoring="roc_auc")
+            recall_scores = cross_val_score(model, X, y, cv=cv, scoring=make_scorer(recall_score, pos_label=1))
+
+            mean_auc, std_auc = auc_scores.mean(), auc_scores.std()
+            mean_recall, std_recall = recall_scores.mean(), recall_scores.std()
+            samples = len(y)
+
+            # --- Bootstrap ORs ---
+            or_results = bootstrap_or_ci(
+                model_cls=LogisticRegression,
+                X=X,
+                y=y,
+                feature_names=X.columns,
+                params={"penalty": "l1", "C": 1.0},
+                n_boot=500,
+                min_occurrences=5
             )
 
-        # Fit logistic regression
-        model = LogisticRegression(penalty='l1', C=1.0, solver='liblinear', max_iter=1000)
-        model.fit(X_train, y_train)
+            # --- Plot ---
+            plt.figure(figsize=(12, 10))
+            plot_df = or_results.copy()
+            plot_df["err_lower"] = plot_df["odds_ratio"] - plot_df["ci_lower"]
+            plot_df["err_upper"] = plot_df["ci_upper"] - plot_df["odds_ratio"]
 
-        # --- Cross-validation metrics ---
-        cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-        auc_scores = cross_val_score(model, X, y, cv=cv, scoring="roc_auc")
-        recall_scores = cross_val_score(model, X, y, cv=cv, scoring=make_scorer(recall_score, pos_label=1))
-
-        mean_auc, std_auc = auc_scores.mean(), auc_scores.std()
-        mean_recall, std_recall = recall_scores.mean(), recall_scores.std()
-        samples = len(y)
-
-        # --- Bootstrap ORs ---
-        or_results = bootstrap_or_ci(
-            model_cls=LogisticRegression,
-            X=X,
-            y=y,
-            feature_names=X.columns,
-            params={"penalty": "l1", "C": 1.0},
-            n_boot=500,
-            min_occurrences=5
-        )
-
-        # --- Plot ---
-        plt.figure(figsize=(12, 10))
-        plot_df = or_results.copy()
-        plot_df["err_lower"] = plot_df["odds_ratio"] - plot_df["ci_lower"]
-        plot_df["err_upper"] = plot_df["ci_upper"] - plot_df["odds_ratio"]
-
-        ax = sns.barplot(data=plot_df, x="allergen", y="odds_ratio")
-        ax.errorbar(
-            x=range(len(plot_df)),
-            y=plot_df["odds_ratio"],
-            yerr=[plot_df["err_lower"], plot_df["err_upper"]],
-            fmt="none",
-            ecolor="black",
-            elinewidth=1.5,
-            capsize=4
-        )
-
-        plt.axhline(1.0, linestyle="--", color="red", alpha=0.7)  # no-effect line
-        plt.ylabel("Odds Ratio (symptoms within 24h)")
-        plt.xlabel("Allergen")
-        plt.title("Allergens Most Likely to Trigger Symptoms")
-        plt.xticks(rotation=45, ha="right")
-        plt.tight_layout()
-
-        # Get colors for metrics
-        auc_color = get_color(mean_auc, "auc")
-        recall_color = get_color(mean_recall, "recall")
-        samples_color = get_color(samples, "samples")
-
-        from matplotlib.patches import Circle
-
-        # Coordinates for the top-right corner
-        x_text = 0.95 
-        y_start = 0.91
-        y_step = 0.06
-
-        metrics = [
-            ("ROC AUC", mean_auc, std_auc, auc_color),
-            ("Symptom recall", mean_recall, std_recall, recall_color),
-            ("Samples", samples, None, samples_color)
-        ]
-
-        for i, (name, val, std, color) in enumerate(metrics):
-            y = y_start - i * y_step
-            
-            if std is not None:
-                text = f"{name}: {val:.2f} ± {std:.2f}"
-            else:
-                text = f"{name}: {val}"
-            
-            plt.text(
-                x_text, y, text,
-                transform=ax.transAxes,
-                fontsize=12,
-                verticalalignment="top",
-                horizontalalignment="right",
-                color=color,  # <--- color the text itself
-                zorder=3
-            )
-            plt.text(
-                .67, .945, "Model Performance:",
-                transform=ax.transAxes,
-                fontsize=12,
-                color='black',  # <--- color the text itself
-                zorder=4
+            ax = sns.barplot(data=plot_df, x="allergen", y="odds_ratio")
+            ax.errorbar(
+                x=range(len(plot_df)),
+                y=plot_df["odds_ratio"],
+                yerr=[plot_df["err_lower"], plot_df["err_upper"]],
+                fmt="none",
+                ecolor="black",
+                elinewidth=1.5,
+                capsize=4
             )
 
-            from matplotlib.patches import Rectangle
+            plt.axhline(1.0, linestyle="--", color="red", alpha=0.7)  # no-effect line
+            plt.ylabel("Odds Ratio (symptoms within 24h)")
+            plt.xlabel("Allergen")
+            plt.title("Allergens Most Likely to Trigger Symptoms")
+            plt.xticks(rotation=45, ha="right")
+            plt.tight_layout()
+
+            # Get colors for metrics
+            auc_color = get_color(mean_auc, "auc")
+            recall_color = get_color(mean_recall, "recall")
+            samples_color = get_color(samples, "samples")
+
+            from matplotlib.patches import Circle
+
+            # Coordinates for the top-right corner
+            x_text = 0.95 
+            y_start = 0.91
+            y_step = 0.06
+
+            metrics = [
+                ("ROC AUC", mean_auc, std_auc, auc_color),
+                ("Symptom recall", mean_recall, std_recall, recall_color),
+                ("Samples", samples, None, samples_color)
+            ]
+
+            for i, (name, val, std, color) in enumerate(metrics):
+                y = y_start - i * y_step
+                
+                if std is not None:
+                    text = f"{name}: {val:.2f} ± {std:.2f}"
+                else:
+                    text = f"{name}: {val}"
+                
+                plt.text(
+                    x_text, y, text,
+                    transform=ax.transAxes,
+                    fontsize=12,
+                    verticalalignment="top",
+                    horizontalalignment="right",
+                    color=color,  # <--- color the text itself
+                    zorder=3
+                )
+                plt.text(
+                    .67, .945, "Model Performance:",
+                    transform=ax.transAxes,
+                    fontsize=12,
+                    color='black',  # <--- color the text itself
+                    zorder=4
+                )
+
+                from matplotlib.patches import Rectangle
 
 
-            # rectangle behind metrics in top-right corner
-            rect = Rectangle(
-                (0.65, 0.75),  # lower-left corner
-                0.35, 0.25,                        # width, height
-                transform=ax.transAxes,
-                color='white',
-                alpha=0.8,
-                zorder=2
-            )
+                # rectangle behind metrics in top-right corner
+                rect = Rectangle(
+                    (0.65, 0.75),  # lower-left corner
+                    0.35, 0.25,                        # width, height
+                    transform=ax.transAxes,
+                    color='white',
+                    alpha=0.8,
+                    zorder=2
+                )
 
-            # Add patch to axes
-            ax.add_patch(rect)
+                # Add patch to axes
+                ax.add_patch(rect)
 
         # Save to buffer
         buf = BytesIO()
