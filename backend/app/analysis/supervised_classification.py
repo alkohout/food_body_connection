@@ -89,7 +89,7 @@ def supervised_classification(X,y,method='logistic_regression',params=None):
     
     return model,roc_auc, recall, n_samples
 
-def param_optimization(model,parameters,X, y):
+def param_optimization(model,parameters,X_train, y_train, X_test, y_test):
     """
     Perform hyperparameter optimization using GridSearchCV.
     """
@@ -97,13 +97,18 @@ def param_optimization(model,parameters,X, y):
     from sklearn.metrics import accuracy_score,classification_report
 
     grid = GridSearchCV(model, parameters, cv=5, scoring='accuracy')
-    grid.fit(X, y)
+    grid.fit(X_train, y_train)
     print("Best parameters: ", grid.best_params_)
     print("Best cross-validation accuracy: ", grid.best_score_)     
 
     best_model = grid.best_estimator_
+    # Predictions on test set
+    y_pred = best_model.predict(X_test)
 
-    return best_model 
+    print("Test Accuracy:", accuracy_score(y_test, y_pred))
+    print(classification_report(y_test, y_pred))
+
+    return grid.best_params_
 
 def roc_plot(X,y,models,params):
 
