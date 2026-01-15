@@ -84,7 +84,12 @@ The goal of the project is **decision support**, not diagnosis: to surface patte
 * Current approaches include:
 
   * Logistic regression
-  * Random forest classifiers
+  * Nested Cross Validation
+    - Dataset is relatively small
+    - Performance metrics will be shown to users
+    - Require robust uncertainty estimates
+    - Avoid dependence on a single split
+
 * Model evaluation using:
 
   * ROC AUC
