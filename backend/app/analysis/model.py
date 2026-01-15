@@ -89,7 +89,7 @@ def model_classification(db: 'Session', current_user: int):
                 min_occurrences=5
             )
             
-            if lag_window = (0,6):
+            if lag_window == (0,6):
                 # Sort by odds ratio and take top 10 allergens
                 top_allergens = or_results.sort_values("odds_ratio", ascending=False)["allergen"].head(10).tolist()
 
