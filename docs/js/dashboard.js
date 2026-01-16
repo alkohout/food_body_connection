@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const allergenIntIdInput = document.getElementById("allergen-intensity-id");
   const allergenIntSuggestions = document.getElementById("allergen-intensity-suggestions");
 
-  const lagWindowInput = document.getElementById("lag-window-input");
+  const lagWindowInput = document.getElementById("lag-window");
 
   const analysisPlotImg = document.getElementById("analysis-plot");
   const histogramPlotImg = document.getElementById("group_histogram");
