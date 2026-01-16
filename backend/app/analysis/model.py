@@ -38,6 +38,7 @@ def model_classification(db: 'Session', current_user: int):
 
         best_auc = 0
         best_recall = 0
+        fs = 14 # figure fontsize
         for lag_window in lag_windows:
 
             # --- Load data ---
@@ -138,9 +139,9 @@ def model_classification(db: 'Session', current_user: int):
         )
 
         ax.axhline(1.0, linestyle="--", color="red", alpha=0.7)
-        ax.set_ylabel("Odds Ratio")
-        ax.set_xlabel("Allergen")
-        ax.set_title(f"Lag window: {best_window[0]}-{best_window[1]}h")
+        ax.set_ylabel("Odds Ratio", fontsize=fs)
+        ax.set_xlabel("Allergen", fontsize=14 )
+        ax.set_title(f"Lag window: {best_window[0]}-{best_window[1]}h", fontsize=14)
         ax.tick_params(axis='x', rotation=45)
 
         # --- Metrics box ---
