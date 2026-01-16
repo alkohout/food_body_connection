@@ -95,7 +95,7 @@ def model_classification(db: 'Session', current_user: int):
 
             # --- Plot on the current axis ---
             plot_df = or_results.copy()
-            plot_df = plot_df[plot_df["allergen"].isin(top_allergens)]
+            plot_df = or_results.set_index("allergen").reindex(top_allergens).reset_index()
             plot_df["err_lower"] = plot_df["odds_ratio"] - plot_df["ci_lower"]
             plot_df["err_upper"] = plot_df["ci_upper"] - plot_df["odds_ratio"]
             order = top_allergens 
@@ -108,10 +108,16 @@ def model_classification(db: 'Session', current_user: int):
                 ax=ax
             )
 
+            # Get bar centers from seaborn
+            bar_centers = [bar.get_x() + bar.get_width() / 2 for bar in ax.patches]
+
             ax.errorbar(
-                x=range(len(plot_df)),
+                x=bar_centers,
                 y=plot_df["odds_ratio"],
-                yerr=[plot_df["err_lower"], plot_df["err_upper"]],
+                yerr=[
+                    plot_df["odds_ratio"] - plot_df["ci_lower"],
+                    plot_df["ci_upper"] - plot_df["odds_ratio"]
+                ],
                 fmt="none",
                 ecolor="black",
                 elinewidth=1.5,
