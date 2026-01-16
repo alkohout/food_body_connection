@@ -124,7 +124,7 @@
             <p>Overview of logged allergens and symptoms. Explore these plots to gain insights. </p>
             <h4>Allergen Importance</h4>
               <p>
-              The allergens you have been exposed to are ranked (Figure ), showing which allergens are most likely to trigger symptoms within 24 hours of exposure. 
+              The allergens you have been exposed to are ranked (Figure ), showing which allergens are most likely to trigger symptoms within a lag window following exposure. 
               The bars represent the strength of association, called the "odds ratio," which indicates how much 
               more likely symptoms are when the allergen is consumed. An odds ratio greater than 1 suggests 
               the allergen may increase symptom risk, while an odds ratio around 1 (dashed line) indicates little or no effect. 
@@ -148,9 +148,11 @@
                     height: 120px;
                   "
                 ></div>
-              <figcaption>Figure : The alergen odds ratio versus allergen. 
+              <figcaption>Figure : The allergen odds ratio versus allergen. 
+                The 95% confidence interval for each allergen is given by the thin verticle black lines.
+                The neutral odds ratio is shown by the red dashed horizontal line.
                 The performance metrics of the model used to calculate the odds ratio is provided in the top right corner. 
-                Red text indicates a weak model with low reliability, orange text indicates a moderate model to treat cautiously and green text indicates a strong reliable model
+                Red text indicates a weak model with low reliability, orange text indicates a moderate model to treat cautiously and green text indicates a strong reliable model.
                 To learn more about the meaning of the metrics click on the model performance results.
               </figcaption>
             </figure>
@@ -183,10 +185,18 @@
             </figure>
 
             <h3>Allergen Analysis</h3>
-            <label>Using the plots above select an allergen you want to explore deeper:</label>
+            <label>Using the plots above select: </label>
+            <label>an allergen you want to explore deeper:</label>
             <input type="text" id="allergen-intensity-input" autocomplete="off" />
             <input type="hidden" id="allergen-intensity-id" />
             <ul id="allergen-intensity-suggestions" class="suggestions"></ul>
+            <label>a lag window:</label>
+            <select id="lag-window">
+                <option value="0_6">0 - 6 hrs</option>
+                <option value="6_24">6 - 24 hrs</option>
+                <option value="24_48">24 - 48 hrs</option>
+            </select>
+            </label>
             <button type="button" id="update-plot-btn">Generate Analysis on Chosen Allergen</button>
 
             <!-- ===================== -->
