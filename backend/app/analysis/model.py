@@ -131,6 +131,16 @@ def model_classification(db: 'Session', current_user: int):
             ax.set_title(f"Lag window: {lag_window[0]}-{lag_window[1]}h")
             ax.tick_params(axis='x', rotation=45)
 
+            # Set axis limits to those of first lag window
+            if lag_window == (0, 6):
+                base_xlim = ax.get_xlim()
+                base_xticks = ax.get_xticks()
+                base_xticklabels = [t.get_text() for t in ax.get_xticklabels()]
+            else:
+                ax.set_xlim(base_xlim)
+                ax.set_xticks(base_xticks)
+                ax.set_xticklabels(base_xticklabels, rotation=45)
+
             # --- Metrics box ---
             from matplotlib.patches import Rectangle
             rect = Rectangle((0.65, 0.75), 0.35, 0.25, transform=ax.transAxes, color="white", alpha=0.85, zorder=2)
