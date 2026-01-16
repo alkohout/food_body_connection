@@ -42,6 +42,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const allergenIntIdInput = document.getElementById("allergen-intensity-id");
   const allergenIntSuggestions = document.getElementById("allergen-intensity-suggestions");
 
+  const lagWindowInput = document.getElementById("lag-window-input");
+
   const analysisPlotImg = document.getElementById("analysis-plot");
   const histogramPlotImg = document.getElementById("group_histogram");
   const allergenrankPlotImg = document.getElementById("allergenrank-plot");
@@ -271,10 +273,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("update-plot-btn")?.addEventListener("click", async () => {
     const allergenName = allergenIntInput.value || "Dairy";
+    const lagWindow = lagWindowInput.value || "0_6";
+    const LAG_WINDOWS = {
+      "0_6":  { start: 0,  end: 6 },
+      "6_24": { start: 6,  end: 24 },
+      "24_48":{ start: 24, end: 48 }
+    };
+    const { start, end } = LAG_WINDOWS[lagWindow];
+
 
     try {
       const res = await fetch(
-        `${API_URL}/analysis/intensity_volume?allergen_name=${encodeURIComponent(allergenName)}`,
+        `${API_URL}/analysis/intensity_volume?allergen_name=${encodeURIComponent(allergenName)}&lag_window=${start}&lag_window=${end}`,
         { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
       );
       if (!res.ok) throw new Error(res.statusText);
@@ -292,7 +302,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!res_ts.ok) throw new Error(res_ts.statusText);
         const blob_ts = await res_ts.blob();
         timeSeriesPlotImg.src = URL.createObjectURL(blob_ts);
-
+      
     } catch (err) {
       console.error(err);
     }
