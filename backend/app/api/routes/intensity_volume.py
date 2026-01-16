@@ -28,6 +28,7 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 @router.get('/intensity_volume')
 def intensity_volume(
     allergen_name: str,
+    lag_window: tuple[int, int] = (0, 6),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -47,8 +48,8 @@ def intensity_volume(
         # --- Compute burden score per allergen event ---
         rows = []
         for _, allergen in allergen_df.iterrows():
-            start = allergen["date_time"]
-            end = start + timedelta(hours=24)
+            start = allergen["date_time"] + timedelta(hours=lag_window[0])
+            end = start + timedelta(hours=lag_window[1])
             window_symptoms = symptom_df[(symptom_df["date_time"] >= start) & (symptom_df["date_time"] <= end)]
             total_intensity = window_symptoms["symptom_intensity"].fillna(0).sum()
             burden_score = total_intensity
