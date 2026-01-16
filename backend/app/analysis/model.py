@@ -38,7 +38,9 @@ def model_classification(db: 'Session', current_user: int):
         lag_windows = [(0, 6), (6, 24), (24, 48)]
         fig, axes = plt.subplots(3, 1, figsize=(12, 10), sharey=True)
 
+        i = 0
         for ax, lag_window in zip(axes, lag_windows):
+
             # --- Load data ---
             X, y = get_xy(db, allergen_events, symptom_events, lag_window)
 
@@ -136,10 +138,12 @@ def model_classification(db: 'Session', current_user: int):
                 base_xlim = ax.get_xlim()
                 base_xticks = ax.get_xticks()
                 base_xticklabels = [t.get_text() for t in ax.get_xticklabels()]
+                base_ylim = ax.get_ylim()
             else:
                 ax.set_xlim(base_xlim)
                 ax.set_xticks(base_xticks)
                 ax.set_xticklabels(base_xticklabels, rotation=45)
+                ax.set_ylim(base_ylim)
 
             # --- Metrics box ---
             from matplotlib.patches import Rectangle
