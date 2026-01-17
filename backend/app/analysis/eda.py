@@ -104,14 +104,19 @@ def plot_percentages(
 
         exposure_df = build_symptom_allergen_exposure_df(symptom_events, allergen_events)
 
-        bar_summary = exposure_df[
-            ["not_exposed", "exposed_0_6h", "exposed_6_24h", "exposed_24_48h"]
-        ].sum().to_dict()
+        n = len(exposure_df)
+        if n == 0:
+            raise ValueError("No symptom events available to compute percentages")
 
-        n = len(exposure_df) 
-
-
-        print(bar_summary)
+        bar_summary = (
+            exposure_df[
+                ["not_exposed", "exposed_0_6h", "exposed_6_24h", "exposed_24_48h"]
+            ]
+            .sum()
+            .div(n)
+            .mul(100)
+            .to_dict()
+        )
 
         fig = plot_symptom_risk_bars(bar_summary)
 
