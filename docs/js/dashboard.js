@@ -283,13 +283,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
     try {
+ 
+      const cacheBust = Date.now();
+
       const res = await fetch(
-        `${API_URL}/analysis/intensity_volume?allergen_name=${encodeURIComponent(allergenName)}&lag_window=${start}&lag_window=${end}`,
-        { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
+        `${API_URL}/analysis/intensity_volume` +
+        `?allergen_name=${encodeURIComponent(allergenName)}` +
+        `&lag_window=${start}&lag_window=${end}` +
+        `&_=${cacheBust}`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+          cache: "no-store"
+        }
       );
-      if (!res.ok) throw new Error(res.statusText);
-        const blob = await res.blob();
-        intensityVolumePlotImg.src = URL.createObjectURL(blob);
+
+      const blob = await res.blob();
+      if (intensityVolumePlotImg.src) {
+        URL.revokeObjectURL(intensityVolumePlotImg.src);
+      }
+      intensityVolumePlotImg.src = URL.createObjectURL(blob);
+
 
       const res_ts = await fetch(
         `${API_URL}/analysis/plot_time_series?allergen_name=${encodeURIComponent(allergenName)}`,
