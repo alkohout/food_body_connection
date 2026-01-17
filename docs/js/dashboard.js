@@ -52,7 +52,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const predictOut = document.getElementById("predict-out");
 
-  const statsTableBody = document.querySelector("#temporal-stats-table tbody");
+  //const statsTableBody = document.querySelector("#temporal-stats-table tbody");
 
   // =========================================================
   // Logout
