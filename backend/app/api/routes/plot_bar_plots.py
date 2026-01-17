@@ -32,7 +32,7 @@ def plot_bar_plots(
 
     try: 
 
-        buf = bar_percentages(
+        buf = plot_percentages(
             db,
             current_user.user_id,
             allergen_name
