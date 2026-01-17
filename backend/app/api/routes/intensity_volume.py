@@ -33,6 +33,9 @@ def intensity_volume(
     db: Session = Depends(get_db)
 ):
     try: 
+        if isinstance(lag_window, str):
+            lag_window = tuple(map(int, lag_window.split(",")))
+
         # --- Fetch allergen and symptom events ---
         allergen_df = get_all_allergen_events_df(db, current_user.user_id, allergen_name=allergen_name)
         symptom_df = get_all_symptom_events_df(db, current_user.user_id)
