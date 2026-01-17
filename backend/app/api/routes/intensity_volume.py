@@ -28,10 +28,18 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 @router.get('/intensity_volume')
 def intensity_volume(
     allergen_name: str,
-    lag_window: tuple[int, int],
+    lag_window: str = "0,6",
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+
+    try:
+        lag_window_tuple = tuple(map(int, lag_window.split(",")))
+        if len(lag_window_tuple) != 2:
+            raise ValueError
+    except:
+        raise HTTPException(status_code=400, detail="lag_window must be two integers, comma-separated")
+
     try: 
         if isinstance(lag_window, str):
             lag_window = tuple(map(int, lag_window.split(",")))
