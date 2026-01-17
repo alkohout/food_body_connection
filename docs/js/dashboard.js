@@ -272,7 +272,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("update-plot-btn")?.addEventListener("click", async () => {
     const allergenName = allergenIntInput.value || "Dairy";
-    const lagWindow = lagWindowInput.value || "0_6";
+    //const lagWindow = lagWindowInput.value || "0_6";
+    const lagWindow = lagWindowInput.value;
     const LAG_WINDOWS = {
       "0_6":  { start: 0,  end: 6 },
       "6_24": { start: 6,  end: 24 },
@@ -288,7 +289,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const res = await fetch(
         `${API_URL}/analysis/intensity_volume` +
         `?allergen_name=${encodeURIComponent(allergenName)}` +
-        `&lag_window=${start}&lag_window=${end}` +
+        `&lag_start=${start}&lag_end=${end}` +
         `&_=${cacheBust}`,
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
