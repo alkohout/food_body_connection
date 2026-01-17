@@ -28,7 +28,7 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 @router.get('/intensity_volume')
 def intensity_volume(
     allergen_name: str,
-    lag_window: tuple[int, int] = (0, 6),
+    lag_window: tuple[int, int],
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
