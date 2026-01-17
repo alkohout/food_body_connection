@@ -208,32 +208,7 @@ def model_classification(db: 'Session', current_user: int):
         ax_bot.axhline(1.0, linestyle="--", color="red", alpha=0.7)
         ax_bot.set_ylabel("Odds Ratio", fontsize=fs)
         ax_bot.set_xlabel("Allergen", fontsize=14 )
-        ax_bot.set_title(f"Lag window: {best_window[0]}-{best_window[1]}h", fontsize=14)
         ax_bot.tick_params(axis='x', rotation=45)
-
-        # --- Metrics box ---
-        from matplotlib.patches import Rectangle
-        rect = Rectangle((0.65, 0.75), 0.35, 0.25, transform=ax_bot.transAxes, color="white", alpha=0.85, zorder=2)
-        ax_bot.add_patch(rect)
-
-        plt.text(0.67, 0.945, "Model Performance:", transform=ax_bot.transAxes, fontsize=12, color="black", zorder=4)
-
-        auc_color = get_color(best_auc, "auc")
-        recall_color = get_color(best_recall, "recall")
-        samples_color = get_color(best_samples, "samples")
-        metrics = [("ROC AUC", best_auc, best_auc_std, auc_color),
-                    ("Symptom recall", best_recall, best_recall_std, recall_color),
-                    ("Samples", best_samples, None, samples_color)]
-        x_text = 0.95
-        y_start = 0.91
-        y_step = 0.06
-        for i, (name, val, std, color) in enumerate(metrics):
-            y = y_start - i * y_step
-            text = f"{name}: {val:.2f} ± {std:.2f}" if std is not None else f"{name}: {val}"
-            plt.text(x_text, y, text, transform=ax_bot.transAxes, fontsize=12,
-                        verticalalignment="top", horizontalalignment="right",
-                        color=color, zorder=4)
-
 
         # --- Finalize figure ---
         buf = BytesIO()
