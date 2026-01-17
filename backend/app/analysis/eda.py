@@ -219,66 +219,17 @@ def build_daily_analysis_table(
     df["exposure_window"] = df["exposure_window"].fillna("none")
     return df
 
-def plot_symptom_risk_bars(bar_summary: pd.DataFrame):
-    """
-    bar_summary columns:
-    - symptom_group
-    - exposure_window
-    - symptom_rate (0–1)
-    - n_days
-    """
+def plot_symptom_risk_bars(bar_summary: dict):
+    labels = list(bar_summary.keys())
+    values = list(bar_summary.values())
 
-    symptom_groups = sorted(bar_summary["symptom_group"].unique())
-    n_groups = len(symptom_groups)
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.bar(labels, values)
 
-    fig, axes = plt.subplots(
-        nrows=n_groups,
-        ncols=1,
-        figsize=(7, 3 * n_groups),
-        sharey=True
-    )
+    ax.set_ylabel("Count")
+    ax.set_title("Symptom exposure windows")
 
-    if n_groups == 1:
-        axes = [axes]
-
-    for ax, group in zip(axes, symptom_groups):
-        df = bar_summary[bar_summary["symptom_group"] == group]
-
-        # Ensure all windows exist
-        df = (
-            pd.DataFrame({"exposure_window": WINDOW_ORDER})
-            .merge(df, on="exposure_window", how="left")
-        )
-
-        rates = df["symptom_rate"].fillna(0) * 100
-        counts = df["n_days"].fillna(0)
-
-        bars = ax.bar(
-            range(len(WINDOW_ORDER)),
-            rates
-        )
-
-        # Annotate bars
-        for bar, rate, n in zip(bars, rates, counts):
-            ax.text(
-                bar.get_x() + bar.get_width() / 2,
-                bar.get_height() + 1,
-                f"{rate:.0f}%\n(n={int(n)})",
-                ha="center",
-                va="bottom",
-                fontsize=9
-            )
-
-        ax.set_title(group)
-        ax.set_xticks(range(len(WINDOW_ORDER)))
-        ax.set_xticklabels([WINDOW_LABELS[w] for w in WINDOW_ORDER])
-        ax.set_ylabel("Days with symptoms (%)")
-        ax.set_ylim(0, 100)
-
-        ax.grid(axis="y", alpha=0.3)
-
-    fig.suptitle("Symptom risk by allergen exposure window", fontsize=14)
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.tight_layout()
 
     return fig
 
