@@ -104,13 +104,6 @@ def intensity_volume(
         edof_color = get_color(edof, "edof")
         samples_color = get_color(samples, "samples")
 
-        confidence_pct = compute_confidence(pseudo_r2, edof, samples)
-        confidence_color = (
-            "green" if confidence_pct >= 70 else
-            "orange" if confidence_pct >= 40 else
-            "red"
-        )
-
         # --- Rectangle background ---
         rect = Rectangle(
             (0.65, 0.75),
@@ -137,7 +130,6 @@ def intensity_volume(
             ("Signal (pseudo R²)", pseudo_r2, r2_color, f"{pseudo_r2:.2f}"),
             ("Curve stability (EDOF)", edof, edof_color, f"{edof:.1f}"),
             ("Samples", samples, samples_color, f"{samples}"),
-            ("Overall confidence", confidence_pct, confidence_color, f"{confidence_pct}%"),
         ]
 
         y_start = 0.91
