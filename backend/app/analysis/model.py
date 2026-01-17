@@ -113,6 +113,7 @@ def model_classification(db: 'Session', current_user: int):
             1,
             figsize=(12, 10),
         )
+        plt.subplots_adjust(hspace=0.4)
 
         # top allergens 
         plot_df = or_results.copy()
@@ -209,8 +210,6 @@ def model_classification(db: 'Session', current_user: int):
         ax_bot.set_ylabel("Odds Ratio", fontsize=fs)
         ax_bot.set_xlabel("Allergen", fontsize=14 )
         ax_bot.tick_params(axis='x', rotation=45)
-
-        plt.tight_layout()
 
         # --- Finalize figure ---
         buf = BytesIO()
