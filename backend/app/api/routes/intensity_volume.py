@@ -28,22 +28,13 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 @router.get('/intensity_volume')
 def intensity_volume(
     allergen_name: str,
-    lag_window: str = "0,6",
+    lag_start: int = 0,
+    lag_end: int = 6,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
 
-    try:
-        lag_window_tuple = tuple(map(int, lag_window.split(",")))
-        if len(lag_window_tuple) != 2:
-            raise ValueError
-    except:
-        raise HTTPException(status_code=400, detail="lag_window must be two integers, comma-separated")
-
     try: 
-        if isinstance(lag_window, str):
-            lag_window = tuple(map(int, lag_window.split(",")))
-
         # --- Fetch allergen and symptom events ---
         allergen_df = get_all_allergen_events_df(db, current_user.user_id, allergen_name=allergen_name)
         symptom_df = get_all_symptom_events_df(db, current_user.user_id)
@@ -59,8 +50,8 @@ def intensity_volume(
         # --- Compute burden score per allergen event ---
         rows = []
         for _, allergen in allergen_df.iterrows():
-            start = allergen["date_time"] + timedelta(hours=lag_window[0])
-            end = start + timedelta(hours=lag_window[1])
+            start = allergen["date_time"] + timedelta(hours=lag_start)
+            end = start + timedelta(hours=lag_end)
             window_symptoms = symptom_df[(symptom_df["date_time"] >= start) & (symptom_df["date_time"] <= end)]
             total_intensity = window_symptoms["symptom_intensity"].fillna(0).sum()
             burden_score = total_intensity
