@@ -84,7 +84,7 @@ def eda_plot_heatmap(
     #    cmap="coolwarm",
     #)
 
-def bar_percentages(
+def plot_percentages(
     db: "Session",
     current_user: int,
     allergen_name: str,
