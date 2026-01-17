@@ -210,6 +210,8 @@ def model_classification(db: 'Session', current_user: int):
         ax_bot.set_xlabel("Allergen", fontsize=14 )
         ax_bot.tick_params(axis='x', rotation=45)
 
+        plt.tight_layout()
+
         # --- Finalize figure ---
         buf = BytesIO()
         plt.savefig(buf, format="png", bbox_inches="tight")
