@@ -233,36 +233,36 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (!res.ok) throw new Error(res.statusText);
       const data = await res.json();
+      }
 
       //statsTableBody.innerHTML = "";
 
-      if (statsTableBody){
-        if (!data.length) {
-          statsTableBody.innerHTML =
-            `<tr><td colspan="7" style="text-align:center">No significant relationships found.</td></tr>`;
-          return;
-        }
+      //if (statsTableBody){
+      //  if (!data.length) {
+      //    statsTableBody.innerHTML =
+      //      `<tr><td colspan="7" style="text-align:center">No significant relationships found.</td></tr>`;
+      //    return;
+      //  }
 
-        const formatP = p =>
-          p === null ? "—" :
-          p < 1e-4 ? "0.0000" :
-          p.toFixed(4);
+      //  const formatP = p =>
+      //    p === null ? "—" :
+      //    p < 1e-4 ? "0.0000" :
+      //    p.toFixed(4);
 
-        data.forEach(row => {
-          const tr = document.createElement("tr");
+      //  data.forEach(row => {
+      //    const tr = document.createElement("tr");
 
-          tr.innerHTML = `
-            <td>${row.allergen_name}</td>
-            <td>${row.symptom_group}</td>
-            <td>${row.post_count}</td>
-            <td>${row.pre_count}</td>
-            <td>${formatP(row.p_value)}</td>
-            <td>${row.evidence}</td>
-          `;
+      //    tr.innerHTML = `
+      //      <td>${row.allergen_name}</td>
+      //      <td>${row.symptom_group}</td>
+      //      <td>${row.post_count}</td>
+      //      <td>${row.pre_count}</td>
+      //      <td>${formatP(row.p_value)}</td>
+      //      <td>${row.evidence}</td>
+      //    `;
 
-          statsTableBody.appendChild(tr);
-        });
-      }
+      //    statsTableBody.appendChild(tr);
+      //  });
 
     } catch (err) {
       console.error(err);
