@@ -104,27 +104,34 @@ def model_classification(db: 'Session', current_user: int):
         
         # Sort by odds ratio and take top 10 allergens
         top_allergens = or_results.sort_values("odds_ratio", ascending=False)["allergen"].head(10).tolist()
+        bottom_allergens = or_results.sort_values("odds_ratio", ascending=True)["allergen"].head(10).tolist()
 
         # --- Plot on the current axis ---
+
+        fig, (ax_top, ax_bot) = plt.subplots(
+            2,
+            1,
+            figsize=(12, 10),
+        )
+
+        # top allergens 
         plot_df = or_results.copy()
         plot_df = or_results.set_index("allergen").reindex(top_allergens).reset_index()
         plot_df["err_lower"] = plot_df["odds_ratio"] - plot_df["ci_lower"]
         plot_df["err_upper"] = plot_df["ci_upper"] - plot_df["odds_ratio"]
         order = top_allergens 
-
-        fig, ax = plt.subplots(figsize=(12, 10))
         sns.barplot(
             data=plot_df,
             x="allergen",
             y="odds_ratio",
             order=order,
-            ax=ax
+            ax=ax_top
         )
 
         # Get bar centers from seaborn
-        bar_centers = [bar.get_x() + bar.get_width() / 2 for bar in ax.patches]
+        bar_centers = [bar.get_x() + bar.get_width() / 2 for bar in ax_top.patches]
 
-        ax.errorbar(
+        ax_top.errorbar(
             x=bar_centers,
             y=plot_df["odds_ratio"],
             yerr=[
@@ -138,18 +145,18 @@ def model_classification(db: 'Session', current_user: int):
             zorder=3
         )
 
-        ax.axhline(1.0, linestyle="--", color="red", alpha=0.7)
-        ax.set_ylabel("Odds Ratio", fontsize=fs)
-        ax.set_xlabel("Allergen", fontsize=14 )
-        ax.set_title(f"Lag window: {best_window[0]}-{best_window[1]}h", fontsize=14)
-        ax.tick_params(axis='x', rotation=45)
+        ax_top.axhline(1.0, linestyle="--", color="red", alpha=0.7)
+        ax_top.set_ylabel("Odds Ratio", fontsize=fs)
+        ax_top.set_xlabel("Allergen", fontsize=14 )
+        ax_top.set_title(f"Lag window: {best_window[0]}-{best_window[1]}h", fontsize=14)
+        ax_top.tick_params(axis='x', rotation=45)
 
         # --- Metrics box ---
         from matplotlib.patches import Rectangle
-        rect = Rectangle((0.65, 0.75), 0.35, 0.25, transform=ax.transAxes, color="white", alpha=0.85, zorder=2)
-        ax.add_patch(rect)
+        rect = Rectangle((0.65, 0.75), 0.35, 0.25, transform=ax_top.transAxes, color="white", alpha=0.85, zorder=2)
+        ax_top.add_patch(rect)
 
-        plt.text(0.67, 0.945, "Model Performance:", transform=ax.transAxes, fontsize=12, color="black", zorder=4)
+        plt.text(0.67, 0.945, "Model Performance:", transform=ax_top.transAxes, fontsize=12, color="black", zorder=4)
 
         auc_color = get_color(best_auc, "auc")
         recall_color = get_color(best_recall, "recall")
@@ -163,9 +170,70 @@ def model_classification(db: 'Session', current_user: int):
         for i, (name, val, std, color) in enumerate(metrics):
             y = y_start - i * y_step
             text = f"{name}: {val:.2f} ± {std:.2f}" if std is not None else f"{name}: {val}"
-            plt.text(x_text, y, text, transform=ax.transAxes, fontsize=12,
+            plt.text(x_text, y, text, transform=ax_top.transAxes, fontsize=12,
                         verticalalignment="top", horizontalalignment="right",
                         color=color, zorder=4)
+
+        # bottom allergens 
+        plot_df = or_results.copy()
+        plot_df = or_results.set_index("allergen").reindex(bottom_allergens).reset_index()
+        plot_df["err_lower"] = plot_df["odds_ratio"] - plot_df["ci_lower"]
+        plot_df["err_upper"] = plot_df["ci_upper"] - plot_df["odds_ratio"]
+        order = bottom_allergens 
+        sns.barplot(
+            data=plot_df,
+            x="allergen",
+            y="odds_ratio",
+            order=order,
+            ax=ax_bot
+        )
+
+        # Get bar centers from seaborn
+        bar_centers = [bar.get_x() + bar.get_width() / 2 for bar in ax_bot.patches]
+
+        ax_bot.errorbar(
+            x=bar_centers,
+            y=plot_df["odds_ratio"],
+            yerr=[
+                plot_df["odds_ratio"] - plot_df["ci_lower"],
+                plot_df["ci_upper"] - plot_df["odds_ratio"]
+            ],
+            fmt="none",
+            ecolor="black",
+            elinewidth=1.5,
+            capsize=4,
+            zorder=3
+        )
+
+        ax_bot.axhline(1.0, linestyle="--", color="red", alpha=0.7)
+        ax_bot.set_ylabel("Odds Ratio", fontsize=fs)
+        ax_bot.set_xlabel("Allergen", fontsize=14 )
+        ax_bot.set_title(f"Lag window: {best_window[0]}-{best_window[1]}h", fontsize=14)
+        ax_bot.tick_params(axis='x', rotation=45)
+
+        # --- Metrics box ---
+        from matplotlib.patches import Rectangle
+        rect = Rectangle((0.65, 0.75), 0.35, 0.25, transform=ax_bot.transAxes, color="white", alpha=0.85, zorder=2)
+        ax_bot.add_patch(rect)
+
+        plt.text(0.67, 0.945, "Model Performance:", transform=ax_bot.transAxes, fontsize=12, color="black", zorder=4)
+
+        auc_color = get_color(best_auc, "auc")
+        recall_color = get_color(best_recall, "recall")
+        samples_color = get_color(best_samples, "samples")
+        metrics = [("ROC AUC", best_auc, best_auc_std, auc_color),
+                    ("Symptom recall", best_recall, best_recall_std, recall_color),
+                    ("Samples", best_samples, None, samples_color)]
+        x_text = 0.95
+        y_start = 0.91
+        y_step = 0.06
+        for i, (name, val, std, color) in enumerate(metrics):
+            y = y_start - i * y_step
+            text = f"{name}: {val:.2f} ± {std:.2f}" if std is not None else f"{name}: {val}"
+            plt.text(x_text, y, text, transform=ax_bot.transAxes, fontsize=12,
+                        verticalalignment="top", horizontalalignment="right",
+                        color=color, zorder=4)
+
 
         # --- Finalize figure ---
         buf = BytesIO()
