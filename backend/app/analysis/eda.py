@@ -119,8 +119,7 @@ def plot_percentages(
         for ax, group in zip(axes, symptom_groups):
             df_group = exposure_df[exposure_df["symptom_group"] == group]
             sym_group = symptom_events[symptom_events["symptom_group"] == group]
-            all_group = allergen_events[allergen_events["symptom_group"] == group]
-            X,y = get_xy(db, all_group, sym_group, (0,48))
+            X,y = get_xy(db, allergen_events, sym_group, (0,48))
 
             length_y = len(y)
             sum_y = y["symptom_occurred"].sum()
