@@ -108,7 +108,11 @@ def plot_percentages(
             raise ValueError("No symptom data available")
 
         exposure_df = build_symptom_allergen_exposure_df(symptom_events, allergen_events)
+        X,y = get_xy(db, allergen_events, symptom_events, (0,48))
 
+        length_y = len(y)
+        sum_y = y["symptom_occurred"].sum()
+        per_y = 10*(length_y - sum_y)/length_y
         symptom_groups = exposure_df["symptom_group"].unique()
         n_groups = len(symptom_groups)
 
@@ -138,6 +142,10 @@ def plot_percentages(
                     va="bottom",
                     fontsize=9
                 )
+
+            # --- Add per_y baseline line ---
+            ax.axhline(per_y, color='red', linestyle='--', linewidth=1, label=f"% no symptom overall ({per_y:.0f}%)")
+            ax.legend(loc="upper right", fontsize=9)
 
             ax.set_xticks(range(len(WINDOW_ORDER)))
             ax.set_xticklabels([WINDOW_LABELS[w] for w in WINDOW_ORDER])
