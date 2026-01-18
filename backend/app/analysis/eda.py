@@ -84,45 +84,72 @@ def eda_plot_heatmap(
     #    cmap="coolwarm",
     #)
 
+WINDOW_ORDER = ["not_exposed", "exposed_0_6h", "exposed_6_24h", "exposed_24_48h"]
+WINDOW_LABELS = {
+    "not_exposed": "No allergen",
+    "exposed_0_6h": "0–6 h",
+    "exposed_6_24h": "6–24 h",
+    "exposed_24_48h": "24–48 h",
+}
+
 def plot_percentages(
     db: "Session",
     current_user: int,
     allergen_name: str,
 ):
     """
+    Plots exposure percentages for each symptom group as subplots.
     """
-
     try:
-        # --------------------------------------------------
-        # Load data
-        # --------------------------------------------------
         allergen_events = get_all_allergen_events_df(db, current_user, allergen_name)
-        symptom_events = get_all_symptom_events_df(db, current_user, symptom_group="Gastrointestinal")
+        symptom_events = get_all_symptom_events_df(db, current_user)
 
         if symptom_events.empty:
             raise ValueError("No symptom data available")
 
         exposure_df = build_symptom_allergen_exposure_df(symptom_events, allergen_events)
 
-        n = len(exposure_df)
-        if n == 0:
-            raise ValueError("No symptom events available to compute percentages")
+        symptom_groups = exposure_df["symptom_group"].unique()
+        n_groups = len(symptom_groups)
 
-        bar_summary = (
-            exposure_df[
-                ["not_exposed", "exposed_0_6h", "exposed_6_24h", "exposed_24_48h"]
-            ]
-            .sum()
-            .div(n)
-            .mul(100)
-            .to_dict()
-        )
+        fig, axes = plt.subplots(nrows=n_groups, ncols=1, figsize=(7, 3*n_groups), sharey=True)
+        if n_groups == 1:
+            axes = [axes]
 
-        fig = plot_symptom_risk_bars(bar_summary)
+        for ax, group in zip(axes, symptom_groups):
+            df_group = exposure_df[exposure_df["symptom_group"] == group]
 
-        # --------------------------------------------------
+            # Compute percentages and counts
+            summary = df_group[WINDOW_ORDER].agg(['sum', 'count']).T
+            summary['percent'] = 100 * summary['sum'] / summary['count']
+
+            # Ensure all windows present
+            summary = summary.reindex(WINDOW_ORDER)
+
+            bars = ax.bar(range(len(WINDOW_ORDER)), summary['percent'], color="skyblue")
+
+            # Annotate bars with percentage and n
+            for i, (bar, pct, n) in enumerate(zip(bars, summary['percent'], summary['count'])):
+                ax.text(
+                    bar.get_x() + bar.get_width()/2,
+                    bar.get_height() + 1,
+                    f"{pct:.0f}%\n(n={int(n)})",
+                    ha="center",
+                    va="bottom",
+                    fontsize=9
+                )
+
+            ax.set_xticks(range(len(WINDOW_ORDER)))
+            ax.set_xticklabels([WINDOW_LABELS[w] for w in WINDOW_ORDER])
+            ax.set_ylabel("Percentage of symptoms")
+            ax.set_title(f"{group} symptoms")
+            ax.set_ylim(0, 100)
+            ax.grid(axis="y", alpha=0.3)
+
+        fig.suptitle(f"Symptom percentages by allergen exposure ({allergen_name})", fontsize=14)
+        fig.tight_layout(rect=[0, 0, 1, 0.96])
+
         # Output buffer
-        # --------------------------------------------------
         buf = BytesIO()
         plt.savefig(buf, format="png", dpi=150, bbox_inches="tight")
         plt.close(fig)
@@ -133,110 +160,6 @@ def plot_percentages(
         traceback.print_exc()
         logger.exception("Error generating bar plot")
         raise HTTPException(status_code=500, detail=str(e))
-
-def build_daily_symptoms(symptom_events: pd.DataFrame) -> pd.DataFrame:
-    """
-    Returns:
-    date | symptom_group | symptom_present (0/1)
-    """
-    df = symptom_events.copy()
-    df["date"] = df["date_time"].dt.floor("D")
-
-    daily = (
-        df.groupby(["date", "symptom_group"])
-          .agg(symptom_present=("symptom_intensity", lambda x: (x > 0).any()))
-          .reset_index()
-    )
-
-    daily["symptom_present"] = daily["symptom_present"].astype(int)
-    return daily
-
-from datetime import timedelta
-
-def assign_exposure_window(
-    day_start: pd.Timestamp,
-    allergen_times: pd.Series
-) -> str:
-    """
-    Given the start of a day and allergen event times,
-    return the closest matching exposure window.
-    """
-
-    deltas = (day_start - allergen_times).dt.total_seconds() / 3600
-    deltas = deltas[deltas >= 0]  # only past exposures
-
-    if deltas.empty:
-        return "none"
-
-    min_delta = deltas.min()
-
-    for label, lo, hi in WINDOWS:
-        if lo <= min_delta < hi:
-            return label
-
-    return "none"
-
-def build_daily_allergen_exposure(
-    allergen_events: pd.DataFrame,
-    date_index: pd.DatetimeIndex
-) -> pd.DataFrame:
-    """
-    Returns:
-    date | exposure_window
-    """
-    allergen_times = allergen_events["date_time"]
-
-    rows = []
-    for day in date_index:
-        window = assign_exposure_window(day, allergen_times)
-        rows.append({
-            "date": day,
-            "exposure_window": window
-        })
-
-    return pd.DataFrame(rows)
-
-def build_daily_analysis_table(
-    symptom_events: pd.DataFrame,
-    allergen_events: pd.DataFrame
-) -> pd.DataFrame:
-
-    daily_symptoms = build_daily_symptoms(symptom_events)
-
-    all_days = pd.date_range(
-        start=daily_symptoms["date"].min(),
-        end=daily_symptoms["date"].max(),
-        freq="D",
-        tz=daily_symptoms["date"].dt.tz
-    )
-
-    daily_exposure = build_daily_allergen_exposure(
-        allergen_events,
-        all_days
-    )
-
-    df = daily_symptoms.merge(
-        daily_exposure,
-        on="date",
-        how="left"
-    )
-
-    df["exposure_window"] = df["exposure_window"].fillna("none")
-    return df
-
-def plot_symptom_risk_bars(bar_summary: dict):
-    labels = list(bar_summary.keys())
-    values = list(bar_summary.values())
-
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.bar(labels, values)
-
-    ax.set_ylabel("Count")
-    ax.set_title("Symptom exposure windows")
-
-    plt.tight_layout()
-
-    return fig
 
 def build_symptom_allergen_exposure_df(
     symptom_df: pd.DataFrame,
