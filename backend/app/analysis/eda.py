@@ -108,11 +108,7 @@ def plot_percentages(
             raise ValueError("No symptom data available")
 
         exposure_df = build_symptom_allergen_exposure_df(symptom_events, allergen_events)
-        X,y = get_xy(db, allergen_events, symptom_events, (0,48))
 
-        length_y = len(y)
-        sum_y = y["symptom_occurred"].sum()
-        per_y = 10*(length_y - sum_y)/length_y
         symptom_groups = exposure_df["symptom_group"].unique()
         n_groups = len(symptom_groups)
 
@@ -122,6 +118,13 @@ def plot_percentages(
 
         for ax, group in zip(axes, symptom_groups):
             df_group = exposure_df[exposure_df["symptom_group"] == group]
+            sym_group = symptom_events[symptom_events["symptom_group"] == group]
+            all_group = allergen_events[allergen_events["symptom_group"] == group]
+            X,y = get_xy(db, all_group, sym_group, (0,48))
+
+            length_y = len(y)
+            sum_y = y["symptom_occurred"].sum()
+            per_y = 100*(length_y - sum_y)/length_y
 
             # Compute percentages and counts
             summary = df_group[WINDOW_ORDER].agg(['sum', 'count']).T
