@@ -33,7 +33,7 @@ def plot_stats(
 
     for ax,sg in zip(axes,groups):
 
-        data = days_df(db, current_user,allergen_name = allergen_name, symptom_group = sg) 
+        data = days_df(db, current_user, allergen_name = allergen_name, symptom_group = sg) 
         summary = (
             days_df
             .groupby(["exposed", "symptom_0_24h"])
@@ -67,10 +67,10 @@ def days_df(
 ):
 
     allergen_events = get_all_allergen_events_df(
-        db, current_user.user_id, allergen_name=allergen_name
+        db, current_user, allergen_name=allergen_name
     )
     symptom_events = get_all_symptom_events_df(
-        db, current_user.user_id, symptom_group=symptom_group
+        db, current_user, symptom_group=symptom_group
     )
 
     allergen_events["date_time"] = pd.to_datetime(allergen_events["date_time"], utc=True)
