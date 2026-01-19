@@ -143,7 +143,10 @@ def days_df(
     )
 
     days_df = days_df.merge(symptom_days, on="date", how="left")
-    days_df["symptom_0_24h"] = days_df["symptom_0_24h"].fillna(0).astype(int)
+    if "symptom_0_24h" not in days_df.columns:
+        days_df["symptom_0_24h"] = 0
+    else:
+        days_df["symptom_0_24h"] = days_df["symptom_0_24h"].fillna(0).astype(int)
 
     # Vectorised symptom-in-24h check
     anchors = allergen_events["date_time"]
