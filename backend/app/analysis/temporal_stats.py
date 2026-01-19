@@ -52,11 +52,21 @@ def plot_stats(
         summary = all_combos.merge(summary, on=["exposed", "symptom_0_24h"], how="left")
         summary["count"] = summary["count"].fillna(0)
 
-        # Create labels for the bars
-        labels = ["NoExp_NoSym", "NoExp_Sym", "Exp_NoSym", "Exp_Sym"]
+        # Drop No exposure & No symptoms
+        summary = summary[~(
+            (summary["exposed"] == 0) &
+            (summary["symptom_0_24h"] == 0)
+        )]
+
+        labels = (
+            summary["exposed"].map({0: "NoExp", 1: "Exp"})
+            + "_"
+            + summary["symptom_0_24h"].map({0: "NoSym", 1: "Sym"})
+        )
+
         heights = summary["count"].values
 
-        ax.bar(labels, heights, color="skyblue")
+        ax.bar(labels, heights)
         ax.set_title(sg)
         ax.set_ylabel("Days Count")
         ax.set_ylim(0, heights.max() * 1.1)  # add 10% headroom
@@ -122,6 +132,18 @@ def days_df(
 
     days_df = days_df.merge(exposed_days, on="date", how="left")
     days_df["exposed"] = days_df["exposed"].fillna(0).astype(int)
+
+    # Symptom days
+    symptom_events["date"] = symptom_events["date_time"].dt.floor("D")
+
+    symptom_days = (
+        symptom_events[["date"]]
+        .drop_duplicates()
+        .assign(symptom_0_24h=1)
+    )
+
+    days_df = days_df.merge(symptom_days, on="date", how="left")
+    days_df["symptom_0_24h"] = days_df["symptom_0_24h"].fillna(0).astype(int)
 
     # Vectorised symptom-in-24h check
     anchors = allergen_events["date_time"]
