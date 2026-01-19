@@ -28,7 +28,7 @@ def plot_stats(
     )
 
     n = symptom_events['symptom_group'].nunique()
-    fig, axes = plt.subplots(n,1,figsize=(12, 10*n))
+    fig, axes = plt.subplots(n,1,figsize=(12, 10))
     groups = symptom_events['symptom_group'].unique()
 
     for ax,sg in zip(axes,groups):
@@ -44,9 +44,6 @@ def plot_stats(
         heights = summary["count"]
 
         ax.bar(labels, heights)
-
-        for i, v in enumerate(data["symptom_0_24h"]):
-            ax.text(i, v + 0.02, f"{v:.1%}", ha="center")
 
         plt.xticks(rotation=45)
         plt.tight_layout()
