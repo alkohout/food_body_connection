@@ -40,14 +40,15 @@ def plot_stats(
             .size()
             .reset_index(name="count")
         )
+        labels = summary.apply(lambda row: f"{row['exposed']}_{row['symptom_0_24h']}", axis=1)
+        heights = summary["count"]
 
-        ax.bar(
-            summary['count']
-        )
+        ax.bar(labels, heights)
 
         for i, v in enumerate(data["symptom_0_24h"]):
             ax.text(i, v + 0.02, f"{v:.1%}", ha="center")
 
+        plt.xticks(rotation=45)
         plt.tight_layout()
 
     # --------------------------------------------------
