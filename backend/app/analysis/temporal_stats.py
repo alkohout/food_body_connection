@@ -35,7 +35,7 @@ def plot_stats(
 
         data = days_df(db, current_user, allergen_name = allergen_name, symptom_group = sg) 
         summary = (
-            days_df
+            data 
             .groupby(["exposed", "symptom_0_24h"])
             .size()
             .reset_index(name="count")
