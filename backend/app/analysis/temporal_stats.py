@@ -34,16 +34,33 @@ def plot_stats(
     for ax,sg in zip(axes,groups):
 
         data = days_df(db, current_user, allergen_name = allergen_name, symptom_group = sg) 
+
         summary = (
-            data 
+            data
             .groupby(["exposed", "symptom_0_24h"])
             .size()
             .reset_index(name="count")
         )
-        labels = summary.apply(lambda row: f"{row['exposed']}_{row['symptom_0_24h']}", axis=1)
-        heights = summary["count"]
+        # Ensure all four combinations exist
+        all_combos = pd.DataFrame([
+            {"exposed": 0, "symptom_0_24h": 0},
+            {"exposed": 0, "symptom_0_24h": 1},
+            {"exposed": 1, "symptom_0_24h": 0},
+            {"exposed": 1, "symptom_0_24h": 1},
+        ])
 
-        ax.bar(labels, heights)
+        summary = all_combos.merge(summary, on=["exposed", "symptom_0_24h"], how="left")
+        summary["count"] = summary["count"].fillna(0)
+
+        # Create labels for the bars
+        labels = ["NoExp_NoSym", "NoExp_Sym", "Exp_NoSym", "Exp_Sym"]
+        heights = summary["count"].values
+
+        ax.bar(labels, heights, color="skyblue")
+        ax.set_title(sg)
+        ax.set_ylabel("Days Count")
+        ax.set_ylim(0, heights.max() * 1.1)  # add 10% headroom
+
 
         plt.xticks(rotation=45)
         plt.tight_layout()
