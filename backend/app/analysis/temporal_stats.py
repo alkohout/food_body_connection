@@ -23,32 +23,25 @@ def plot_stats(
     current_user: int,
     allergen_name: str,
     lag_start: int,
-    lag_end: int
+    lag_end: int,
+    symptom_group: str
     ):
 
-    symptom_events = get_all_symptom_events_df(
-        db, current_user
-    )
+    fig, ax = plt.subplots(figsize=(12, 10))
 
-    n = symptom_events['symptom_group'].nunique()
-    fig, axes = plt.subplots(n,1,figsize=(12, 10))
-    groups = symptom_events['symptom_group'].unique()
+    days, exposures, symptoms = days_df(db, current_user, allergen_name = allergen_name, symptom_group = symptom_group, lag_start=lag_start, lag_end=lag_end) 
 
-    for ax,sg in zip(axes,groups):
+    e_perc = 100*exposures.sum()/len(exposures)
+    s_perc = 100*symptoms.sum()/len(symptoms)
 
-        days, exposures, symptoms = days_df(db, current_user, allergen_name = allergen_name, symptom_group = sg, lag_start=lag_start, lag_end=lag_end) 
+    labels = ['% of exposure-days followed by symptoms (within window)', '% of symptom-days preceded by exposure (within window)']
+    heights = [e_perc,s_perc] 
 
-        e_perc = 100*exposures.sum()/len(exposures)
-        s_perc = 100*symptoms.sum()/len(symptoms)
-    
-        labels = ['% of exposure-days followed by symptoms (within window)', '% of symptom-days preceded by exposure (within window)']
-        heights = [e_perc,s_perc] 
-
-        ax.bar(labels, heights)
-        ax.set_title(sg)
-        ax.set_ylabel("Percent")
-        ax.set_ylim(0, max(heights) * 1.1)  # add 10% headroom
-        plt.tight_layout()
+    ax.bar(labels, heights)
+    ax.set_title(symptom_group)
+    ax.set_ylabel("Percent")
+    ax.set_ylim(0, max(heights) * 1.1)  # add 10% headroom
+    plt.tight_layout()
 
     # --------------------------------------------------
     # Output buffer
