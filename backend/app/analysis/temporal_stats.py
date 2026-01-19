@@ -134,14 +134,16 @@ def days_df(
     return days_df
 
 
-def count_in_windows(anchor_times, symptom_times, start_delta, end_delta):
+def count_in_windows(anchor_times, symptom_times, lag_start, lag_end):
     """
     Count symptom events within [anchor + start_delta, anchor + end_delta)
     for each anchor time.
     """
     symptom_times = np.asarray(symptom_times.values)
-    left = anchor_times.values + start_delta
-    right = anchor_times.values + end_delta
+    start_delta = pd.to_timedelta(lag_start, unit="h")
+    end_delta = pd.to_timedelta(lag_end, unit="h")
+    left = anchor_times + start_delta
+    right = anchor_times + end_delta
 
     idx_left = np.searchsorted(symptom_times, left, side="left")
     idx_right = np.searchsorted(symptom_times, right, side="right")
