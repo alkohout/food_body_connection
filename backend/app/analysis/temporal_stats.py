@@ -19,12 +19,12 @@ from io import BytesIO
 
 def plot_stats(
     db: Session,
-    current_user: User,
+    current_user: int,
     allergen_name: str
     ):
 
     symptom_events = get_all_symptom_events_df(
-        db, current_user.user_id
+        db, current_user
     )
 
     n = symptom_events['symptom_group'].nunique()
