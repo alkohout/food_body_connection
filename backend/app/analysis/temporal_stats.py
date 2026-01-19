@@ -105,9 +105,8 @@ def days_df(
     symptom_events["date_time"] = pd.to_datetime(symptom_events["date_time"], utc=True)
     symptom_events = symptom_events.sort_values("date_time")
 
-    symptom_times = symptom_events["date_time"]
     allergen_events["symptom_0_24h"] = allergen_events["date_time"].apply(
-        lambda t: symptom_within_24h(symptom_times, t)
+        lambda t: symptom_within_24h(symptom_events, t)
     )
     allergen_events["date"] = allergen_events["date_time"].dt.floor("D")
 
@@ -118,9 +117,8 @@ def days_df(
         .astype(int)
     )
 
-    allergen_times = allergen_events["date_time"]
     symptom_events["allergen_0_24h_prior"] = symptom_events["date_time"].apply(
-        lambda t: exposure_24h_prior(allergen_times,t)
+        lambda t: exposure_24h_prior(allergen_events,t)
     )
     symptom_events["date"] = symptom_events["date_time"].dt.floor("D")
     daily_symptoms = (
