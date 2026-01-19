@@ -31,7 +31,8 @@ def plot_stats(
     fig, axes = plt.subplots(n,1,figsize=(12, 10*n))
     groups = symptom_events['symptom_group'].unique()
 
-    for ax,sg in axes,groups:
+    for ax,sg in zip(axes,groups):
+
         data = days_df(db, current_user,allergen_name = allergen_name, symptom_group = sg) 
         summary = (
             days_df
