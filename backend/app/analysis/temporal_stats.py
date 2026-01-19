@@ -105,7 +105,7 @@ def days_df(
     symptom_events["date_time"] = pd.to_datetime(symptom_events["date_time"], utc=True)
     symptom_events = symptom_events.sort_values("date_time")
 
-    symptom_times = symptom_events["date_time"].to_numpy(dtype="datetime64[ns]")
+    symptom_times = symptom_events["date_time"].values
     allergen_events["symptom_0_24h"] = allergen_events["date_time"].apply(
         lambda t: symptom_within_24h(symptom_times, t)
     )
@@ -118,7 +118,7 @@ def days_df(
         .astype(int)
     )
 
-    allergen_times = allergen_events["date_time"].to_numpy(dtype="datetime64[ns]")
+    allergen_times = allergen_events["date_time"].values
     symptom_events["allergen_0_24h_prior"] = symptom_events["date_time"].apply(
         lambda t: exposure_24h_prior(allergen_times,t)
     )
@@ -250,23 +250,16 @@ def temporal_stats(
         "evidence": evidence
     }
 
-def symptom_within_24h(symptom_times,exposure_time):
-    idx = np.searchsorted(symptom_times, exposure_time, side="right")
-    if idx == len(symptom_times):
-        return False
-    return symptom_times[idx] <= exposure_time + timedelta(hours=24)
+def symptom_within_24h_pd(symptom_df, exposure_time):
+    # Check if any symptom occurs 0–24h after exposure_time
+    window_end = exposure_time + pd.Timedelta(hours=24)
+    mask = (symptom_df["date_time"] > exposure_time) & (symptom_df["date_time"] <= window_end)
+    return int(mask.any())
 
-
-
-def exposure_24h_prior(allergen_times,symptom_time):
-    # Find the index of the first allergen AFTER the symptom
-    idx = np.searchsorted(allergen_times, symptom_time, side="right")  # first exposure > symptom
-    if idx == 0:
-        # No prior exposures
-        return 0
-    # The most recent exposure before symptom
-    last_exposure = allergen_times[idx - 1]
-    return int(symptom_time - last_exposure <= timedelta(hours=24))
-
+def exposure_24h_prior_pd(allergen_df, symptom_time):
+    # Check if any allergen occurred 0–24h before symptom_time
+    window_start = symptom_time - pd.Timedelta(hours=24)
+    mask = (allergen_df["date_time"] > window_start) & (allergen_df["date_time"] <= symptom_time)
+    return int(mask.any())
 
 
