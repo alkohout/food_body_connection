@@ -250,13 +250,13 @@ def temporal_stats(
         "evidence": evidence
     }
 
-def symptom_within_24h_pd(symptom_df, exposure_time):
+def symptom_within_24h(symptom_df, exposure_time):
     # Check if any symptom occurs 0–24h after exposure_time
     window_end = exposure_time + pd.Timedelta(hours=24)
     mask = (symptom_df["date_time"] > exposure_time) & (symptom_df["date_time"] <= window_end)
     return int(mask.any())
 
-def exposure_24h_prior_pd(allergen_df, symptom_time):
+def exposure_24h_prior(allergen_df, symptom_time):
     # Check if any allergen occurred 0–24h before symptom_time
     window_start = symptom_time - pd.Timedelta(hours=24)
     mask = (allergen_df["date_time"] > window_start) & (allergen_df["date_time"] <= symptom_time)
