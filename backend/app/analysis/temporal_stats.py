@@ -17,6 +17,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from io import BytesIO
 
+
 def plot_stats(
     db: Session,
     current_user: int,
@@ -37,31 +38,32 @@ def plot_stats(
 
         summary = (
             data
-            .groupby(["exposed", "symptom_0_24h"])
+            .groupby(["allergen_prior_symptom", "symptom_following_exposure"])
             .size()
             .reset_index(name="count")
         )
+
         # Ensure all four combinations exist
         all_combos = pd.DataFrame([
-            {"exposed": 0, "symptom_0_24h": 0},
-            {"exposed": 0, "symptom_0_24h": 1},
-            {"exposed": 1, "symptom_0_24h": 0},
-            {"exposed": 1, "symptom_0_24h": 1},
+            {"allergen_prior_symptom": 0, "symptom_following_exposure": 0},
+            {"allergen_prior_symptom": 0, "symptom_following_exposure": 1},
+            {"allergen_prior_symptom": 1, "symptom_following_exposure": 0},
+            {"allergen_prior_symptom": 1, "symptom_following_exposure": 1},
         ])
 
-        summary = all_combos.merge(summary, on=["exposed", "symptom_0_24h"], how="left")
+        summary = all_combos.merge(summary, on=["allergen_prior_symptom", "symptom_following_exposure"], how="left")
         summary["count"] = summary["count"].fillna(0)
 
         # Drop No exposure & No symptoms
         summary = summary[~(
-            (summary["exposed"] == 0) &
-            (summary["symptom_0_24h"] == 0)
+            (summary["allergen_prior_symptom"] == 0) &
+            (summary["symptom_following_exposure"] == 0)
         )]
 
         labels = (
-            summary["exposed"].map({0: "NoExp", 1: "Exp"})
+            summary["allergen_prior_symptom"].map({0: "NoExp", 1: "Exp"})
             + "_"
-            + summary["symptom_0_24h"].map({0: "NoSym", 1: "Sym"})
+            + summary["symptom_following_exposure"].map({0: "NoSym", 1: "Sym"})
         )
 
         heights = summary["count"].values
@@ -99,9 +101,33 @@ def days_df(
     )
 
     allergen_events["date_time"] = pd.to_datetime(allergen_events["date_time"], utc=True)
-    symptom_events["date_time"] = (
-        pd.to_datetime(symptom_events["date_time"], utc=True)
-        .sort_values()
+    allergen_events = allergen_events.sort_values("date_time")
+    symptom_events["date_time"] = pd.to_datetime(symptom_events["date_time"], utc=True)
+    symptom_events = symptom_events.sort_values("date_time")
+
+    symptom_times = symptom_events["date_time"].values
+    allergen_events["symptom_0_24h"] = allergen_events["date_time"].apply(
+        lambda t: symptom_within_24h(symptom_times, t)
+    )
+    allergen_events["date"] = allergen_events["date_time"].dt.floor("D")
+
+    daily_exposure = (
+        allergen_events
+        .groupby("date")["symptom_0_24h"]
+        .any()
+        .astype(int)
+    )
+
+    allergen_times = allergen_events["date_time"].values
+    symptom_events["allergen_0_24h_prior"] = symptom_events["date_time"].apply(
+        lambda t: exposure_24h_prior(allergen_times,t)
+    )
+    symptom_events["date"] = symptom_events["date_time"].dt.floor("D")
+    daily_symptoms = (
+        symptom_events
+        .groupby("date")["allergen_0_24h_prior"]
+        .any()
+        .astype(int)
     )
 
     overall_min = min(
@@ -120,56 +146,23 @@ def days_df(
         tz="UTC",
     )
 
+
     days_df = pd.DataFrame({"date": date_index})
+    n = len(days_df)
 
-    # Exposure days
-    allergen_events["date"] = allergen_events["date_time"].dt.floor("D")
-    exposed_days = (
-        allergen_events[["date"]]
-        .drop_duplicates()
-        .assign(exposed=1)
+    days_df["allergen_prior_symptom"] = (
+        days_df["date"]
+        .map(daily_symptoms)
+        .fillna(0)
+        .astype(int)
     )
 
-    days_df = days_df.merge(exposed_days, on="date", how="left")
-    days_df["exposed"] = days_df["exposed"].fillna(0).astype(int)
-
-    # Symptom days
-    symptom_events["date"] = symptom_events["date_time"].dt.floor("D")
-
-    symptom_days = (
-        symptom_events[["date"]]
-        .drop_duplicates()
-        .assign(symptom_0_24h=1)
+    days_df["symptom_following_exposure"] = (
+        days_df["date"]
+        .map(daily_exposure)
+        .fillna(0)
+        .astype(int)
     )
-
-    days_df = days_df.merge(symptom_days, on="date", how="left")
-    if "symptom_0_24h" not in days_df.columns:
-        days_df["symptom_0_24h"] = 0
-    else:
-        days_df["symptom_0_24h"] = days_df["symptom_0_24h"].fillna(0).astype(int)
-
-    # Vectorised symptom-in-24h check
-    anchors = allergen_events["date_time"]
-    symptom_times = symptom_events["date_time"]
-
-    has_symptom = count_in_windows(
-        anchors,
-        symptom_times,
-        timedelta(hours=0),
-        timedelta(hours=24),
-    ) > 0
-
-    exposure_windows = allergen_events.assign(symptom_0_24h=has_symptom.astype(int))
-
-    daily_symptoms = (
-        exposure_windows
-        .groupby("date")["symptom_0_24h"]
-        .max()
-        .reset_index()
-    )
-
-    days_df = days_df.merge(daily_symptoms, on="date", how="left")
-    days_df["symptom_0_24h"] = days_df["symptom_0_24h"].fillna(0).astype(int)
 
     return days_df
 
@@ -256,3 +249,24 @@ def temporal_stats(
         "p_value": float(p_value) if p_value is not None else None,
         "evidence": evidence
     }
+
+def symptom_within_24h(symptom_times,exposure_time):
+    idx = np.searchsorted(symptom_times, exposure_time, side="right")
+    if idx == len(symptom_times):
+        return False
+    return symptom_times[idx] <= exposure_time + timedelta(hours=24)
+
+
+
+def exposure_24h_prior(allergen_times,symptom_time):
+    # Find the index of the first allergen AFTER the symptom
+    idx = np.searchsorted(allergen_times, symptom_time, side="right")  # first exposure > symptom
+    if idx == 0:
+        # No prior exposures
+        return 0
+    # The most recent exposure before symptom
+    last_exposure = allergen_times[idx - 1]
+    return int(symptom_time - last_exposure <= timedelta(hours=24))
+
+
+
