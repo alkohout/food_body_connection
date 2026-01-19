@@ -34,43 +34,17 @@ def plot_stats(
 
     for ax,sg in zip(axes,groups):
 
-        data = days_df(db, current_user, allergen_name = allergen_name, symptom_group = sg) 
+        exposures, symptoms = days_df(db, current_user, allergen_name = allergen_name, symptom_group = sg) 
 
-        summary = (
-            data
-            .groupby(["allergen_prior_symptom", "symptom_following_exposure"])
-            .size()
-            .reset_index(name="count")
-        )
-
-        # Ensure all four combinations exist
-        all_combos = pd.DataFrame([
-            {"allergen_prior_symptom": 0, "symptom_following_exposure": 0},
-            {"allergen_prior_symptom": 0, "symptom_following_exposure": 1},
-            {"allergen_prior_symptom": 1, "symptom_following_exposure": 0},
-            {"allergen_prior_symptom": 1, "symptom_following_exposure": 1},
-        ])
-
-        summary = all_combos.merge(summary, on=["allergen_prior_symptom", "symptom_following_exposure"], how="left")
-        summary["count"] = summary["count"].fillna(0)
-
-        # Drop No exposure & No symptoms
-        summary = summary[~(
-            (summary["allergen_prior_symptom"] == 0) &
-            (summary["symptom_following_exposure"] == 0)
-        )]
-
-        labels = (
-            summary["allergen_prior_symptom"].map({0: "NoExp", 1: "Exp"})
-            + "_"
-            + summary["symptom_following_exposure"].map({0: "NoSym", 1: "Sym"})
-        )
-
-        heights = summary["count"].values
+        e_perc = 100*exposures.sum()/len(exposures)
+        s_perc = 100*symptoms.sum()/len(symptoms)
+    
+        labels = ['exposures followed by symptoms', 'symptoms preceeded by exposures']
+        heights = [e_perc,s_perc] 
 
         ax.bar(labels, heights)
         ax.set_title(sg)
-        ax.set_ylabel("Days Count")
+        ax.set_ylabel("Percent")
         ax.set_ylim(0, heights.max() * 1.1)  # add 10% headroom
 
 
@@ -162,7 +136,7 @@ def days_df(
         .astype(int)
     )
 
-    return days_df
+    return daily_exposure, daily_symptoms
 
 
 def count_in_windows(anchor_times, symptom_times, lag_start, lag_end):
