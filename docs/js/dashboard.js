@@ -318,7 +318,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         timeSeriesPlotImg.src = URL.createObjectURL(blob_ts);
       
       const res_bp = await fetch(
-        `${API_URL}/analysis/plot_bar_plots?allergen_name=${encodeURIComponent(allergenName)}`,
+        `${API_URL}/analysis/plot_bar_plots` +
+        `?allergen_name=${encodeURIComponent(allergenName)}` +
+        `&lag_start=${start}&lag_end=${end}` +
+        `&_=${cacheBust}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("access_token")}`

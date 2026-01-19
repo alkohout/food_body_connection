@@ -21,7 +21,9 @@ from io import BytesIO
 def plot_stats(
     db: Session,
     current_user: int,
-    allergen_name: str
+    allergen_name: str,
+    lag_start: int,
+    lag_end: int
     ):
 
     symptom_events = get_all_symptom_events_df(
@@ -39,16 +41,13 @@ def plot_stats(
         e_perc = 100*exposures.sum()/len(exposures)
         s_perc = 100*symptoms.sum()/len(symptoms)
     
-        labels = ['% of exposure-days followed by symptoms (0–24h)', '% of symptom-days preceded by exposure (0–24h)']
+        labels = ['% of exposure-days followed by symptoms (within window)', '% of symptom-days preceded by exposure (within window)']
         heights = [e_perc,s_perc] 
 
         ax.bar(labels, heights)
         ax.set_title(sg)
         ax.set_ylabel("Percent")
         ax.set_ylim(0, max(heights) * 1.1)  # add 10% headroom
-
-
-        plt.xticks(rotation=45)
         plt.tight_layout()
 
     # --------------------------------------------------
@@ -65,6 +64,8 @@ def days_df(
     current_user: User,
     allergen_name: str,
     symptom_group: str,
+    lag_start: int,
+    lag_end: int
 ):
 
     allergen_events = get_all_allergen_events_df(
@@ -79,25 +80,25 @@ def days_df(
     symptom_events["date_time"] = pd.to_datetime(symptom_events["date_time"], utc=True)
     symptom_events = symptom_events.sort_values("date_time")
 
-    allergen_events["symptom_0_24h"] = allergen_events["date_time"].apply(
-        lambda t: symptom_within_24h(symptom_events, t)
+    allergen_events["symptom"] = allergen_events["date_time"].apply(
+        lambda t: symptom_within_window(symptom_events, t)
     )
     allergen_events["date"] = allergen_events["date_time"].dt.floor("D")
 
     daily_exposure = (
         allergen_events
-        .groupby("date")["symptom_0_24h"]
+        .groupby("date")["symptom"]
         .any()
         .astype(int)
     )
 
-    symptom_events["allergen_0_24h_prior"] = symptom_events["date_time"].apply(
-        lambda t: exposure_24h_prior(allergen_events,t)
+    symptom_events["allergen_prior"] = symptom_events["date_time"].apply(
+        lambda t: exposure_window_prior(allergen_events,t)
     )
     symptom_events["date"] = symptom_events["date_time"].dt.floor("D")
     daily_symptoms = (
         symptom_events
-        .groupby("date")["allergen_0_24h_prior"]
+        .groupby("date")["allergen_prior"]
         .any()
         .astype(int)
     )
@@ -222,16 +223,18 @@ def temporal_stats(
         "evidence": evidence
     }
 
-def symptom_within_24h(symptom_df, exposure_time):
-    # Check if any symptom occurs 0–24h after exposure_time
-    window_end = exposure_time + pd.Timedelta(hours=24)
-    mask = (symptom_df["date_time"] > exposure_time) & (symptom_df["date_time"] <= window_end)
+def symptom_within_window(symptom_df, exposure_time, lag_start, lag_end):
+    # Check if any symptom occurs within window after exposure_time
+    window_start = exposure_time + pd.Timedelta(hours=lag_start)
+    window_end = exposure_time + pd.Timedelta(hours=lag_end)
+    mask = (symptom_df["date_time"] > window_start) & (symptom_df["date_time"] <= window_end)
     return int(mask.any())
 
-def exposure_24h_prior(allergen_df, symptom_time):
-    # Check if any allergen occurred 0–24h before symptom_time
-    window_start = symptom_time - pd.Timedelta(hours=24)
-    mask = (allergen_df["date_time"] > window_start) & (allergen_df["date_time"] <= symptom_time)
+def exposure_window_prior(allergen_df, symptom_time, lag_start, lag_end):
+    # Check if any allergen occurred within window before symptom_time
+    window_start = symptom_time - pd.Timedelta(hours=lag_end)
+    window_end = symptom_time - pd.Timedelta(hours=lag_start)
+    mask = (allergen_df["date_time"] > window_start) & (allergen_df["date_time"] <= window_end)
     return int(mask.any())
 
 
