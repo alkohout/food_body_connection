@@ -42,10 +42,6 @@ def plot_stats(
             summary['count']
         )
 
-        ax.set_ylabel("Proportion of days with symptoms (0–24h)")
-        ax.set_ylim(0, 1)
-
-        ax.set_title("Symptoms within 24h of allergen exposure")
         for i, v in enumerate(data["symptom_0_24h"]):
             ax.text(i, v + 0.02, f"{v:.1%}", ha="center")
 
