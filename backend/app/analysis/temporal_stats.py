@@ -34,12 +34,12 @@ def plot_stats(
 
     for ax,sg in zip(axes,groups):
 
-        exposures, symptoms = days_df(db, current_user, allergen_name = allergen_name, symptom_group = sg) 
+        days, exposures, symptoms = days_df(db, current_user, allergen_name = allergen_name, symptom_group = sg) 
 
         e_perc = 100*exposures.sum()/len(exposures)
         s_perc = 100*symptoms.sum()/len(symptoms)
     
-        labels = ['exposures followed by symptoms', 'symptoms preceeded by exposures']
+        labels = ['% of exposure-days followed by symptoms (0–24h)', '% of symptom-days preceded by exposure (0–24h)']
         heights = [e_perc,s_perc] 
 
         ax.bar(labels, heights)
@@ -136,7 +136,7 @@ def days_df(
         .astype(int)
     )
 
-    return daily_exposure, daily_symptoms
+    return days_df, daily_exposure, daily_symptoms
 
 
 def count_in_windows(anchor_times, symptom_times, lag_start, lag_end):
