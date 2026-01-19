@@ -27,7 +27,9 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 def plot_bar_plots(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
-        allergen_name: str = 'Dairy'
+        allergen_name: str = 'Dairy',
+        lag_start: int = 0,
+        lag_end: int = 6,
     ):
 
     try: 
@@ -35,7 +37,9 @@ def plot_bar_plots(
         buf = plot_stats(
             db,
             current_user.user_id,
-            allergen_name
+            allergen_name,
+            lag_start,
+            lag_end
         )
 
         return StreamingResponse(buf, media_type="image/png")
