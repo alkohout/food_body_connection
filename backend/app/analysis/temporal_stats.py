@@ -81,7 +81,7 @@ def days_df(
     symptom_events = symptom_events.sort_values("date_time")
 
     allergen_events["symptom"] = allergen_events["date_time"].apply(
-        lambda t: symptom_within_window(symptom_events, t)
+        lambda t: symptom_within_window(symptom_events, t, lag_start, lag_end)
     )
     allergen_events["date"] = allergen_events["date_time"].dt.floor("D")
 
@@ -93,7 +93,7 @@ def days_df(
     )
 
     symptom_events["allergen_prior"] = symptom_events["date_time"].apply(
-        lambda t: exposure_window_prior(allergen_events,t)
+        lambda t: exposure_window_prior(allergen_events,t,lag_start,lag_end)
     )
     symptom_events["date"] = symptom_events["date_time"].dt.floor("D")
     daily_symptoms = (
