@@ -45,7 +45,7 @@ def plot_stats(
         ax.bar(labels, heights)
         ax.set_title(sg)
         ax.set_ylabel("Percent")
-        ax.set_ylim(0, heights.max() * 1.1)  # add 10% headroom
+        ax.set_ylim(0, max(heights) * 1.1)  # add 10% headroom
 
 
         plt.xticks(rotation=45)
