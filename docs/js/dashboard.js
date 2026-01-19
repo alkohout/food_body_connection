@@ -42,6 +42,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const allergenIntIdInput = document.getElementById("allergen-intensity-id");
   const allergenIntSuggestions = document.getElementById("allergen-intensity-suggestions");
 
+  const symptomGroupInput = document.getElementById("symptom-group-input");
+  const symptomGroupIdInput = document.getElementById("symptom-group-id");
+  const symptomGroupSuggestions = document.getElementById("symptom-group-suggestions");
+
   const lagWindowInput = document.getElementById("lag-window");
 
   const analysisPlotImg = document.getElementById("analysis-plot");
@@ -107,6 +111,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const endpoint =
       type === "allergen" ? "allergens" :
+      type === "symptom_group" ? "symptom_groups" :
       type === "symptom"  ? "symptoms"  :
                             "allergens";
 
@@ -151,6 +156,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupAutocomplete(allergenInput, allergenIdInput, allergenSuggestions, "allergen");
   setupAutocomplete(symptomInput, symptomIdInput, symptomSuggestions, "symptom");
   setupAutocomplete(allergenIntInput, allergenIntIdInput, allergenIntSuggestions, "allergen");
+  setupAutocomplete(symptomGroupInput, symptomGroupIdInput, symptomGroupSuggestions, "symptom_group");
 
   // =========================================================
   // Generic form submitter
@@ -281,6 +287,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       "24_48":{ start: 24, end: 48 }
     };
     const { start, end } = LAG_WINDOWS[lagWindow];
+    const symptomGroup = symptomGroupInput.value
 
 
     try {
@@ -321,6 +328,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         `${API_URL}/analysis/plot_bar_plots` +
         `?allergen_name=${encodeURIComponent(allergenName)}` +
         `&lag_start=${start}&lag_end=${end}` +
+        `&symptom_group=${encodeURIComponent(symptomGroup)}` +
         `&_=${cacheBust}`,
         {
           headers: {

@@ -30,6 +30,7 @@ def plot_bar_plots(
         allergen_name: str = 'Dairy',
         lag_start: int = 0,
         lag_end: int = 6,
+        symptom_group: str = 'Gastrointestinal',
     ):
 
     try: 
@@ -39,7 +40,8 @@ def plot_bar_plots(
             current_user.user_id,
             allergen_name,
             lag_start,
-            lag_end
+            lag_end,
+            symptom_group
         )
 
         return StreamingResponse(buf, media_type="image/png")

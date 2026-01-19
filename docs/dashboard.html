@@ -196,6 +196,10 @@
                 <option value="6_24">6 - 24 hrs</option>
                 <option value="24_48">24 - 48 hrs</option>
             </select>
+            <label> - a symptom group:</label>
+            <input type="text" id="symptom-group-input" autocomplete="on" />
+            <input type="hidden" id="symptom-group-id" />
+            <ul id="symptom-group-suggestions" class="suggestions"></ul>
             </label>
             <button type="button" id="update-plot-btn">Generate Analysis on Chosen Allergen</button>
 
