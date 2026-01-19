@@ -36,7 +36,7 @@ def plot_stats(
 
     for ax,sg in zip(axes,groups):
 
-        days, exposures, symptoms = days_df(db, current_user, allergen_name = allergen_name, symptom_group = sg) 
+        days, exposures, symptoms = days_df(db, current_user, allergen_name = allergen_name, symptom_group = sg, lag_start=lag_start, lag_end=lag_end) 
 
         e_perc = 100*exposures.sum()/len(exposures)
         s_perc = 100*symptoms.sum()/len(symptoms)
