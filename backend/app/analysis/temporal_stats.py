@@ -1,6 +1,6 @@
-
 # backend/app/analysis/temporal_stats.py
 
+import numpy as np
 from fastapi import Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -8,10 +8,10 @@ from app.api.routes.auth import get_current_user
 from app.models.table_class import User
 from datetime import timedelta
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
-import numpy as np
 import pandas as pd
 import logging
 from scipy.stats import binomtest
+import logging
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -146,6 +146,18 @@ def count_in_windows(anchor_times, symptom_times, start_delta, end_delta):
     idx_right = np.searchsorted(symptom_times, right, side="right")
 
     return idx_right - idx_left
+
+def count_window(anchor_time, event_times, start_delta, end_delta):
+    if event_times.empty:
+        return 0
+
+    start = anchor_time + start_delta
+    end = anchor_time + end_delta
+
+    return (
+        (event_times >= start) &
+        (event_times < end)
+    ).sum()
 
 def temporal_stats(
         current_user: User = Depends(get_current_user),
