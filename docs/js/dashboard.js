@@ -60,6 +60,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   //const statsTableBody = document.querySelector("#temporal-stats-table tbody");
 
+  document.getElementById("caption-allergen").textContent =
+  document.getElementById("allergen-intensity-input").value;
+
+  document.getElementById("caption-symptom-group").textContent =
+  document.getElementById("symptom-group-input").value;
+
+  document.getElementById("caption-lag").textContent =
+  document.getElementById("lag-window").selectedOptions[0].text;
+
+
   // =========================================================
   // Logout
   // =========================================================
