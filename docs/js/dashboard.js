@@ -311,6 +311,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     const { start, end } = LAG_WINDOWS[lagWindow];
     const symptomGroup = symptomGroupInput.value
 
+    document.getElementById("caption-allergen").textContent =
+      allergenName || "—";
+
+    document.getElementById("caption-symptom-group").textContent =
+      symptomGroup || "—";
+
+    document.getElementById("caption-lag").textContent =
+      lagWindowInput.selectedOptions[0].text;
+
 
     try {
  
