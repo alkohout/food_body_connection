@@ -53,7 +53,7 @@ def plot_stats(
     buf.seek(0)
     return buf
 
-def get_pvalue_color(p):
+def get_pvalue_colour(p):
     """
     Return traffic light color based on p-value.
     Green = highly significant
@@ -67,6 +67,13 @@ def get_pvalue_color(p):
     else:
         return "red"
 
+def get_risk_colour(r):
+    if r > 10:
+        return "green"
+    elif r > 3:
+        return "orange"
+    else:
+        return "red"
 
 def plot_stats_risk(
     db: Session,
@@ -114,7 +121,8 @@ def plot_stats_risk(
     _, p_value = fisher_exact(table)
 
     # Traffic light annotation for p-value
-    p_color = get_pvalue_color(p_value)
+    p_color = get_pvalue_colour(p_value)
+    r_color = get_risk_colour(risk_diff)
     x_text = 0.95
     y_start = 0.95
     y = y_start 
@@ -130,7 +138,7 @@ def plot_stats_risk(
         fontsize=12,
         verticalalignment="top", 
         horizontalalignment="right",
-        color=p_color, zorder=3
+        color=r_color, zorder=3
     )
 
     from matplotlib.patches import Rectangle
