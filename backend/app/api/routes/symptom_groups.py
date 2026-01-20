@@ -15,6 +15,7 @@ def search_symptom_groups(
     results = (
         db.query(Symptom)
         .filter(Symptom.symptom_group.ilike(f"%{q}%"))
+        .distinct()
         .order_by(Symptom.symptom_group)
         .limit(10)
         .all()

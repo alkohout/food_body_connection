@@ -34,7 +34,7 @@ def plot_stats(
     e_perc = 100*exposures.sum()/len(exposures)
     s_perc = 100*symptoms.sum()/len(symptoms)
 
-    labels = ['% of exposure-days followed by symptoms (within window)', '% of symptom-days preceded by exposure (within window)']
+    labels = [f'Exposure-days followed by symptoms (within {lag_start} - {lag_end} hrs)', f'Symptom-days preceded by exposure (within {lag_start} - {lag_end} hrs)']
     heights = [e_perc,s_perc] 
 
     ax.bar(labels, heights)
