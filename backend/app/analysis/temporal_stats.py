@@ -118,7 +118,7 @@ def plot_stats_risk(
     x_text = 0.95
     y_start = 0.91
     y = y_start 
-    text = f"p-value: {p_value:.3f}" if std is not None else f"{name}: {val}"
+    text = f"p-value: {p_value:.3f}" 
     plt.text(x_text, y, text, transform=ax_top.transAxes, fontsize=12,
                     verticalalignment="top", horizontalalignment="right",
                     color=p_color, zorder=4)
