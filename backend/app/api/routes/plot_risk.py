@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from app.models.table_class import User
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
-from app.analysis.temporal_stats import plot_stats 
+from app.analysis.temporal_stats import plot_stats_risk 
 from datetime import timedelta, datetime
 import traceback
 from io import BytesIO
@@ -35,7 +35,7 @@ def plot_risk(
 
     try: 
 
-        buf = plot_stats(
+        buf = plot_stats_risk(
             db,
             current_user.user_id,
             allergen_name,
