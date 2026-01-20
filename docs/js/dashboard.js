@@ -129,7 +129,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     inputEl.addEventListener("input", debounce(async () => {
       const query = inputEl.value.trim();
-      if (idEl) idEl.value = "";   
+
+      // ONLY clear idEl if it exists
+      if (idEl !== null && idEl !== undefined) idEl.value = "";
+
+      // clear suggestions
       suggestionsEl.innerHTML = "";
 
       if (!query) return;
@@ -140,20 +144,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         const li = document.createElement("li");
         li.textContent =
           type === "symptom" ? item.symptom_name :
-          type === "symptom_group" ? item.symptom_group : // just use the column
+          type === "symptom_group" ? item.symptom_group : // just the string
           item.allergen_name;
 
         li.addEventListener("click", () => {
           inputEl.value = li.textContent;
 
-          if (idEl && type !== "symptom_group") {
+          // ONLY set idEl if it exists and the type is not symptom_group
+          if (idEl !== null && idEl !== undefined && type !== "symptom_group") {
             idEl.value = type === "symptom" ? item.symptom_id : item.allergen_id;
           }
 
           suggestionsEl.innerHTML = "";
         });
-
-
 
         suggestionsEl.appendChild(li);
       });
