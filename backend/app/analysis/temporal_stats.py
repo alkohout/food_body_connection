@@ -70,27 +70,36 @@ def plot_stats_risk(
     risk_exposed = exposed_days["symptom_following_exposure"].mean()
     risk_unexposed = unexposed_days["symptom_following_exposure"].mean()
 
-    risk_difference = risk_exposed - risk_unexposed
+    risks = [100 * risk_unexposed, 100 * risk_exposed]
+    labels = ["No exposure (baseline)", f"Exposure to {allergen_name}"]
 
+    ax.bar(labels, risks)
+    ax.set_ylabel("Percent of days with symptoms")
+    ax.set_ylim(0, max(risks) * 1.25)
 
-    labels = [f'Exposure-days followed by symptoms (within {lag_start} - {lag_end} hrs)', f'Symptom-days preceded by exposure (within {lag_start} - {lag_end} hrs)']
-    heights = [e_perc,s_perc] 
+    # Annotate absolute risk difference
+    risk_diff = 100 * (risk_exposed - risk_unexposed)
+    ax.text(
+        0.5,
+        max(risks) * 1.1,
+        f"Absolute risk increase: {risk_diff:+.1f}%",
+        ha="center",
+        fontsize=12,
+        fontweight="bold",
+    )
 
-    ax.bar(labels, heights)
-    ax.set_title(symptom_group)
-    ax.set_ylabel("Percent")
-    ax.set_ylim(0, max(heights) * 1.1)  # add 10% headroom
+    ax.set_title(
+        f"{symptom_group}\n"
+        f"Symptoms within {lag_start}–{lag_end} hours"
+    )
+
     plt.tight_layout()
 
-    # --------------------------------------------------
-    # Output buffer
-    # --------------------------------------------------
     buf = BytesIO()
     plt.savefig(buf, format="png", dpi=150, bbox_inches="tight")
     plt.close(fig)
     buf.seek(0)
     return buf
-
 
 def days_df(
     db: Session,
