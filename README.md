@@ -11,7 +11,7 @@ Food–Body Connection is a health analytics application that allows users to:
 - Log foods consumed, including quantities and timestamps
 - Log symptoms and symptom intensity
 - Store structured health data in a relational database
-- Analyze relationships between foods and symptoms
+- Analyze relationships between allergens and symptoms
 - Generate personalized reports highlighting potential trigger foods
 
 ## Architecture
@@ -34,24 +34,11 @@ The backend API is implemented using:
 Backend repository:
 👉 https://github.com/alkohout/food_body_connection
 
-## Status
-
-🚧 The frontend is currently under active development.
-
-Initial functionality will include:
-- User authentication
-- Food and symptom logging
-- Timeline and summary views
-- Report generation
-
-## License
-
-MIT
 # Allergen & Symptom Tracking and Analysis App
 
 ## Overview
 
-This project is a full‑stack allergen and symptom tracking application designed to help users identify likely food (or other) allergens associated with adverse symptoms. Users log allergen exposures and symptoms over time, and the system applies statistical analysis and machine‑learning models to estimate which allergens are most strongly associated with symptom onset.
+This project is a full‑stack allergen and symptom tracking application designed to help users identify likely food (or other) allergens associated with adverse symptoms. Users log allergen exposures and symptoms over time, and the system applies statistical analysis and supervised machine‑learning models to estimate which allergens are most strongly associated with symptom onset.
 
 The goal of the project is **decision support**, not diagnosis: to surface patterns that may not be obvious to users, and to present them in an interpretable, user‑friendly way.
 
@@ -83,28 +70,47 @@ The goal of the project is **decision support**, not diagnosis: to surface patte
   * Relative importance of allergens
 * Current approaches include:
 
-  * Logistic regression
-    - Binary target ( symptom occurred (1) versus not (0))
-    - Can calculate odds ratio (exponential of coefficient) which is easily interpretable
-    - Works with categorical data
-    - Stable with small and imbalanced datasets 
-    - L1 or L2 used to prevent overfitting
-    - Fast computation
-  * Nested Cross Validation
-    - Dataset is relatively small
-    - Performance metrics will be shown to users
-    - Require robust uncertainty estimates
-    - Avoid dependence on a single split
+# Logistic Regression
+- **Purpose:** Estimate the **association between an allergen and symptom occurrence**.  
+- **Target:** Binary outcome — symptom occurred (1) or not (0).  
+- **Key features:**
+  - Coefficients can be exponentiated to obtain **odds ratios**, providing an intuitive measure of effect size.  
+  - Handles **categorical and continuous predictors**.  
+  - Stable for **small or imbalanced datasets**.  
+  - Regularization (L1 or L2) prevents overfitting.  
+  - Fast computation allows rapid iteration and model testing.  
+  - Includes Nested Cross Validation with metrics and uncertainty estimates, since dataset is likely relatively small
+- **Use case:** Identify which allergens are significantly associated with symptoms and quantify the strength of that association.
+
+# Generalized Additive Models (GAM)
+- **Purpose:** Estimate **risk and dose-response relationships** between allergen exposure and symptom probability.  
+- **Target:** Binary outcome — symptom occurred (1) or not (0), but with **non-linear effects** of predictors.  
+- **Key features:**
+  - Models **smooth, flexible functions** of predictors, allowing non-linear or threshold effects.  
+  - Suitable for **continuous exposures** (dose levels) as well as categorical variables.  
+  - Outputs **absolute risk curves** (probability of symptom) rather than odds ratios.  
+  - Captures complex temporal or exposure–response patterns.  
+- **Use case:** Determine how **different exposure levels impact symptom risk**, identify thresholds, and visualize dose-response dynamics.
+
+# Fisher Exact Test
+- **Purpose:** Test for **association between categorical variables** when sample sizes are small.  
+- **Key features:**
+  - Exact test for contingency tables, avoiding approximations.  
+  - Provides **p-values** for significance of association between an allergen and symptom occurrence.  
+  - Works well with **rare events or imbalanced data**.  
+- **Use case:** Confirm associations suggested by logistic regression in **small datasets** or when counts are low.
 
 * Model evaluation using:
 
   * ROC AUC
   * Symptom recall
   * Bootstrapping / confidence intervals
+  * p-value
+  * Pseudo R^2 (proportion of uncertainty explained by model - outcome not continous or normally distributed, so R^2 not appropriate)
+  * Effective degrees of freedom
 
 ### 4. Interpretability & Visualisation
 
-* Correlation heatmaps between allergens and symptoms
 * Ranked allergen lists by likelihood or importance
 * Simple visual indicators (green / orange / red) for model confidence or risk level
 * Designed for **non‑technical end users**
@@ -129,6 +135,8 @@ app/
 │   ├── get_xy.py                 # Feature/label construction
 │   ├── supervised_classification.py
 │   └── ...
+├── api/
+|   ├── routes
 ├── data/
 │   └── analysis_data.py          # Data loading helpers
 ├── models/
@@ -150,48 +158,10 @@ app/
 * **AllergenLog** – timestamped exposure events
 * **Symptom** – symptom type (e.g. headache, nausea)
 * **SymptomLog** – timestamped symptom events
+* **Unit** - unit used to define quantity in allergen log (e.g. cups, litres )
 
 Relationships are structured to allow many exposures and symptoms per user over time.
 
----
-
-## Feature Engineering Strategy
-
-### Problem Framing
-
-* Symptoms are **binary or categorical outcomes**
-* Allergen exposure is a **sparse, time‑dependent signal**
-
-### Exposure Windows
-
-* For each symptom event, allergens are marked as:
-
-  * `1` if consumed within a defined time window (e.g. 24 hours)
-  * `0` otherwise
-
-### Dataset Construction
-
-* `X`: allergen exposure matrix
-* `y`: symptom presence / absence
-* Supports:
-
-  * Per‑symptom modelling
-  * Aggregated symptom groups
-
----
-
-## Modelling & Evaluation
-
-### Models
-
-* Logistic Regression (baseline, interpretable)
-* Random Forest (non‑linear relationships)
-
-### Metrics
-
-* **ROC AUC** – overall discriminative power
-* **Recall** – ability to correctly identify symptom events
-* **Bootstrap confidence intervals** – robustness under limited data
 
 ### Data Limitations
 
@@ -201,8 +171,6 @@ Relationships are structured to allow many exposures and symptoms per user over 
   * Class imbalance (many exposures, few symptoms)
 * Results improve as longitudinal data accumulates
 
----
-
 ## Design Principles
 
 * **Interpretability first** – users must understand outputs
@@ -210,15 +178,11 @@ Relationships are structured to allow many exposures and symptoms per user over 
 * **Incremental learning** – models improve as data grows
 * **Health‑adjacent, not medical** – no diagnostic claims
 
----
-
 ## Intended Use
 
 * Identify *candidate* allergens to investigate further
 * Support elimination diets or tracking strategies
 * Provide insights to discuss with healthcare professionals
-
----
 
 ## Limitations & Caveats
 
@@ -227,17 +191,11 @@ Relationships are structured to allow many exposures and symptoms per user over 
 * Small sample sizes can inflate uncertainty
 * Results should not be used for medical diagnosis
 
----
-
 ## Future Work
 
-* Multi‑lag exposure modelling (e.g. 6h / 12h / 24h / 48h)
-* Symptom severity regression
 * Unsupervised pattern discovery
-* User‑specific vs population‑level models
 * Improved visual explanations
-
----
+* Improved logging tools
 
 ## Status
 
