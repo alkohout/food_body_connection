@@ -12,20 +12,17 @@ def search_symptom_groups(
     q: str = Query(..., min_length=1),
     db: Session = Depends(get_db),
 ):
+
     results = (
-        db.query(Symptom)
+        db.query(Symptom.symptom_group)
         .filter(Symptom.symptom_group.ilike(f"%{q}%"))
-        .distinct()
+        .distinct()  # <- only unique values
         .order_by(Symptom.symptom_group)
         .limit(10)
         .all()
     )
 
-    return [
-        {
-            "symptom_group": a.symptom_group
-        }
-        for a in results
-    ]
+    return [{"symptom_group": sg[0]} for sg in results]  
+
 
 
