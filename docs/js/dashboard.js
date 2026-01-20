@@ -254,7 +254,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // =========================================================
 
   const fetchTemporalStats = async (allergenName) => {
-    try {
+    //try {
       const res = await fetch(
         `${API_URL}/analysis/temporal_stats?allergen_name=${encodeURIComponent(allergenName)}`,
         { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
@@ -262,6 +262,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (!res.ok) throw new Error(res.statusText);
       const data = await res.json();
+  };
 
       //statsTableBody.innerHTML = "";
 
@@ -292,12 +293,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       //    statsTableBody.appendChild(tr);
       //  });
 
-    } catch (err) {
-      console.error(err);
-      statsTableBody.innerHTML =
-        `<tr><td colspan="7" style="color:red;text-align:center">Failed to load data</td></tr>`;
-    }
-  };
+    //} catch (err) {
+    //  console.error(err);
+    //  statsTableBody.innerHTML =
+    //    `<tr><td colspan="7" style="color:red;text-align:center">Failed to load data</td></tr>`;
+    //}
 
   document.getElementById("update-plot-btn")?.addEventListener("click", async () => {
     const allergenName = allergenIntInput.value || "Dairy";
