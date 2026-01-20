@@ -226,10 +226,22 @@
               </table>
             </section>
 -->
-            <h4> Percentage Bar Charts</h4>
+            <h4> Temporal Relationship between allergen and symptom group</h4>
             <figure class="img-figure" >
               <img id="analysis-bar-plot" src="" alt="Allergen / Symptom Percentages" />
-              <figcaption> Figure : 
+              <figcaption> Figure : Temporal relationship between allergen exposure and symptoms for <span>id=symptom-group-input</span>.
+                The left bar shows the percentage of days with an allergen exposure where at least one symptom occurred within <span>id=lag-window</span> afterward (exposure-days followed by symptoms).
+                The right bar shows the percentage of days with a symptom where at least one allergen exposure occurred in the <span>id=lag-window</span> prior (symptom-days preceded by exposure).
+                These percentages reflect temporal alignment but do not imply causation.
+              </figcaption>
+            </figure> 
+            <h4> Risk</h4>
+            <figure class="img-figure" >
+              <img id="analysis-risk-plot" src="" alt="Allergen / Symptom Percentages" />
+              <figcaption> Figure : Temporal relationship between allergen exposure and symptoms for <span>id=symptom-group-input</span>.
+                The left bar shows the percentage of days with an allergen exposure where at least one symptom occurred within <span>id=lag-window</span> afterward (exposure-days followed by symptoms).
+                The right bar shows the percentage of days with a symptom where at least one allergen exposure occurred in the <span>id=lag-window</span> prior (symptom-days preceded by exposure).
+                These percentages reflect temporal alignment but do not imply causation.
               </figcaption>
             </figure> 
             <h4>Time Series Plot</h4>
