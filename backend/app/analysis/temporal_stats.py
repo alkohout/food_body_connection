@@ -17,7 +17,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from io import BytesIO
 
-
 def plot_stats(
     db: Session,
     current_user: int,
@@ -51,6 +50,47 @@ def plot_stats(
     plt.close(fig)
     buf.seek(0)
     return buf
+
+def plot_stats_risk(
+    db: Session,
+    current_user: int,
+    allergen_name: str,
+    lag_start: int,
+    lag_end: int,
+    symptom_group: str
+    ):
+
+    fig, ax = plt.subplots(figsize=(12, 10))
+
+    days, exposures, symptoms = days_df(db, current_user, allergen_name = allergen_name, symptom_group = symptom_group, lag_start=lag_start, lag_end=lag_end) 
+
+    exposed_days = days[days["exposed"] == 1]
+    unexposed_days = days[days["exposed"] == 0]
+
+    risk_exposed = exposed_days["symptom_following_exposure"].mean()
+    risk_unexposed = unexposed_days["symptom_following_exposure"].mean()
+
+    risk_difference = risk_exposed - risk_unexposed
+
+
+    labels = [f'Exposure-days followed by symptoms (within {lag_start} - {lag_end} hrs)', f'Symptom-days preceded by exposure (within {lag_start} - {lag_end} hrs)']
+    heights = [e_perc,s_perc] 
+
+    ax.bar(labels, heights)
+    ax.set_title(symptom_group)
+    ax.set_ylabel("Percent")
+    ax.set_ylim(0, max(heights) * 1.1)  # add 10% headroom
+    plt.tight_layout()
+
+    # --------------------------------------------------
+    # Output buffer
+    # --------------------------------------------------
+    buf = BytesIO()
+    plt.savefig(buf, format="png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    buf.seek(0)
+    return buf
+
 
 def days_df(
     db: Session,
@@ -112,6 +152,15 @@ def days_df(
         tz="UTC",
     )
 
+    daily_exposed = (
+        allergen_events
+        .groupby("date")
+        .size()
+        .gt(0)
+        .astype(int)
+    )
+
+
 
     days_df = pd.DataFrame({"date": date_index})
     n = len(days_df)
@@ -129,6 +178,14 @@ def days_df(
         .fillna(0)
         .astype(int)
     )
+
+    days_df["exposed"] = (
+        days_df["date"]
+        .map(daily_exposed)
+        .fillna(0)
+        .astype(int)
+    )
+
 
     return days_df, daily_exposure, daily_symptoms
 

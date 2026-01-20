@@ -54,6 +54,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const intensityVolumePlotImg = document.getElementById("analysis-intensity-volume-plot");
   const timeSeriesPlotImg = document.getElementById("analysis-time-series-plot");
   const barPlotImg = document.getElementById("analysis-bar-plot");
+  const riskPlotImg = document.getElementById("analysis-risk-plot");
 
   const predictOut = document.getElementById("predict-out");
 
@@ -350,6 +351,22 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!res_bp.ok) throw new Error(res_bp.statusText);
         const blob_bp = await res_bp.blob();
         barPlotImg.src = URL.createObjectURL(blob_bp);
+      
+      const res_r = await fetch(
+        `${API_URL}/analysis/plot_risk` +
+        `?allergen_name=${encodeURIComponent(allergenName)}` +
+        `&lag_start=${start}&lag_end=${end}` +
+        `&symptom_group=${encodeURIComponent(symptomGroup)}` +
+        `&_=${cacheBust}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`
+          }
+        }
+      );
+      if (!res_r.ok) throw new Error(res_r.statusText);
+        const blob_r = await res_r.blob();
+        riskPlotImg.src = URL.createObjectURL(blob_r);
       
     } catch (err) {
       console.error(err);
