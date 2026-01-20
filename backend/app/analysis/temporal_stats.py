@@ -99,7 +99,7 @@ def plot_stats_risk(
     labels = ["No exposure (baseline)", f"Exposure to {allergen_name}"]
 
     # Plot bars
-    ax.bar(labels, risks, color=['lightgray', 'skyblue'])
+    ax.bar(labels, risks)
     ax.set_ylabel("Percent of days with symptoms")
     ax.set_ylim(0, max(risks) * 1.25)
 
@@ -125,7 +125,7 @@ def plot_stats_risk(
     ax.text(
         x_text,
         y - .05,
-        f"Absolute risk increase: {risk_diff:+.1f}%",
+        f"Absolute risk difference: {risk_diff:+.1f}%",
         transform=ax.transAxes, 
         fontsize=12,
         verticalalignment="top", 
