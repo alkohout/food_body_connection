@@ -119,14 +119,14 @@ def plot_stats_risk(
     y_start = 0.91
     y = y_start 
     text = f"p-value: {p_value:.3f}" 
-    plt.text(x_text, y, text, transform=ax_top.transAxes, fontsize=12,
+    plt.text(x_text, y, text, transform=ax.transAxes, fontsize=12,
                     verticalalignment="top", horizontalalignment="right",
                     color=p_color, zorder=4)
     ax.text(
         x_text,
         y - .1,
         f"Absolute risk increase: {risk_diff:+.1f}%",
-        transform=ax_top.transAxes, 
+        transform=ax.transAxes, 
         fontsize=12,
         verticalalignment="top", 
         horizontalalignment="right",
@@ -134,8 +134,8 @@ def plot_stats_risk(
     )
 
     from matplotlib.patches import Rectangle
-    rect = Rectangle((0.65, 0.75), 0.35, 0.25, transform=ax_top.transAxes, color="white", alpha=0.85, zorder=2)
-    ax_top.add_patch(rect)
+    rect = Rectangle((0.65, 0.75), 0.35, 0.25, transform=ax.transAxes, color="white", alpha=0.85, zorder=2)
+    ax.add_patch(rect)
 
     # Set title
     ax.set_title(
