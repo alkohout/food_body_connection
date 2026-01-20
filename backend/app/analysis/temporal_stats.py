@@ -15,7 +15,9 @@ import logging
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from scipy.stats import fisher_exact
 from io import BytesIO
+
 
 def plot_stats(
     db: Session,
@@ -51,6 +53,21 @@ def plot_stats(
     buf.seek(0)
     return buf
 
+def get_pvalue_color(p):
+    """
+    Return traffic light color based on p-value.
+    Green = highly significant
+    Orange = borderline
+    Red = not significant
+    """
+    if p < 0.01:
+        return "green"
+    elif p < 0.05:
+        return "orange"
+    else:
+        return "red"
+
+
 def plot_stats_risk(
     db: Session,
     current_user: int,
@@ -58,24 +75,31 @@ def plot_stats_risk(
     lag_start: int,
     lag_end: int,
     symptom_group: str
-    ):
-
+):
     fig, ax = plt.subplots(figsize=(12, 10))
 
-    days, exposures, symptoms = days_df(db, current_user, allergen_name = allergen_name, symptom_group = symptom_group, lag_start=lag_start, lag_end=lag_end) 
+    # Get daily data
+    days, exposures, symptoms = days_df(
+        db,
+        current_user,
+        allergen_name=allergen_name,
+        symptom_group=symptom_group,
+        lag_start=lag_start,
+        lag_end=lag_end
+    )
 
-
+    # Split into exposed vs unexposed days
     exposed_days = days[days["exposed"] == 1]
     unexposed_days = days[days["exposed"] == 0]
 
+    # Calculate absolute risks
     risk_exposed = exposed_days["any_symptom"].mean()
     risk_unexposed = unexposed_days["any_symptom"].mean()
-
-
     risks = [100 * risk_unexposed, 100 * risk_exposed]
     labels = ["No exposure (baseline)", f"Exposure to {allergen_name}"]
 
-    ax.bar(labels, risks)
+    # Plot bars
+    ax.bar(labels, risks, color=['lightgray', 'skyblue'])
     ax.set_ylabel("Percent of days with symptoms")
     ax.set_ylim(0, max(risks) * 1.25)
 
@@ -87,16 +111,37 @@ def plot_stats_risk(
         f"Absolute risk increase: {risk_diff:+.1f}%",
         ha="center",
         fontsize=12,
-        fontweight="bold",
+        fontweight="bold"
     )
 
+    # Fisher's exact test
+    table = [
+        [exposed_days["any_symptom"].sum(), exposed_days.shape[0] - exposed_days["any_symptom"].sum()],
+        [unexposed_days["any_symptom"].sum(), unexposed_days.shape[0] - unexposed_days["any_symptom"].sum()]
+    ]
+    _, p_value = fisher_exact(table)
+
+    # Traffic light annotation for p-value
+    p_color = get_pvalue_color(p_value)
+    ax.text(
+        0.5,
+        max(risks) * 1.18,
+        f"p-value: {p_value:.3f}",
+        ha="center",
+        fontsize=14,
+        fontweight="bold",
+        color=p_color
+    )
+
+    # Set title
     ax.set_title(
-        f"{symptom_group}\n"
-        f"Symptoms within {lag_start}–{lag_end} hours"
+        f"{symptom_group}\nSymptoms within {lag_start}–{lag_end} hours",
+        fontsize=16
     )
 
     plt.tight_layout()
 
+    # Save to buffer
     buf = BytesIO()
     plt.savefig(buf, format="png", dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -180,29 +225,11 @@ def days_df(
         .astype(int)
     )
 
-
-
     days_df = pd.DataFrame({"date": date_index})
-    n = len(days_df)
-
-    days_df["allergen_prior_symptom"] = (
-        days_df["date"]
-        .map(daily_symptoms)
-        .fillna(0)
-        .astype(int)
-    )
 
     days_df["any_symptom"] = (
         days_df["date"]
         .map(daily_any_symptom)
-        .fillna(0)
-        .astype(int)
-    )
-
-
-    days_df["symptom_following_exposure"] = (
-        days_df["date"]
-        .map(daily_exposure)
         .fillna(0)
         .astype(int)
     )
