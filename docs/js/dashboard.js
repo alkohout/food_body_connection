@@ -139,14 +139,22 @@ document.addEventListener("DOMContentLoaded", async () => {
       data.forEach(item => {
         const li = document.createElement("li");
         li.textContent =
-          type === "symptom" ? item.symptom_name : item.allergen_name;
+          type === "symptom" ? item.symptom_name :
+          type === "symptom_group" ? item.symptom_group : // just use the column
+          item.allergen_name;
 
         li.addEventListener("click", () => {
           inputEl.value = li.textContent;
-          idEl.value =
-            type === "symptom" ? item.symptom_id : item.allergen_id;
+          if (idEl) {
+            idEl.value =
+              type === "symptom" ? item.symptom_id :
+              type === "allergen" ? item.allergen_id :
+              ""; // symptom_group has no ID
+          }
           suggestionsEl.innerHTML = "";
         });
+
+
 
         suggestionsEl.appendChild(li);
       });
@@ -156,7 +164,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupAutocomplete(allergenInput, allergenIdInput, allergenSuggestions, "allergen");
   setupAutocomplete(symptomInput, symptomIdInput, symptomSuggestions, "symptom");
   setupAutocomplete(allergenIntInput, allergenIntIdInput, allergenIntSuggestions, "allergen");
-  setupAutocomplete(symptomGroupInput, symptomGroupIdInput, symptomGroupSuggestions, "symptom_group");
+  setupAutocomplete(symptomGroupInput, null, symptomGroupSuggestions, "symptom_group");
+
 
   // =========================================================
   // Generic form submitter
