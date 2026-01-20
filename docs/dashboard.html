@@ -229,9 +229,9 @@
             <h4> Temporal Relationship between allergen and symptom group</h4>
             <figure class="img-figure" >
               <img id="analysis-bar-plot" src="" alt="Allergen / Symptom Percentages" />
-              <figcaption> Figure : Temporal relationship between allergen exposure and symptoms for <span>id=symptom-group-input</span>.
-                The left bar shows the percentage of days with an allergen exposure where at least one symptom occurred within <span>id=lag-window</span> afterward (exposure-days followed by symptoms).
-                The right bar shows the percentage of days with a symptom where at least one allergen exposure occurred in the <span>id=lag-window</span> prior (symptom-days preceded by exposure).
+              <figcaption> Figure : Temporal relationship between allergen exposure and symptoms for <span id="symptom-group-input"></span>.
+                The left bar shows the percentage of days with an allergen exposure where at least one symptom occurred within <span id="lag-window"></span> afterward (exposure-days followed by symptoms).
+                The right bar shows the percentage of days with a symptom where at least one allergen exposure occurred in the <span id="lag-window"></span> prior (symptom-days preceded by exposure).
                 These percentages reflect temporal alignment but do not imply causation.
               </figcaption>
             </figure> 
@@ -239,9 +239,9 @@
             <figure class="img-figure" >
               <img id="analysis-risk-plot" src="" alt="Allergen / Symptom Percentages" />
               <figcaption> Figure : Chance of symptoms on exposed vs non-exposed days.
-                This chart shows how often symptoms occurred on days without exposure compared with days when exposed to <span>id=allergen-intensity-input</span>. 
+                This chart shows how often symptoms occurred on days without exposure compared with days when exposed to <span id="allergen-intensity-input"></span>. 
                 A day is counted as “exposed” if the allergen occurred at least once that day. 
-                Symptoms are included if they happened within ( <span>id=lag-window</span>). 
+                Symptoms are included if they happened within ( <span id="lag-window"></span>). 
                 The text shows how much the chance of symptoms increases (or decreases) on exposed days, along with a p-value indicating how strong the evidence is that the difference is significant. 
               </figcaption>
             </figure> 
