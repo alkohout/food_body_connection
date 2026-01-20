@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Food–Body Connection | Dashboard</title>
+  <!-- Site Visit Counter -->
+  <script data-goatcounter="https://kohoutal.goatcounter.com/count"
+      async src="//gc.zgo.at/count.js">
+  </script>
   <link rel="stylesheet" href="styles.css" />
   <link rel="icon" type="image/png" href="assets/images/background_iphone.png">
   <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
@@ -236,6 +240,7 @@
               </figcaption>
             </figure> 
             <h4> Risk</h4>
+            <div class="plot-container" style="position: relative;">
             <figure class="img-figure" >
               <img id="analysis-risk-plot" src="" alt="Allergen / Symptom Percentages" />
                <div
@@ -260,6 +265,7 @@
                 The text shows how much the chance of symptoms increases (or decreases) on exposed days, along with a p-value indicating how strong the evidence is that the difference is significant. 
               </figcaption>
             </figure> 
+            </div>
             <h4>Time Series Plot</h4>
             <figure class="img-figure" >
               <img id="analysis-time-series-plot" src="" alt="Allergen Time Series Plot" />
