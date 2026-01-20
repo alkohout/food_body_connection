@@ -105,14 +105,6 @@ def plot_stats_risk(
 
     # Annotate absolute risk difference
     risk_diff = 100 * (risk_exposed - risk_unexposed)
-    ax.text(
-        0.5,
-        max(risks) * 1.1,
-        f"Absolute risk increase: {risk_diff:+.1f}%",
-        ha="center",
-        fontsize=12,
-        fontweight="bold"
-    )
 
     # Fisher's exact test
     table = [
@@ -123,15 +115,27 @@ def plot_stats_risk(
 
     # Traffic light annotation for p-value
     p_color = get_pvalue_color(p_value)
+    x_text = 0.95
+    y_start = 0.91
+    y = y_start 
+    text = f"p-value: {p_value:.3f}" if std is not None else f"{name}: {val}"
+    plt.text(x_text, y, text, transform=ax_top.transAxes, fontsize=12,
+                    verticalalignment="top", horizontalalignment="right",
+                    color=p_color, zorder=4)
     ax.text(
-        0.5,
-        max(risks) * 1.18,
-        f"p-value: {p_value:.3f}",
-        ha="center",
-        fontsize=14,
-        fontweight="bold",
-        color=p_color
+        x_text,
+        y - .1,
+        f"Absolute risk increase: {risk_diff:+.1f}%",
+        transform=ax_top.transAxes, 
+        fontsize=12,
+        verticalalignment="top", 
+        horizontalalignment="right",
+        color=p_color, zorder=3
     )
+
+    from matplotlib.patches import Rectangle
+    rect = Rectangle((0.65, 0.75), 0.35, 0.25, transform=ax_top.transAxes, color="white", alpha=0.85, zorder=2)
+    ax_top.add_patch(rect)
 
     # Set title
     ax.set_title(
