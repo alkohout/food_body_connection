@@ -48,7 +48,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const lagWindowInput = document.getElementById("lag-window");
 
-  const analysisPlotImg = document.getElementById("analysis-plot");
+  //const analysisPlotImg = document.getElementById("analysis-plot");
   const histogramPlotImg = document.getElementById("group_histogram");
   const allergenrankPlotImg = document.getElementById("allergenrank-plot");
   const intensityVolumePlotImg = document.getElementById("analysis-intensity-volume-plot");
@@ -410,13 +410,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       stats["Total days tracked"];
 
     // Symptom rate Plot
-    const plotRes = await fetch(`${API_URL}/analysis/plot_eda`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
-    });
+    //const plotRes = await fetch(`${API_URL}/analysis/plot_eda`, {
+    //  headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    //});
 
-    if (!plotRes.ok) throw new Error(plotRes.statusText);
-    const blob = await plotRes.blob();
-    analysisPlotImg.src = URL.createObjectURL(blob);
+    //if (!plotRes.ok) throw new Error(plotRes.statusText);
+    //const blob = await plotRes.blob();
+    //analysisPlotImg.src = URL.createObjectURL(blob);
 
     // Symptom Histogram Plot 
     const group_hist = await fetch(`${API_URL}/analysis/system_group_histogram`, {
