@@ -70,7 +70,7 @@ The goal of the project is **decision support**, not diagnosis: to surface patte
   * Relative importance of allergens
 * Current approaches include:
 
-# Logistic Regression
+#### Logistic Regression
 - **Purpose:** Estimate the **association between an allergen and symptom occurrence**.  
 - **Target:** Binary outcome — symptom occurred (1) or not (0).  
 - **Key features:**
@@ -82,7 +82,7 @@ The goal of the project is **decision support**, not diagnosis: to surface patte
   - Includes Nested Cross Validation with metrics and uncertainty estimates, since dataset is likely relatively small
 - **Use case:** Identify which allergens are significantly associated with symptoms and quantify the strength of that association.
 
-# Generalized Additive Models (GAM)
+#### Generalized Additive Models (GAM)
 - **Purpose:** Estimate **risk and dose-response relationships** between allergen exposure and symptom probability.  
 - **Target:** Binary outcome — symptom occurred (1) or not (0), but with **non-linear effects** of predictors.  
 - **Key features:**
@@ -92,7 +92,7 @@ The goal of the project is **decision support**, not diagnosis: to surface patte
   - Captures complex temporal or exposure–response patterns.  
 - **Use case:** Determine how **different exposure levels impact symptom risk**, identify thresholds, and visualize dose-response dynamics.
 
-# Fisher Exact Test
+#### Fisher Exact Test
 - **Purpose:** Test for **association between categorical variables** when sample sizes are small.  
 - **Key features:**
   - Exact test for contingency tables, avoiding approximations.  
