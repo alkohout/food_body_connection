@@ -112,6 +112,54 @@
   or inconsistent, confidence will be lower even if a curve is shown.
   </p>
 
+  <hr />
+
+  <h2>Risk & Statistical Evidence</h2>
+
+  <p>
+  These metrics describe how symptom risk differs between days with and without exposure
+  to a specific allergen, and how confident we are that the difference is not due to chance.
+  </p>
+
+  <ul>
+    <li>
+      <span class="metric-title">Absolute Risk Increase</span>: the change in the chance of having symptoms on exposure days compared with non-exposure days.
+      <div class="metric-description">
+        A positive value means symptoms were more common on exposure days.<br />
+        A negative value means symptoms were less common on exposure days.<br /><br />
+
+        <span class="indicator green">●</span> ≥ +10%: Meaningful increase in symptom risk<br>
+        <span class="indicator orange">●</span> +3% to +9%: Small to moderate increase<br>
+        <span class="indicator red">●</span> < +3%: Little or no difference
+      </div>
+    </li>
+
+    <p></p>
+
+    <li>
+      <span class="metric-title">p-value</span>: shows how likely it is that the observed difference between exposed and non-exposed days could have occurred by chance.
+      <div class="metric-description">
+        Smaller p-values indicate stronger evidence of a real association.<br /><br />
+
+        <span class="indicator green">●</span> &lt; 0.01: Strong evidence — unlikely to be due to chance<br>
+        <span class="indicator orange">●</span> 0.01 – 0.05: Moderate evidence — possible real effect<br>
+        <span class="indicator red">●</span> &gt; 0.05: Weak evidence — difference may be random
+      </div>
+    </li>
+  </ul>
+
+  <p>
+  The p-value is calculated using a statistical test that compares the number of symptom days
+  on exposed versus non-exposed days. It does <em>not</em> measure how large or important the effect is —
+  only how confident we are that the difference is real.
+  </p>
+
+  <p>
+  The most useful results combine a <strong>meaningful risk increase</strong> with a
+  <strong>low p-value</strong>. A low p-value with a very small risk change, or a large risk change with weak
+  statistical evidence, should both be interpreted cautiously.
+  </p>
+
   <h2>Traffic Light Summary</h2>
   <p>
     <span class="indicator green">●</span> Strong / reliable<br>
