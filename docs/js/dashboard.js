@@ -129,7 +129,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     inputEl.addEventListener("input", debounce(async () => {
       const query = inputEl.value.trim();
-      idEl.value = "";
+      if (idEl) idEl.value = "";   
       suggestionsEl.innerHTML = "";
 
       if (!query) return;
@@ -145,12 +145,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         li.addEventListener("click", () => {
           inputEl.value = li.textContent;
-          if (idEl) {
-            idEl.value =
-              type === "symptom" ? item.symptom_id :
-              type === "allergen" ? item.allergen_id :
-              ""; // symptom_group has no ID
+
+          if (idEl && type !== "symptom_group") {
+            idEl.value = type === "symptom" ? item.symptom_id : item.allergen_id;
           }
+
           suggestionsEl.innerHTML = "";
         });
 
