@@ -191,9 +191,9 @@
               </figcaption>
             </figure>
 
-            <h3>Allergen Analysis</h3>
-            <label>Using the plots above select: </label>
-            <label> - an allergen to explore deeper:</label>
+            <h3>Deeper Analysis</h3>
+            <label>Using the plots above explore your data deeper by selecting: </label>
+            <label> - an allergen:</label>
             <input type="text" id="allergen-intensity-input" autocomplete="off" />
             <input type="hidden" id="allergen-intensity-id" />
             <ul id="allergen-intensity-suggestions" class="suggestions"></ul>
@@ -202,6 +202,8 @@
                 <option value="0_6">0 - 6 hrs</option>
                 <option value="6_24">6 - 24 hrs</option>
                 <option value="24_48">24 - 48 hrs</option>
+                <option value="0_24">0 - 24 hrs</option>
+                <option value="0_48">0 - 48 hrs</option>
             </select>
             <label> - a symptom group:</label>
             <input type="text" id="symptom-group-input" autocomplete="on" />
@@ -260,13 +262,6 @@
               </figcaption>
             </figure> 
             </div>
-            <h4>Time Series Plot</h4>
-            <figure class="img-figure" >
-              <img id="analysis-time-series-plot" src="" alt="Allergen Time Series Plot" />
-              <figcaption> Figure : Sympton burden blue time series (left axis) and allergen volume exposure orange markers (right axis). 
-                The size of the markers correspond to the volume exposed to. 
-              </figcaption>
-            </figure> 
             <h4>Dose Response Scatter Plot</h4>
             <div class="plot-container" style="position: relative;">
             <figure class="img-figure" >
@@ -293,6 +288,13 @@
               </figcaption>
             </figure>
             </div>
+            <h4>Time Series Plot</h4>
+            <figure class="img-figure" >
+              <img id="analysis-time-series-plot" src="" alt="Allergen Time Series Plot" />
+              <figcaption> Figure : Sympton burden blue time series (left axis) and allergen volume exposure orange markers (right axis). 
+                The size of the markers correspond to the volume exposed to. 
+              </figcaption>
+            </figure> 
             <h4> Temporal Relationship between allergen and symptom group</h4>
             <figure class="img-figure" >
               <img id="analysis-bar-plot" src="" alt="Allergen / Symptom Percentages" />
