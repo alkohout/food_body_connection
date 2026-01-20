@@ -64,11 +64,13 @@ def plot_stats_risk(
 
     days, exposures, symptoms = days_df(db, current_user, allergen_name = allergen_name, symptom_group = symptom_group, lag_start=lag_start, lag_end=lag_end) 
 
+
     exposed_days = days[days["exposed"] == 1]
     unexposed_days = days[days["exposed"] == 0]
 
-    risk_exposed = exposed_days["symptom_following_exposure"].mean()
-    risk_unexposed = unexposed_days["symptom_following_exposure"].mean()
+    risk_exposed = exposed_days["any_symptom"].mean()
+    risk_unexposed = unexposed_days["any_symptom"].mean()
+
 
     risks = [100 * risk_unexposed, 100 * risk_exposed]
     labels = ["No exposure (baseline)", f"Exposure to {allergen_name}"]
@@ -145,6 +147,15 @@ def days_df(
         .astype(int)
     )
 
+    daily_any_symptom = (
+        symptom_events
+        .groupby("date")
+        .size()
+        .gt(0)
+        .astype(int)
+    )
+
+
     overall_min = min(
         allergen_events["date_time"].min(),
         symptom_events["date_time"].min(),
@@ -180,6 +191,14 @@ def days_df(
         .fillna(0)
         .astype(int)
     )
+
+    days_df["any_symptom"] = (
+        days_df["date"]
+        .map(daily_any_symptom)
+        .fillna(0)
+        .astype(int)
+    )
+
 
     days_df["symptom_following_exposure"] = (
         days_df["date"]
