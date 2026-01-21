@@ -372,6 +372,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       );
       if (!res_bp.ok) throw new Error(res_bp.statusText);
         const blob_bp = await res_bp.blob();
+        if (barPlotImg.src) {
+          URL.revokeObjectURL(barPlotImg.src);
+        }
         barPlotImg.src = URL.createObjectURL(blob_bp);
       
       const res_r = await fetch(
@@ -388,6 +391,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       );
       if (!res_r.ok) throw new Error(res_r.statusText);
         const blob_r = await res_r.blob();
+        if (riskPlotImg.src) {
+          URL.revokeObjectURL(riskPlotImg.src);
+        }
         riskPlotImg.src = URL.createObjectURL(blob_r);
       
     } catch (err) {
