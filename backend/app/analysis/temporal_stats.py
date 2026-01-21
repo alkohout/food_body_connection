@@ -213,7 +213,6 @@ def days_df(
         .astype(int)
     )
 
-
     overall_min = min(
         allergen_events["date_time"].min(),
         symptom_events["date_time"].min(),
@@ -232,8 +231,9 @@ def days_df(
 
     daily_exposed = (
         allergen_events
-        .groupby("date")["symptom"]
-        .any()
+        .groupby("date")
+        .size()
+        .gt(0)
         .astype(int)
     )
 
@@ -241,7 +241,7 @@ def days_df(
 
     days_df["any_symptom"] = (
         days_df["date"]
-        .map(daily_symptoms)
+        .map(daily_any_symptom)
         .fillna(0)
         .astype(int)
     )
