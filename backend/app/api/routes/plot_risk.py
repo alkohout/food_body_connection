@@ -28,8 +28,8 @@ def plot_risk(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
         allergen_name: str = 'Dairy',
-        lag_start: int,
-        lag_end: int,
+        lag_start: int = 0,
+        lag_end: int = 6,
         symptom_group: str = 'Gastrointestinal',
     ):
 
