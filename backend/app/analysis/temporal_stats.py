@@ -83,6 +83,10 @@ def plot_stats_risk(
     lag_end: int,
     symptom_group: str
 ):
+
+    print(lag_start)
+    print(lag_end)
+
     fig, ax = plt.subplots(figsize=(12, 10))
 
     # Get daily data
