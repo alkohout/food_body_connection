@@ -306,7 +306,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const LAG_WINDOWS = {
       "0_6":  { start: 0,  end: 6 },
       "6_24": { start: 6,  end: 24 },
-      "24_48":{ start: 24, end: 48 }
+      "24_48":{ start: 24, end: 48 },
+      "0_24":{ start: 0, end: 24 },
+      "0_48":{ start: 0, end: 48 },
+      "0_72":{ start: 0, end: 72 }
     };
     const { start, end } = LAG_WINDOWS[lagWindow];
     const symptomGroup = symptomGroupInput.value
