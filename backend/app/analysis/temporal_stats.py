@@ -84,9 +84,6 @@ def plot_stats_risk(
     symptom_group: str
 ):
 
-    print(lag_start)
-    print(lag_end)
-
     fig, ax = plt.subplots(figsize=(12, 10))
 
     # Get daily data
@@ -235,9 +232,8 @@ def days_df(
 
     daily_exposed = (
         allergen_events
-        .groupby("date")
-        .size()
-        .gt(0)
+        .groupby("date")["symptom"]
+        .any()
         .astype(int)
     )
 
@@ -245,7 +241,7 @@ def days_df(
 
     days_df["any_symptom"] = (
         days_df["date"]
-        .map(daily_any_symptom)
+        .map(daily_symptoms)
         .fillna(0)
         .astype(int)
     )
@@ -256,7 +252,6 @@ def days_df(
         .fillna(0)
         .astype(int)
     )
-
 
     return days_df, daily_exposure, daily_symptoms
 
