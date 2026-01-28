@@ -67,14 +67,6 @@ def get_pvalue_colour(p):
     else:
         return "red"
 
-def get_risk_colour(r):
-    if r > 10:
-        return "green"
-    elif r > 3:
-        return "orange"
-    else:
-        return "red"
-
 def plot_stats_risk(
     db: Session,
     current_user: int,
@@ -100,8 +92,9 @@ def plot_stats_risk(
     exposed_days = days[days["exposed"] == 1]
     unexposed_days = days[days["exposed"] == 0]
 
-    # Calculate absolute risks
+    # Calculate probability of having a symptom on exposed days 
     risk_exposed = exposed_days["any_symptom"].mean()
+    # Calculate probability of having a symptom on unexposed days 
     risk_unexposed = unexposed_days["any_symptom"].mean()
     risks = [100 * risk_unexposed, 100 * risk_exposed]
     labels = ["No exposure (baseline)", f"Exposure to {allergen_name}"]
@@ -123,7 +116,7 @@ def plot_stats_risk(
 
     # Traffic light annotation for p-value
     p_color = get_pvalue_colour(p_value)
-    r_color = get_risk_colour(risk_diff)
+    r_color = 'black'
     x_text = 0.95
     y_start = 0.95
     y = y_start 
@@ -170,23 +163,30 @@ def days_df(
     lag_end: int
 ):
 
+    # Extract allergen events for a given allergen
     allergen_events = get_all_allergen_events_df(
         db, current_user, allergen_name=allergen_name
     )
+
+    # Extract symptom events for a given symptom group 
     symptom_events = get_all_symptom_events_df(
         db, current_user, symptom_group=symptom_group
     )
 
+    # Sort events by date
     allergen_events["date_time"] = pd.to_datetime(allergen_events["date_time"], utc=True)
     allergen_events = allergen_events.sort_values("date_time")
     symptom_events["date_time"] = pd.to_datetime(symptom_events["date_time"], utc=True)
     symptom_events = symptom_events.sort_values("date_time")
 
+    # Define boolean feature (symptom) - whether symptom occurred within a time window after exposure 
     allergen_events["symptom"] = allergen_events["date_time"].apply(
         lambda t: symptom_within_window(symptom_events, t, lag_start, lag_end)
     )
+    # Define date feature (date) - removes time stamp
     allergen_events["date"] = allergen_events["date_time"].dt.floor("D")
 
+    # Define a series, whether a symptom occured after exposure
     daily_exposure = (
         allergen_events
         .groupby("date")["symptom"]
@@ -194,10 +194,14 @@ def days_df(
         .astype(int)
     )
 
+    # Define boolean feature (allergen) - whether exposure occurred prior to symptom (within a time window) 
     symptom_events["allergen_prior"] = symptom_events["date_time"].apply(
         lambda t: exposure_window_prior(allergen_events,t,lag_start,lag_end)
     )
+    # Define date feature (date) - removes time stamp
     symptom_events["date"] = symptom_events["date_time"].dt.floor("D")
+
+    # Define a series, whether exposure occured prior to symptom 
     daily_symptoms = (
         symptom_events
         .groupby("date")["allergen_prior"]
@@ -205,6 +209,7 @@ def days_df(
         .astype(int)
     )
 
+    # Define a series, whether symptom occurred on a given date 
     daily_any_symptom = (
         symptom_events
         .groupby("date")
@@ -213,6 +218,16 @@ def days_df(
         .astype(int)
     )
 
+    # Define a series, whether exposed to allergen on a given date 
+    daily_exposed = (
+        allergen_events
+        .groupby("date")
+        .size()
+        .gt(0)
+        .astype(int)
+    )
+
+    # Define a daily time series
     overall_min = min(
         allergen_events["date_time"].min(),
         symptom_events["date_time"].min(),
@@ -229,16 +244,10 @@ def days_df(
         tz="UTC",
     )
 
-    daily_exposed = (
-        allergen_events
-        .groupby("date")
-        .size()
-        .gt(0)
-        .astype(int)
-    )
-
+    # Define a daily time series
     days_df = pd.DataFrame({"date": date_index})
 
+    # Define a feature [any symptom] and map whether symptom occured on each day 
     days_df["any_symptom"] = (
         days_df["date"]
         .map(daily_any_symptom)
@@ -246,6 +255,7 @@ def days_df(
         .astype(int)
     )
 
+    # Define a feature [exposed] and map whether user was exposed to the allergen on each day 
     days_df["exposed"] = (
         days_df["date"]
         .map(daily_exposed)
