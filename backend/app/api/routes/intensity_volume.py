@@ -51,7 +51,7 @@ def intensity_volume(
             start = allergen["date_time"] + timedelta(hours=lag_start)
             end = start + timedelta(hours=lag_end)
             window_symptoms = symptom_df[(symptom_df["date_time"] >= start) & (symptom_df["date_time"] <= end)]
-            peak_intensity = window_symptoms["symptom_intensity"].fillna(0).max()
+            peak_intensity = window_symptoms["symptom_intensity"].max()
             burden_score = peak_intensity
             rows.append({
                 "volume": allergen["volume"],
