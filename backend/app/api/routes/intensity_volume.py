@@ -93,12 +93,30 @@ def intensity_volume(
         ci_low = np.exp(beta - 1.96*se)
         ci_high = np.exp(beta + 1.96*se)
 
-        # --- Predict probabilities for plotting ---
-        X_range = pd.DataFrame({"volume": np.linspace(df["volume"].min(), df["volume"].max(), 200)})
 
-        probs = res.predict(X_range).to_numpy()  # now it’s a NumPy array
-        # Reverse cumulative probabilities (probability >= level)
-        cum_probs = np.flip(np.cumsum(np.flip(probs, axis=1), axis=1))
+        # --- Predict probabilities ---
+        X_range = pd.DataFrame({"volume": np.linspace(df["volume"].min(), df["volume"].max(), 200)})
+        probs = res.predict(X_range).to_numpy()
+
+        # Compute cumulative probabilities
+        cum_probs = np.zeros_like(probs)
+        cum_probs[:, 2] = probs[:, 2]                 # Severe
+        cum_probs[:, 1] = probs[:, 1] + probs[:, 2]   # Moderate or worse
+        cum_probs[:, 0] = probs.sum(axis=1)           # Any symptoms
+
+        # Plot
+        fig, ax = plt.subplots(figsize=(12, 8))
+        labels = ["Any symptoms (≥ mild)", "Moderate or worse", "Severe"]
+
+        for i, label in enumerate(labels):
+            ax.plot(X_range["volume"], cum_probs[:, i], linewidth=2, label=label)
+
+            ax.set_ylim(0, 1)
+            ax.set_xlabel("Allergen volume")
+            ax.set_ylabel("Predicted probability")
+            ax.set_title("Probability of symptom severity vs allergen volume")
+            ax.legend()
+            ax.grid(True)
 
         from matplotlib.patches import Rectangle
 
@@ -145,31 +163,6 @@ def intensity_volume(
 #                color=color,
 #                zorder=3
 #            )
-
-        # Plot 
-        fig, ax = plt.subplots(figsize=(12, 8))
-
-        labels = [
-            "Any symptoms (≥ mild)",
-            "Moderate or worse",
-            "Severe"
-        ]
-
-        for i, label in enumerate(labels, start=1):
-            ax.plot(
-                X_range,
-                cum_probs[:, i],
-                linewidth=2,
-                label=label
-            )
-
-        ax.set_ylim(0, 1)
-        ax.set_xlabel("Allergen volume")
-        ax.set_ylabel("Predicted probability")
-        ax.set_title("Probability of symptom severity vs allergen volume")
-
-        ax.legend()
-        ax.grid(True)
 
         plt.tight_layout()
 
