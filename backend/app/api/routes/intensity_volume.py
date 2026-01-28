@@ -95,8 +95,8 @@ def intensity_volume(
 
         # --- Predict probabilities for plotting ---
         X_range = pd.DataFrame({"volume": np.linspace(df["volume"].min(), df["volume"].max(), 200)})
-        probs = res.predict(X_range)
 
+        probs = res.predict(X_range).to_numpy()  # now it’s a NumPy array
         # Reverse cumulative probabilities (probability >= level)
         cum_probs = np.flip(np.cumsum(np.flip(probs, axis=1), axis=1))
 
