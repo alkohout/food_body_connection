@@ -73,7 +73,7 @@ def intensity_volume(
         sns.scatterplot(data=df, x="volume", y="burden_score", ax=ax, alpha=0.6)
 
         # OrderedModel fit
-        X = df["volume"].values.reshape(-1, 1)
+        X = df[["volume"]].values.reshape(-1, 1)
         y = df["burden_score"].values
 
         model = OrderedModel(
