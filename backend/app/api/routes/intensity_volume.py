@@ -72,41 +72,33 @@ def intensity_volume(
         # Scatter
         sns.scatterplot(data=df, x="volume", y="burden_score", ax=ax, alpha=0.6)
 
-        # OrderedModel fit
-        X = df[["volume"]].values.reshape(-1, 1)
-        y = df["burden_score"].values
 
-        model = OrderedModel(
-            y,
-            X,
-            distr="logit"   # proportional odds
-        )
+        # --- Prepare data ---
+        df["volume"] = df["volume"].astype(float)
+        df["burden_score"] = df["burden_score"].astype(int)  # ordinal levels
+
+        X = df[["volume"]]  # keep as DataFrame
+        y = df["burden_score"]
+
+        # --- Fit ordered model ---
+        model = OrderedModel(y, X, distr="logit")
         res = model.fit(method="bfgs", disp=False)
-        predictor_name = "volume"
-        idx = res.model.exog_names.index(predictor_name)
+
+        # --- Odds ratio + CI ---
+        idx = res.model.exog_names.index("volume")
         beta = res.params[idx]
         se = res.bse[idx]
+
         or_value = np.exp(beta)
         ci_low = np.exp(beta - 1.96*se)
         ci_high = np.exp(beta + 1.96*se)
 
-        # Bootstrap Confidence Intervals
-        from sklearn.utils import resample
-        preds = []
-        X_range = np.linspace(df["volume"].min(), df["volume"].max(), 200).reshape(-1, 1)
-        for _ in range(200):
-            boot = resample(df)
-            model_b = OrderedModel(
-                boot["burden_score"],
-                boot[["volume"]],
-                distr="logit"
-            )
-            res_b = model_b.fit(method="bfgs", disp=False)
-            preds.append(res_b.predict(X_range))
+        # --- Predict probabilities for plotting ---
+        X_range = pd.DataFrame({"volume": np.linspace(df["volume"].min(), df["volume"].max(), 200)})
+        probs = res.predict(X_range)
 
-        preds = np.array(preds)
-        lower = np.percentile(preds, 2.5, axis=0)
-        upper = np.percentile(preds, 97.5, axis=0)
+        # Reverse cumulative probabilities (probability >= level)
+        cum_probs = np.flip(np.cumsum(np.flip(probs, axis=1), axis=1))
 
         from matplotlib.patches import Rectangle
 
@@ -155,16 +147,6 @@ def intensity_volume(
 #            )
 
         # Plot 
-        X_range = np.linspace(
-            df["volume"].min(),
-            df["volume"].max(),
-            200
-        )
-
-        X_pred = pd.DataFrame({"volume": X_range})
-        probs = res.predict(X_pred)
-
-        cum_probs = np.cumsum(probs, axis=1)
         fig, ax = plt.subplots(figsize=(12, 8))
 
         labels = [
