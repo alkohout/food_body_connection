@@ -82,7 +82,7 @@ def intensity_volume(
             distr="logit"   # proportional odds
         )
         res = model.fit(method="bfgs", disp=False)
-        predictor_name = "volume_scaled"
+        predictor_name = "volume"
         idx = res.model.exog_names.index(predictor_name)
         beta = res.params[idx]
         se = res.bse[idx]
