@@ -16,9 +16,7 @@ from io import BytesIO
 import logging
 import traceback
 import numpy as np
-
-# GAM import
-from pygam import LinearGAM, s
+from statsmodels.miscmodels.ordinal_model import OrderedModel
 
 logger = logging.getLogger("backend/app/api/routes/intensity_volume.py")
 logging.basicConfig(level=logging.INFO)
@@ -53,8 +51,8 @@ def intensity_volume(
             start = allergen["date_time"] + timedelta(hours=lag_start)
             end = start + timedelta(hours=lag_end)
             window_symptoms = symptom_df[(symptom_df["date_time"] >= start) & (symptom_df["date_time"] <= end)]
-            total_intensity = window_symptoms["symptom_intensity"].fillna(0).sum()
-            burden_score = total_intensity
+            peak_intensity = window_symptoms["symptom_intensity"].fillna(0).max()
+            burden_score = peak_intensity
             rows.append({
                 "volume": allergen["volume"],
                 "burden_score": burden_score,
@@ -72,37 +70,41 @@ def intensity_volume(
         # Scatter
         sns.scatterplot(data=df, x="volume", y="burden_score", ax=ax, alpha=0.6)
 
-        # Fit GAM
+        # OrderedModel fit
         X = df["volume"].values.reshape(-1, 1)
         y = df["burden_score"].values
 
-        lams = np.logspace(-3, 3, 10)
+        model = OrderedModel(
+            y,
+            X,
+            distr="logit"   # proportional odds
+        )
+        res = model.fit(method="bfgs", disp=False)
+        beta = res.params["volume_scaled"]
+        or_value = np.exp(beta)
+        se = res.bse["volume_scaled"]
+        ci_low = np.exp(beta - 1.96 * se)
+        ci_high = np.exp(beta + 1.96 * se)
 
-        if len(df) < 10:
-            gam = LinearGAM(
-                s(0, n_splines=5),
-                lam=10
-            ).fit(X, y)
-        else:
-            gam = LinearGAM(
-                s(0, n_splines=10)
-            ).gridsearch(X, y, lam=lams)
+        # Bootstrap Confidence Intervals
+        from sklearn.utils import resample
+        preds = []
+        X_range = np.linspace(df["volume"].min(), df["volume"].max(), 200).reshape(-1, 1)
+        for _ in range(200):
+            boot = resample(df)
+            model_b = OrderedModel(
+                boot["burden_score"],
+                boot[["volume"]],
+                distr="logit"
+            )
+            res_b = model_b.fit(method="bfgs", disp=False)
+            preds.append(res_b.predict(X_range))
 
-        X_range = np.linspace(df["volume"].min(), df["volume"].max(), 200).reshape(-1, 1)  # smooth X
-        y_pred = gam.predict(X_range)
-        y_conf = gam.confidence_intervals(X_range)
+        preds = np.array(preds)
+        lower = np.percentile(preds, 2.5, axis=0)
+        upper = np.percentile(preds, 97.5, axis=0)
 
         from matplotlib.patches import Rectangle
-
-        # --- Metrics ---
-        stats = gam.statistics_
-        pseudo_r2 = stats["pseudo_r2"].get("explained_deviance", 0.0)
-        edof = stats.get("edof", 0.0)
-        samples = len(df)
-
-        r2_color = get_color(pseudo_r2, "pseudo_r2")
-        edof_color = get_color(edof, "edof")
-        samples_color = get_color(samples, "samples")
 
         # --- Rectangle background ---
         rect = Rectangle(
@@ -126,36 +128,62 @@ def intensity_volume(
         )
 
         # --- Metrics text ---
-        metrics = [
-            ("Signal (pseudo R²)", pseudo_r2, r2_color, f"{pseudo_r2:.2f}"),
-            ("Curve stability (EDOF)", edof, edof_color, f"{edof:.1f}"),
-            ("Samples", samples, samples_color, f"{samples}"),
+        #metrics = [
+        #    ("Signal (pseudo R²)", pseudo_r2, r2_color, f"{pseudo_r2:.2f}"),
+        #    ("Curve stability (EDOF)", edof, edof_color, f"{edof:.1f}"),
+        #    ("Samples", samples, samples_color, f"{samples}"),
+        #]
+#
+#        y_start = 0.91
+#        y_step = 0.04
+#
+#        for i, (name, _, color, text_val) in enumerate(metrics):
+#            ax.text(
+#                0.95,
+#                y_start - i * y_step,
+#                f"{name}: {text_val}",
+#                transform=ax.transAxes,
+#                fontsize=12,
+#                verticalalignment="top",
+#                horizontalalignment="right",
+#                color=color,
+#                zorder=3
+#            )
+
+        # Plot 
+        X_range = np.linspace(
+            df["volume"].min(),
+            df["volume"].max(),
+            200
+        )
+
+        X_pred = pd.DataFrame({"volume": X_range})
+        probs = res.predict(X_pred)
+
+        cum_probs = np.cumsum(probs, axis=1)
+        fig, ax = plt.subplots(figsize=(12, 8))
+
+        labels = [
+            "Any symptoms (≥ mild)",
+            "Moderate or worse",
+            "Severe"
         ]
 
-        y_start = 0.91
-        y_step = 0.04
-
-        for i, (name, _, color, text_val) in enumerate(metrics):
-            ax.text(
-                0.95,
-                y_start - i * y_step,
-                f"{name}: {text_val}",
-                transform=ax.transAxes,
-                fontsize=12,
-                verticalalignment="top",
-                horizontalalignment="right",
-                color=color,
-                zorder=3
+        for i, label in enumerate(labels, start=1):
+            ax.plot(
+                X_range,
+                cum_probs[:, i],
+                linewidth=2,
+                label=label
             )
 
-        # Plot GAM fit and confidence interval
-        ax.plot(X_range, y_pred, color="red", linewidth=2, label="GAM fit")
-        ax.fill_between(X_range.flatten(), y_conf[:,0], y_conf[:,1], color="red", alpha=0.2, label="95% CI")
+        ax.set_ylim(0, 1)
+        ax.set_xlabel("Allergen volume")
+        ax.set_ylabel("Predicted probability")
+        ax.set_title("Probability of symptom severity vs allergen volume")
 
-        ax.set_title(f"Symptom Burden vs Allergen Volume for {allergen_name}")
-        ax.set_xlabel("Allergen Volume (gm)")
-        ax.set_ylabel("Symptom Burden Score")
         ax.legend()
+        ax.grid(True)
 
         plt.tight_layout()
 
@@ -194,12 +222,3 @@ def get_color(value, metric):
             return "orange"
         else:
             return "red"
-
-def compute_confidence(pseudo_r2, edof, samples):
-    scores = []
-
-    scores.append(1.0 if pseudo_r2 >= 0.30 else 0.5 if pseudo_r2 >= 0.15 else 0.2)
-    scores.append(1.0 if edof <= 5 else 0.6 if edof <= 8 else 0.3)
-    scores.append(1.0 if samples >= 40 else 0.6 if samples >= 15 else 0.3)
-
-    return int(100 * np.mean(scores))
