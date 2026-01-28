@@ -82,11 +82,13 @@ def intensity_volume(
             distr="logit"   # proportional odds
         )
         res = model.fit(method="bfgs", disp=False)
-        beta = res.params["volume_scaled"]
+        predictor_name = "volume_scaled"
+        idx = res.model.exog_names.index(predictor_name)
+        beta = res.params[idx]
+        se = res.bse[idx]
         or_value = np.exp(beta)
-        se = res.bse["volume_scaled"]
-        ci_low = np.exp(beta - 1.96 * se)
-        ci_high = np.exp(beta + 1.96 * se)
+        ci_low = np.exp(beta - 1.96*se)
+        ci_high = np.exp(beta + 1.96*se)
 
         # Bootstrap Confidence Intervals
         from sklearn.utils import resample
