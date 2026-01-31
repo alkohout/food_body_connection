@@ -69,10 +69,6 @@ def intensity_volume(
         sns.set(style="whitegrid")
         fig, ax = plt.subplots(figsize=(12, 10))
 
-        # Scatter
-        sns.scatterplot(data=df, x="volume", y="burden_score", ax=ax, alpha=0.6)
-
-
         # --- Prepare data ---
         df["volume"] = df["volume"].astype(float)
         df["burden_score"] = df["burden_score"].astype(int)  # ordinal levels
@@ -93,30 +89,13 @@ def intensity_volume(
         ci_low = np.exp(beta - 1.96*se)
         ci_high = np.exp(beta + 1.96*se)
 
-
-        # --- Predict probabilities ---
-        X_range = pd.DataFrame({"volume": np.linspace(df["volume"].min(), df["volume"].max(), 200)})
-        probs = res.predict(X_range, which="prob").to_numpy()
-
-        # Compute cumulative probabilities
-        cum_probs = np.zeros((probs.shape[0], 3))
-        cum_probs[:, 2] = probs[:, 3]                 # Severe
-        cum_probs[:, 1] = probs[:, 2] + probs[:, 3]   # Moderate or worse
-        cum_probs[:, 0] = 1 - probs[:,0]           # Any symptoms
-
         # Plot
         fig, ax = plt.subplots(figsize=(12, 8))
-        labels = ["Any symptoms (≥ mild)", "Moderate or worse", "Severe"]
-
-        for i, label in enumerate(labels):
-            ax.plot(X_range["volume"], cum_probs[:, i], linewidth=2, label=label)
-
-            ax.set_ylim(0, 1)
-            ax.set_xlabel("Allergen volume")
-            ax.set_ylabel("Predicted probability")
-            ax.set_title("Probability of symptom severity vs allergen volume")
-            ax.legend()
-            ax.grid(True)
+        sns.violinplot(x="burden_score", y="volume", data=df, inner="quartile")
+        plt.xlabel("Burden score")
+        plt.ylabel("Volume")
+        plt.title("Distribution of Volume by Burden Score (Violin Plot)")
+        plt.show()
 
         from matplotlib.patches import Rectangle
 
