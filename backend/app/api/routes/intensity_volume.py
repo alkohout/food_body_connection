@@ -93,7 +93,7 @@ def intensity_volume(
 
         # Plot
         fig, ax = plt.subplots(figsize=(12, 8))
-        sns.violinplot(x="burden_score", y="volume_scaled", data=df, cut=0, inner="quartile")
+        sns.violinplot(x="burden_score", y="volume_scaled", data=df, inner="quartile")
         plt.xlabel(f"Peak symptom intensity within {lag_start} - {lag_end} hrs after {allergen_name} exposure")
         plt.ylabel(f"Volume of {allergen_name} exposure (scaled)")
         plt.title("Effect of Allergen Volume on Peak Symptom Intensity")
