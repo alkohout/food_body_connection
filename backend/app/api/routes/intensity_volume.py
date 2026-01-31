@@ -148,23 +148,47 @@ def intensity_volume(
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail="Failed to generate plot")
 
-def or_color(or_val, ci_low, ci_high):
+def or_color(or_val, ci_low, ci_high, epsilon=0.05):
     """
-    Determine color for odds ratio based on significance and effect size.
+    Determine color for odds ratio based on CI and effect size.
+
+    Parameters
+    ----------
+    or_val : float
+        Point estimate of the odds ratio
+    ci_low : float
+        Lower bound of 95% CI
+    ci_high : float
+        Upper bound of 95% CI
+    epsilon : float
+        Small range around 1 considered 'effectively 1'
+
+    Returns
+    -------
+    str : "red", "orange", or "green"
+        Color indicating evidence level
+    """
     
-    Green: CI excludes 1 → statistically significant.
-    Orange: CI barely includes 1 → borderline significance.
-    Red: CI includes 1 with wide range or unexpected effect direction.
-    """
-    # Statistically significant and OR > 1 (risk increases)
+    # Treat OR ≈ 1 as "no effect"
+    if abs(or_val - 1) < epsilon:
+        return "red"
+
+    # CI entirely above 1 → evidence of risk
     if ci_low > 1:
         return "green"
-    # Statistically significant and OR < 1 (protective effect)
+    
+    # CI entirely below 1 → protective effect, treat as risk evidence too
     elif ci_high < 1:
         return "green"
-    # CI includes 1 but mostly >1 or <1 (borderline)
-    elif (ci_low <= 1 <= ci_high) and ((ci_high - ci_low)/ci_low < 1.0):
+
+    # CI includes 1 but OR meaningfully >1 → possible/uncertain risk
+    elif ci_low <= 1 <= ci_high and or_val > 1 + epsilon:
         return "orange"
-    # CI includes 1 with wide uncertainty or OR around 1 → weak evidence
+
+    # CI includes 1 but OR meaningfully <1 → possible protective effect
+    elif ci_low <= 1 <= ci_high and or_val < 1 - epsilon:
+        return "orange"
+
+    # Everything else → weak/no evidence
     else:
         return "red"
