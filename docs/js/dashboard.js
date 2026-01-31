@@ -69,6 +69,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("caption-lag").textContent =
   document.getElementById("lag-window").selectedOptions[0].text;
 
+  document.getElementById("caption-lag-dose").textContent =
+  document.getElementById("lag-window").selectedOptions[0].text;
+
+  document.getElementById("caption-allergen-dose").textContent =
+  document.getElementById("allergen-intensity-input").value;
+
 
   // =========================================================
   // Logout
@@ -505,6 +511,8 @@ function updateCaptions(allergenName, symptomGroup, lagText) {
   document.getElementById("caption-allergen").textContent = allergenName;
   document.getElementById("caption-symptom-group").textContent = symptomGroup;
   document.getElementById("caption-lag").textContent = lagText;
+  document.getElementById("caption-allergen-dose").textContent = allergenName;
+  document.getElementById("caption-lag-dose").textContent = lagText;
 }
 
 
