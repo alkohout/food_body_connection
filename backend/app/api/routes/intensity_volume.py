@@ -95,9 +95,9 @@ def intensity_volume(
         sns.violinplot(x="burden_score", y="volume", data=df, cut=0, inner="quartile")
         #sns.boxplot(data=df, x="burden_score", y="volume", palette="pastel")
         #sns.swarmplot(data=df, x="burden_score", y="volume", color="black", alpha=0.5)
-        plt.xlabel(f"Max symptom intensity within {lag_start} - {lag_end} hrs after {allergen_name} exposure")
-        plt.ylabel(f"Volume of {allergen_name} exposed to")
-        plt.title("Distribution of allergen dose by symptom response (Violin Plot)")
+        plt.xlabel(f"Maximum symptom intensity within {lag_start} - {lag_end} hrs after {allergen_name} exposure")
+        plt.ylabel(f"Volume of {allergen_name} exposure")
+        plt.title("Distribution of allergen dose by symptom response")
         plt.show()
 
         from matplotlib.patches import Rectangle
@@ -113,22 +113,12 @@ def intensity_volume(
         )
         ax.add_patch(rect)
 
-        # --- Title ---
-        ax.text(
-            0.67, 0.945,
-            "Dose–Response Confidence:",
-            transform=ax.transAxes,
-            fontsize=12,
-            color="black",
-            zorder=4
-        )
-
         # --- Metrics text ---
         metrics = [
              ("Odds Ratio (volume)", or_value, or_color(or_value, ci_low, ci_high), f"{or_value:.2f} [{ci_low:.2f}, {ci_high:.2f}]"),
         ]
 
-        y_start = 0.91
+        y_start = 0.945
         y_step = 0.04
 
         for i, (name, _, color, text_val) in enumerate(metrics):
