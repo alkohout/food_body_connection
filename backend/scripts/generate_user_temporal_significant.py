@@ -114,11 +114,13 @@ def generate_significant_allergen_data(
                 # Determine symptom intensity
                 # --------------------------------------------------
                 if allergen.allergen_name == "Peanuts":
-                    # Scale intensity by dose: base intensity plus random up to quantity
-                    base_intensity = rng.randint(*symptom_intensity_range)
-                    symptom_intensity = min(5, base_intensity + allergen_log.quantity)  # cap at 5
+                    # Base intensity 0–3
+                    base_intensity = rng.randint(0, 3)
+                    # Add small dose effect, but cap at 3
+                    symptom_intensity = min(3, base_intensity + allergen_log.quantity // 2)
                 else:
-                    symptom_intensity = rng.randint(*symptom_intensity_range)
+                    # Normal intensity for other allergens
+                    symptom_intensity = rng.randint(0, 3)
 
                 symptom_log = SymptomLog(
                     user_id=user.user_id,
