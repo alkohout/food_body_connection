@@ -72,9 +72,10 @@ def intensity_volume(
 
         # --- Prepare data ---
         df["volume"] = df["volume"].astype(float)
+        df["volume_scaled"] = ( df["volume"] - df["volume"].mean()) / df["volume"].std()
         df["burden_score"] = df["burden_score"].astype(int)  # ordinal levels
 
-        X = df[["volume"]]  # keep as DataFrame
+        X = df[["volume_scaled"]]  # keep as DataFrame
         y = df["burden_score"]
 
         # --- Fit ordered model ---
@@ -82,7 +83,7 @@ def intensity_volume(
         res = model.fit(method="bfgs", disp=False)
 
         # --- Odds ratio + CI ---
-        idx = res.model.exog_names.index("volume")
+        idx = res.model.exog_names.index("volume_scaled")
         beta = res.params[idx]
         se = res.bse[idx]
 
@@ -92,11 +93,9 @@ def intensity_volume(
 
         # Plot
         fig, ax = plt.subplots(figsize=(12, 8))
-        sns.violinplot(x="burden_score", y="volume", data=df, cut=0, inner="quartile")
-        #sns.boxplot(data=df, x="burden_score", y="volume", palette="pastel")
-        #sns.swarmplot(data=df, x="burden_score", y="volume", color="black", alpha=0.5)
+        sns.violinplot(x="burden_score", y="volume_scaled", data=df, cut=0, inner="quartile")
         plt.xlabel(f"Peak symptom intensity within {lag_start} - {lag_end} hrs after {allergen_name} exposure")
-        plt.ylabel(f"Volume of {allergen_name} exposure")
+        plt.ylabel(f"Volume of {allergen_name} exposure (scaled)")
         plt.title("Effect of Allergen Volume on Peak Symptom Intensity")
         plt.show()
 
