@@ -148,7 +148,7 @@ def intensity_volume(
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail="Failed to generate plot")
 
-def or_color(or_val, ci_low, ci_high, epsilon=0.1):
+def or_color(or_val, ci_low, ci_high, epsilon=0.2):
     """
     Determine color for odds ratio based on CI and effect size.
 
