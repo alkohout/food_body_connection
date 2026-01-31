@@ -314,7 +314,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
     const { start, end } = LAG_WINDOWS[lagWindow];
     const symptomGroup = symptomGroupInput.value
-    const lagWindowText = '${start} - ${end} hrs'
+    const lagWindowText = `${start} - ${end} hrs`;
 
     updateCaptions(allergenName, symptomGroup, lagWindowText);
 
