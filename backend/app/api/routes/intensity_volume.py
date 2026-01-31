@@ -92,7 +92,7 @@ def intensity_volume(
 
         # Plot
         fig, ax = plt.subplots(figsize=(12, 8))
-        sns.violinplot(x="burden_score", y="volume", data=df, inner="quartile")
+        sns.violinplot(x="burden_score", y="volume", data=df, cut=0, inner="quartile")
         plt.xlabel("Burden score")
         plt.ylabel("Volume")
         plt.title("Distribution of Volume by Burden Score (Violin Plot)")
