@@ -110,11 +110,21 @@ def generate_significant_allergen_data(
                 ):
                     continue
 
+                # --------------------------------------------------
+                # Determine symptom intensity
+                # --------------------------------------------------
+                if allergen.allergen_name == "Peanuts":
+                    # Scale intensity by dose: base intensity plus random up to quantity
+                    base_intensity = rng.randint(*symptom_intensity_range)
+                    symptom_intensity = min(5, base_intensity + allergen_log.quantity)  # cap at 5
+                else:
+                    symptom_intensity = rng.randint(*symptom_intensity_range)
+
                 symptom_log = SymptomLog(
                     user_id=user.user_id,
                     date_time=symptom_time,
                     symptom_id=rng.choice(common_symptoms).symptom_id,
-                    symptom_intensity=rng.randint(*symptom_intensity_range),
+                    symptom_intensity=symptom_intensity,
                 )
 
                 db.add(symptom_log)
