@@ -49,7 +49,7 @@ def intensity_volume(
         rows = []
         for _, allergen in allergen_df.iterrows():
             start = allergen["date_time"] + timedelta(hours=lag_start)
-            end = start + timedelta(hours=lag_end)
+            end = allergen["date_time"] + timedelta(hours=lag_end)
             window_symptoms = symptom_df[(symptom_df["date_time"] >= start) & (symptom_df["date_time"] <= end)]
             peak_intensity = window_symptoms["symptom_intensity"].max()
             if pd.isna(peak_intensity):
@@ -68,6 +68,7 @@ def intensity_volume(
         # --- Plot scatter + GAM ---
         sns.set(style="whitegrid")
         fig, ax = plt.subplots(figsize=(12, 10))
+        print("Volume range min/max:", df["volume"].min(), df["volume"].max())
 
         # --- Prepare data ---
         df["volume"] = df["volume"].astype(float)
