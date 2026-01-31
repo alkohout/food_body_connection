@@ -94,7 +94,7 @@ def intensity_volume(
         fig, ax = plt.subplots(figsize=(12, 8))
         #sns.violinplot(x="burden_score", y="volume", data=df, cut=0, inner="quartile")
         sns.boxplot(data=df, x="burden_score", y="volume", palette="pastel")
-        sns.swarmplot(data=df, x="burden_score", y="volume", color="black", alpha=0.5, jitter=True)
+        sns.swarmplot(data=df, x="burden_score", y="volume", color="black", alpha=0.5)
         plt.xlabel("Burden score")
         plt.ylabel("Volume")
         plt.title("Distribution of Volume by Burden Score (Violin Plot)")
