@@ -324,6 +324,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       lagWindowInput.selectedOptions[0].text;
 
 
+    updateCaptions();
+
     try {
  
       const cacheBust = Date.now();
@@ -504,3 +506,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 });
+
+function updateCaptions() {
+  const allergenName = allergenIntInput.value || "—";
+  const symptomGroup = symptomGroupInput.value || "—";
+  const lagText = lagWindowInput.selectedOptions[0]?.text || "—";
+
+  document.getElementById("caption-allergen").textContent = allergenName;
+  document.getElementById("caption-symptom-group").textContent = symptomGroup;
+  document.getElementById("caption-lag").textContent = lagText;
+}
