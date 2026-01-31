@@ -301,8 +301,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("update-plot-btn")?.addEventListener("click", async () => {
 
-    updateCaptions(allergenIntInput, symptomGroupInput, lagWindowInput);
-
     const allergenName = allergenIntInput.value || "Dairy";
     //const lagWindow = lagWindowInput.value || "0_6";
     const lagWindow = lagWindowInput.value;
@@ -316,15 +314,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
     const { start, end } = LAG_WINDOWS[lagWindow];
     const symptomGroup = symptomGroupInput.value
+    const lagWindowText = '${start} - ${end} hrs'
 
-    document.getElementById("caption-allergen").textContent =
-      allergenName || "—";
-
-    document.getElementById("caption-symptom-group").textContent =
-      symptomGroup || "—";
-
-    document.getElementById("caption-lag").textContent =
-      lagWindowInput.selectedOptions[0].text;
+    updateCaptions(allergenName, symptomGroup, lagWindowText);
 
     try {
  
@@ -508,16 +500,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 
-function updateCaptions(allergenInputEl, symptomGroupEl, lagSelectEl) {
-  const allergenName = allergenInputEl?.value || "—";
-  const symptomGroup = symptomGroupEl?.value || "—";
-
-  // Safer for select elements
-  let lagText = "—";
-  if (lagSelectEl) {
-    const idx = lagSelectEl.selectedIndex;
-    if (idx >= 0) lagText = lagSelectEl.options[idx].text;
-  }
+function updateCaptions(allergenName, symptomGroup, lagText) {
 
   document.getElementById("caption-allergen").textContent = allergenName;
   document.getElementById("caption-symptom-group").textContent = symptomGroup;
