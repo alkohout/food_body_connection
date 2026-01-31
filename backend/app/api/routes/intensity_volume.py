@@ -96,7 +96,7 @@ def intensity_volume(
 
         # --- Predict probabilities ---
         X_range = pd.DataFrame({"volume": np.linspace(df["volume"].min(), df["volume"].max(), 200)})
-        probs = res.predict(X_range).to_numpy()
+        probs = res.predict(X_range, which="prob").to_numpy()
 
         # Compute cumulative probabilities
         cum_probs = np.zeros_like((probs.shape[0], 3))
