@@ -65,52 +65,28 @@
 
   <hr />
 
-  <h2>Dose–Response (GAM) Metrics</h2>
+  <h2>Dose–Response Odds Ratio</h2>
 
   <p>
-  These metrics apply to the dose–response curves, which model how symptom burden changes
-  with increasing exposure (e.g. volume consumed). The curves are estimated using a
-  <strong>Generalised Additive Model (GAM)</strong>, which allows for flexible, non-linear relationships.
+  The odds ratio (OR) and its 95% confidence interval is estimated using an <strong> Ordinal Logisitc Regression Model</strong>, which determines how the probability of being in a higher symptom intensity category changes with allergen volume.
+  OR > 1: Higher allergen volume is associated with greater odds of more intense symptoms.
+OR = 1: Allergen volume has no association with symptom intensity.
+OR < 1: Higher allergen volume is associated with lower odds of more intense symptoms (protective effect or inverse relationship).
+The 95% confidence interval (CI) indicates the precision of the estimate:
+If the CI does not include 1, the association is considered statistically significant.
+If the CI includes 1, the association may be due to chance.
   </p>
 
   <ul>
     <li>
-      <span class="metric-title">Pseudo R²</span>: measures how much of the variation in symptom burden is explained by the dose–response curve.
+      <span class="metric-title">Odds Ratio</span>: quantifies how the odds of experiencing a higher symptom intensity change with each unit increase in allergen volume. 
       <div class="metric-description">
-        <span class="indicator green">●</span> ≥ 0.30: Strong signal – dose explains symptoms well<br>
-        <span class="indicator orange">●</span> 0.15 – 0.29: Moderate signal – partial relationship<br>
-        <span class="indicator red">●</span> < 0.15: Weak signal – little explanatory power
+        <span class="indicator green">●</span> Confidence interval minimum is > 1 : Higher allergen volume is associated with greater odds of more intense symptoms<br>
+        <span class="indicator green">●</span> Confidence interval maximum is < 1 : Higher allergen volume is associated with greater odds of less intense symptoms<br>
+        <span class="indicator orange">●</span> Confidence interval includes 1 but is mostly higher or lower : Higher allergen volume is moderately associated with more or less intense symptoms<br>
+        <span class="indicator red">●</span> Confidence includes 1 : Higher allergen volume is not associated with greater odds of more or less intense symptoms.
       </div>
     </li>
-
-    <p></p>
-
-    <li>
-      <span class="metric-title">Effective Degrees of Freedom (EDF)</span>: reflects how complex or “wiggly” the curve is.
-      <div class="metric-description">
-        <span class="indicator green">●</span> ≤ 5: Smooth, stable relationship<br>
-        <span class="indicator orange">●</span> 6 – 8: Moderately complex – interpret carefully<br>
-        <span class="indicator red">●</span> > 8: Highly complex – possible overfitting
-      </div>
-    </li>
-
-    <p></p>
-
-    <li>
-        <span class="metric-title">Sample Size</span>: the number of dose–symptom observations used to fit the curve.
-        <div class="metric-description">
-          <span class="indicator green">●</span> ≥ 40: Reliable curve estimation<br>
-          <span class="indicator orange">●</span> 15 – 39: Emerging pattern<br>
-          <span class="indicator red">●</span> < 15: Insufficient data – curve may be unstable
-        </div>
-    </li>
-  </ul>
-
-  <p>
-  <em>Note:</em> Dose–response curves assume that logged volume reflects meaningful exposure
-  and that symptom burden combines intensity and frequency consistently. If logging is sparse
-  or inconsistent, confidence will be lower even if a curve is shown.
-  </p>
 
   <hr />
 
