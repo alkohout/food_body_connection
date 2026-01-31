@@ -92,12 +92,12 @@ def intensity_volume(
 
         # Plot
         fig, ax = plt.subplots(figsize=(12, 8))
-        #sns.violinplot(x="burden_score", y="volume", data=df, cut=0, inner="quartile")
-        sns.boxplot(data=df, x="burden_score", y="volume", palette="pastel")
-        sns.swarmplot(data=df, x="burden_score", y="volume", color="black", alpha=0.5)
-        plt.xlabel("Burden score")
-        plt.ylabel("Volume")
-        plt.title("Distribution of Volume by Burden Score (Violin Plot)")
+        sns.violinplot(x="burden_score", y="volume", data=df, cut=0, inner="quartile")
+        #sns.boxplot(data=df, x="burden_score", y="volume", palette="pastel")
+        #sns.swarmplot(data=df, x="burden_score", y="volume", color="black", alpha=0.5)
+        plt.xlabel(f"Max symptom intensity within {lag_start} - {lag_end} hrs after {allergen_name} exposure")
+        plt.ylabel(f"Volume of {allergen_name} exposed to")
+        plt.title("Distribution of allergen dose by symptom response (Violin Plot)")
         plt.show()
 
         from matplotlib.patches import Rectangle
@@ -124,27 +124,25 @@ def intensity_volume(
         )
 
         # --- Metrics text ---
-        #metrics = [
-        #    ("Signal (pseudo R²)", pseudo_r2, r2_color, f"{pseudo_r2:.2f}"),
-        #    ("Curve stability (EDOF)", edof, edof_color, f"{edof:.1f}"),
-        #    ("Samples", samples, samples_color, f"{samples}"),
-        #]
-#
-#        y_start = 0.91
-#        y_step = 0.04
-#
-#        for i, (name, _, color, text_val) in enumerate(metrics):
-#            ax.text(
-#                0.95,
-#                y_start - i * y_step,
-#                f"{name}: {text_val}",
-#                transform=ax.transAxes,
-#                fontsize=12,
-#                verticalalignment="top",
-#                horizontalalignment="right",
-#                color=color,
-#                zorder=3
-#            )
+        metrics = [
+             ("Odds Ratio (volume)", or_value, or_color(or_value, ci_low, ci_high), f"{or_value:.2f} [{ci_low:.2f}, {ci_high:.2f}]"),
+        ]
+
+        y_start = 0.91
+        y_step = 0.04
+
+        for i, (name, _, color, text_val) in enumerate(metrics):
+            ax.text(
+                0.95,
+                y_start - i * y_step,
+                f"{name}: {text_val}",
+                transform=ax.transAxes,
+                fontsize=12,
+                verticalalignment="top",
+                horizontalalignment="right",
+                color=color,
+                zorder=3
+            )
 
         plt.tight_layout()
 
@@ -161,25 +159,10 @@ def intensity_volume(
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail="Failed to generate plot")
 
-def get_color(value, metric):
-    if metric == "pseudo_r2":
-        if value >= 0.30:
-            return "green"
-        elif value >= 0.15:
-            return "orange"
-        else:
-            return "red"
-    elif metric == "edof":
-        if value <= 5:
-            return "green"
-        elif value <= 8:
-            return "orange"
-        else:
-            return "red"
-    elif metric == "samples":
-        if value >= 40:
-            return "green"
-        elif value >= 15:
-            return "orange"
-        else:
-            return "red"
+def or_color(or_val, ci_low, ci_high):
+    if ci_low > 1 or ci_high < 1:
+        return "green"  # statistically significant
+    elif ci_low <= 1 <= ci_high:
+        return "orange"  # borderline
+    else:
+        return "red"  # unusual or unexpected
