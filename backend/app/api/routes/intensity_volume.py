@@ -99,7 +99,7 @@ def intensity_volume(
         probs = res.predict(X_range, which="prob").to_numpy()
 
         # Compute cumulative probabilities
-        cum_probs = np.zeros_like((probs.shape[0], 3))
+        cum_probs = np.zeros((probs.shape[0], 3))
         cum_probs[:, 2] = probs[:, 3]                 # Severe
         cum_probs[:, 1] = probs[:, 2] + probs[:, 3]   # Moderate or worse
         cum_probs[:, 0] = 1 - probs[:,0]           # Any symptoms
