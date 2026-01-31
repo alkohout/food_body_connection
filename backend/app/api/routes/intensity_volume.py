@@ -95,9 +95,9 @@ def intensity_volume(
         sns.violinplot(x="burden_score", y="volume", data=df, cut=0, inner="quartile")
         #sns.boxplot(data=df, x="burden_score", y="volume", palette="pastel")
         #sns.swarmplot(data=df, x="burden_score", y="volume", color="black", alpha=0.5)
-        plt.xlabel(f"Maximum symptom intensity within {lag_start} - {lag_end} hrs after {allergen_name} exposure")
+        plt.xlabel(f"Peak symptom intensity within {lag_start} - {lag_end} hrs after {allergen_name} exposure")
         plt.ylabel(f"Volume of {allergen_name} exposure")
-        plt.title("Distribution of allergen dose by symptom response")
+        plt.title("Effect of Allergen Volume on Peak Symptom Intensity")
         plt.show()
 
         from matplotlib.patches import Rectangle
@@ -150,9 +150,22 @@ def intensity_volume(
         raise HTTPException(status_code=500, detail="Failed to generate plot")
 
 def or_color(or_val, ci_low, ci_high):
-    if ci_low > 1 or ci_high < 1:
-        return "green"  # statistically significant
-    elif ci_low <= 1 <= ci_high:
-        return "orange"  # borderline
+    """
+    Determine color for odds ratio based on significance and effect size.
+    
+    Green: CI excludes 1 → statistically significant.
+    Orange: CI barely includes 1 → borderline significance.
+    Red: CI includes 1 with wide range or unexpected effect direction.
+    """
+    # Statistically significant and OR > 1 (risk increases)
+    if ci_low > 1:
+        return "green"
+    # Statistically significant and OR < 1 (protective effect)
+    elif ci_high < 1:
+        return "green"
+    # CI includes 1 but mostly >1 or <1 (borderline)
+    elif (ci_low <= 1 <= ci_high) and ((ci_high - ci_low)/ci_low < 1.0):
+        return "orange"
+    # CI includes 1 with wide uncertainty or OR around 1 → weak evidence
     else:
-        return "red"  # unusual or unexpected
+        return "red"
