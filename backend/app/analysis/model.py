@@ -201,11 +201,6 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
 
         # --- Metrics box ---
         from matplotlib.patches import Rectangle
-        METRIC_TEXT = {
-            "green": "performed well and showed strong discrimination",
-            "orange": "showed moderate performance with some uncertainty",
-            "red": "performed poorly and showed limited discriminatory ability",
-        }
 
         rect = Rectangle((0.65, 0.65), 0.35, 0.25, transform=ax_top.transAxes, color="white", alpha=0.85, zorder=2)
         ax_top.add_patch(rect)
@@ -247,15 +242,6 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             "Sample Size": samples_colour,
             "Colinearity": strong_col_colour,
         }
-
-        summary_text = (
-            "Model performance was assessed using four metrics. "
-            + " ".join(metric_texts)
-            + " "
-            + 
-        )
-
-        if
 
         # bottom allergens 
         plot_df = or_results.copy()
@@ -366,6 +352,11 @@ def worst_light(lights):
     return "green"
 
 def metric_summary_text(metric_name, light):
+    METRIC_TEXT = {
+        "green": "performed well and showed strong discrimination",
+        "orange": "showed moderate performance with some uncertainty",
+        "red": "performed poorly and showed limited discriminatory ability",
+    }
     return f"{metric_name} {METRIC_TEXT[light]}."
 
 def overall_reliability_text(metric_lights: dict):
