@@ -461,6 +461,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
 
+    // Call the summary analysis function
+    getSummaryText();
+
   } catch (err) {
     console.error("Failed to fetch analysis plots:", err);
   }
@@ -515,5 +518,22 @@ function updateCaptions(allergenName, symptomGroup, lagText) {
   document.getElementById("caption-lag-dose").textContent = lagText;
 }
 
+async function getSummaryText() {
+    try {
+        const response = await fetch("/analysis/generate_summary_text");
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
+        // Read the response as plain text
+        const text = await response.text();
+        console.log("Summary text:", text);
+
+        // Example: display in a div
+        document.getElementById("summaryDiv").innerText = text;
+
+    } catch (error) {
+        console.error("Error fetching summary text:", error);
+    }
+}
 
