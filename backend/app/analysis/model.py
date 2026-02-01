@@ -149,6 +149,8 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         # Sort by odds ratio and take top 10 allergens
         top_allergens = or_results.sort_values("odds_ratio", ascending=False)["allergen"].head(10).tolist()
         bottom_allergens = or_results.sort_values("odds_ratio", ascending=True)["allergen"].head(10).tolist()
+        top_3_allergens = top_allergens[:3]
+        bottom_3_allergens = bottom_allergens[:3]
 
         # --- Plot on the current axis ---
 
@@ -275,7 +277,14 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             return buf
         elif return_type=="text":
             plt.close(fig)
-            return strong_pairs_text
+            summary = (
+                f"Using a logistic regression model, we find that the three allergens most likely "
+                f"to be causing symptoms are {top_3_allergens}, and the three allergens most likely "
+                f"to be improving symptoms are {bottom_3_allergens}. "
+                f"We checked for allergens which are often logged together and found {strong_pairs_text}."
+            )
+
+            return summary 
 
     except Exception as e:
         traceback.print_exc()
