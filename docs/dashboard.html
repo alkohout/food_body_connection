@@ -279,11 +279,11 @@
             </figure> 
             </div>
             <h4>Dose-Response</h4>
-            This section examines whether higher volumes of a specific allergen are associated with stronger symptom responses. 
-            The focus is on the relationship between allergen exposure and the peak symptom intensity observed within the specified lag window after exposure.
-            The violin plot below shows the distribution of allergen volumes exposed to for each level of peak symptom intensity. 
+            This section examines whether higher standardized volumes of a specific allergen are associated with stronger symptom responses. 
+            The focus is on the relationship between allergen exposure and the peak symptom intensity observed within the specified lag window after exposure. 
+            The violin plot below shows the distribution of standardized allergen volumes for each level of peak symptom intensity. 
             The top-right metrics panel summarizes the strength of this relationship using the odds ratio. 
-            The odds ratio quantifies how the odds of experiencing a higher symptom intensity change with each unit increase in allergen volume.
+            The odds ratio quantifies how the odds of experiencing a higher symptom intensity change with each one standard deviation increase in allergen volume.
             <div class="plot-container" style="position: relative;">
             <figure class="img-figure" >
               <img id="analysis-intensity-volume-plot" src="" alt="Intensity-Volume Plot" />
@@ -305,11 +305,15 @@
               <figcaption> Figure : Distribution of allergen exposure volume by peak symptom intensity.
                 This violin plot shows the distribution of <span id="caption-allergen-dose"></span> exposures grouped by the maximum symptom intensity logged within <span id="caption-lag-dose"></span>. 
                 The width of each violin represents the density of observations at that symptom intensity level.
-                The Odds Ratio quantifies the multiplicative change in odds of experiencing higher symptom intensity per unit increase in allergen volume, with 95% confidence interval.
+                The odds ratio quantifies the multiplicative change in odds of experiencing higher symptom intensity per one standard deviation increase in allergen volume, with a 95% confidence interval.
               </figcaption>
             </figure>
             </div>
             <h4>Time Series Plot</h4>
+            This figure shows the temporal relationship between symptom burden and allergen exposure. 
+            The top panel displays daily symptom burden as both raw values and a rolling average (default 3-day), highlighting short-term trends and fluctuations. 
+            Subtle color bands indicate mild, moderate, and severe burden ranges. 
+            The bottom panel shows daily allergen exposure volume, allowing visual comparison of symptom patterns with exposure events over time.
             <figure class="img-figure" >
               <img id="analysis-time-series-plot" src="" alt="Allergen Time Series Plot" />
               <figcaption> Figure : Sympton burden blue time series (left axis) and allergen volume exposure orange markers (right axis). 

@@ -92,6 +92,7 @@ def model_classification(db: 'Session', current_user: int):
                     f"{a}–{b}" for a, b in
                     zip(strong_pairs.allergen_a, strong_pairs.allergen_b)
                 )
+                strong_col_text = "Strong co-occurence detected"
                 strong_col_colour = "red"
             else:
                 strong_col_text = "No strong co-occurrence detected"
@@ -196,7 +197,7 @@ def model_classification(db: 'Session', current_user: int):
 
         # --- Metrics box ---
         from matplotlib.patches import Rectangle
-        rect = Rectangle((0.65, 0.75), 0.35, 0.25, transform=ax_top.transAxes, color="white", alpha=0.85, zorder=2)
+        rect = Rectangle((0.65, 0.65), 0.35, 0.25, transform=ax_top.transAxes, color="white", alpha=0.85, zorder=2)
         ax_top.add_patch(rect)
 
         plt.text(0.67, 0.945, "Model Performance:", transform=ax_top.transAxes, fontsize=12, color="black", zorder=4)
