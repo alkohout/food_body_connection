@@ -428,7 +428,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     //analysisPlotImg.src = URL.createObjectURL(blob);
 
     // Symptom Histogram Plot 
-    const group_hist = await fetch(`${API_URL}/analysis/system_group_histogram`, {
+    const group_hist = await fetch(`${API_URL}/analysis/symptom_group_histogram`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
     });
 

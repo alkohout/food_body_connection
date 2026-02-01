@@ -33,6 +33,9 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         allergen_events = get_all_allergen_events_df(db, current_user)
         symptom_events = get_all_symptom_events_df(db, current_user)
         lag_windows = [(0, 6), (6, 24), (24, 48)]
+        symptom_counts = symptom_events.groupby("symptom_group").size().reset_index(name="count")
+        symptom_counts = symptom_counts.sort_values("count", ascending=False)
+        top_symptom_group = symptom_counts.iloc[0]["symptom_group"]
 
         base_model = LogisticRegression(solver="liblinear", max_iter=1000)
         param_grid = {"penalty": ["l1", "l2"], "C": [0.1, 1, 10]}
@@ -304,6 +307,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
                 f"Using a logistic regression model, we find that the allergens most likely "
                 f"to be causing symptoms are {top_text}, and the allergens most likely "
                 f"to be improving symptoms are {bot_text}. "
+                f"Your symptoms are most frequently {top_symptom_group}. "
                 f"{overall_reliability_text(metric_lights)}"
                 f"{strong_pairs_text}."
             )
