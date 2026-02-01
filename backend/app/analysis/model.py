@@ -201,6 +201,12 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
 
         # --- Metrics box ---
         from matplotlib.patches import Rectangle
+        METRIC_TEXT = {
+            "green": "performed well and showed strong discrimination",
+            "orange": "showed moderate performance with some uncertainty",
+            "red": "performed poorly and showed limited discriminatory ability",
+        }
+
         rect = Rectangle((0.65, 0.65), 0.35, 0.25, transform=ax_top.transAxes, color="white", alpha=0.85, zorder=2)
         ax_top.add_patch(rect)
 
@@ -233,6 +239,23 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             zorder=4,
             wrap=True
         )
+
+        # metrics_summary
+        metric_lights = {
+            "ROC AUC": auc_colour,
+            "Recall": recall_colour,
+            "Sample Size": samples_colour,
+            "Colinearity": strong_col_colour,
+        }
+
+        summary_text = (
+            "Model performance was assessed using four metrics. "
+            + " ".join(metric_texts)
+            + " "
+            + 
+        )
+
+        if
 
         # bottom allergens 
         plot_df = or_results.copy()
@@ -289,6 +312,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
                 f"Using a logistic regression model, we find that the allergens most likely "
                 f"to be causing symptoms are {top_text}, and the allergens most likely "
                 f"to be improving symptoms are {bot_text}. "
+                f"{overall_reliability_text(metric_lights)}"
                 f"We checked for allergens which are often logged together and found {strong_pairs_text}."
             )
 
@@ -332,3 +356,45 @@ def allergen_list_text(allergens):
     if len(allergens) >= 2:
         return " and ".join(allergens)
     return ", ".join(allergens[:-1]) + f", and {allergens[-1]}"
+
+def worst_light(lights):
+    """Return the worst (most concerning) light present."""
+    if "red" in lights:
+        return "red"
+    if "orange" in lights:
+        return "orange"
+    return "green"
+
+def metric_summary_text(metric_name, light):
+    return f"{metric_name} {METRIC_TEXT[light]}."
+
+def overall_reliability_text(metric_lights: dict):
+    """
+    metric_lights example:
+    {
+        "ROC AUC": "green",
+        "Calibration": "orange",
+        "Stability": "green",
+        "Sample Size": "red"
+    }
+    """
+    lights = list(metric_lights.values())
+    worst = worst_light(lights)
+
+    if worst == "green":
+        return (
+            "Overall, the model performed well across all evaluation metrics. "
+            "The results are considered reliable and suitable for identifying potential patterns."
+        )
+
+    if worst == "orange":
+        return (
+            "Overall, the model showed mixed performance across evaluation metrics. "
+            "The results should be interpreted with some caution, particularly for borderline findings."
+        )
+
+    return (
+        "Overall, the model showed weak performance on at least one key metric. "
+        "The results are considered unreliable and should be interpreted with caution, "
+        "as observed patterns may reflect noise rather than true associations."
+    )
