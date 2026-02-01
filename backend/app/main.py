@@ -11,7 +11,7 @@ import app.api.routes.intensity_volume as intensity_volume
 import app.api.routes.plot_eda as plot_eda  
 import app.api.routes.stats_report as stats_report  
 import app.api.routes.temporal_stats as temporal_stats
-import projects.capstone.backend.app.api.routes.symptom_group_histogram as symptom_group_histogram
+import app.api.routes.symptom_group_histogram as symptom_group_histogram
 import app.api.routes.predict as predict
 import app.api.routes.plot_allergen_rank as plot_allergen_rank
 import app.api.routes.plot_time_series as plot_time_series
