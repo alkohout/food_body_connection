@@ -149,8 +149,6 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         # Sort by odds ratio and take top 10 allergens
         top_allergens = or_results.sort_values("odds_ratio", ascending=False)["allergen"].head(10).tolist()
         bottom_allergens = or_results.sort_values("odds_ratio", ascending=True)["allergen"].head(10).tolist()
-        top_3_allergens = top_allergens[:3]
-        bottom_3_allergens = bottom_allergens[:3]
 
         # --- Plot on the current axis ---
 
@@ -174,6 +172,9 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             order=order,
             ax=ax_top
         )
+        sig_top_allergens = plot_df[plot_df["ci_lower"] > 1]
+        sig_bot_allergens = plot_df[plot_df["ci_upper"] < 1]
+
 
         # Get bar centers from seaborn
         bar_centers = [bar.get_x() + bar.get_width() / 2 for bar in ax_top.patches]
@@ -275,12 +276,19 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             buf.seek(0)
             plt.close(fig)
             return buf
+
         elif return_type=="text":
             plt.close(fig)
+            top_allergens = sig_top_allergens["allergen"].tolist()
+            bot_allergens = sig_bot_allergens["allergen"].tolist()
+
+            top_text = allergen_list_text(top_allergens)
+            bot_text = allergen_list_text(bot_allergens)
+
             summary = (
-                f"Using a logistic regression model, we find that the three allergens most likely "
-                f"to be causing symptoms are {top_3_allergens}, and the three allergens most likely "
-                f"to be improving symptoms are {bottom_3_allergens}. "
+                f"Using a logistic regression model, we find that the allergens most likely "
+                f"to be causing symptoms are {top_text}, and the allergens most likely "
+                f"to be improving symptoms are {bot_text}. "
                 f"We checked for allergens which are often logged together and found {strong_pairs_text}."
             )
 
@@ -315,3 +323,12 @@ def get_colour(value, metric):
             return "orange"
         else:
             return "red"
+
+def allergen_list_text(allergens):
+    if len(allergens) == 0:
+        return "none"
+    if len(allergens) == 1:
+        return allergens[0]
+    if len(allergens) >= 2:
+        return " and ".join(allergens)
+    return ", ".join(allergens[:-1]) + f", and {allergens[-1]}"
