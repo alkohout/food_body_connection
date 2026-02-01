@@ -25,7 +25,7 @@ import pandas as pd
 logger = logging.getLogger("app/analysis/model.py")
 logging.basicConfig(level=logging.INFO)
 
-def model_classification(db: 'Session', current_user: int):
+def model_classification(db: 'Session', current_user: int, return_type="buf"):
     """
     Perform logistic regression, bootstrap ORs, and return plot buffer with 3 subplots (different lag windows).
     """
@@ -88,13 +88,14 @@ def model_classification(db: 'Session', current_user: int):
 
             # Turn into readable string
             if len(strong_pairs) > 0:
-                strong_col_text = "Co-occurring allergens:\n" + ", ".join(
+                strong_pairs_text = "Co-occurring allergens:\n" + ", ".join(
                     f"{a}–{b}" for a, b in
                     zip(strong_pairs.allergen_a, strong_pairs.allergen_b)
                 )
                 strong_col_text = "Strong co-occurence detected"
                 strong_col_colour = "red"
             else:
+                strong_pairs_text = "No strong co-occurrence detected"
                 strong_col_text = "No strong co-occurrence detected"
                 strong_col_colour = "green"
 
@@ -266,12 +267,15 @@ def model_classification(db: 'Session', current_user: int):
         ax_bot.set_xlabel("Allergen", fontsize=14 )
         ax_bot.tick_params(axis='x', rotation=45)
 
-        # --- Finalize figure ---
-        buf = BytesIO()
-        plt.savefig(buf, format="png", bbox_inches="tight")
-        buf.seek(0)
-        plt.close(fig)
-        return buf
+        if return_type=="buf":
+            buf = BytesIO()
+            plt.savefig(buf, format="png", bbox_inches="tight")
+            buf.seek(0)
+            plt.close(fig)
+            return buf
+        elif return_type=="text":
+            plt.close(fig)
+            return strong_pairs_text
 
     except Exception as e:
         traceback.print_exc()
