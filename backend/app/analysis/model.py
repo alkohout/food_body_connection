@@ -86,17 +86,23 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
                 strong_pairs["allergen_a"] < strong_pairs["allergen_b"]
             ]
 
-            # Turn into readable string
             if len(strong_pairs) > 0:
-                strong_pairs_text = "Co-occurring allergens:\n" + ", ".join(
-                    f"{a}–{b}" for a, b in
-                    zip(strong_pairs.allergen_a, strong_pairs.allergen_b)
+                pair_strings = (
+                    strong_pairs
+                    .apply(
+                        lambda r: f"{r['allergen_a'].lower()}–{r['allergen_b'].lower()}",
+                        axis=1
+                    )
+                    .tolist()
                 )
-                strong_col_text = "Strong co-occurence detected"
+
+                strong_pairs_text = "co-occurring allergens:\n" + ", ".join(pair_strings)
+                strong_col_text = "strong co-occurrence detected"
                 strong_col_colour = "red"
+
             else:
-                strong_pairs_text = "No strong co-occurrence detected"
-                strong_col_text = "No strong co-occurrence detected"
+                strong_pairs_text = "no strong co-occurrence detected"
+                strong_col_text = "no strong co-occurrence detected"
                 strong_col_colour = "green"
 
             # --- Nested CV ---
@@ -335,11 +341,14 @@ def get_colour(value, metric):
             return "red"
 
 def allergen_list_text(allergens):
+
+    allergens = [a.lower() for a in allergens]
+
     if len(allergens) == 0:
         return "none"
     if len(allergens) == 1:
         return allergens[0]
-    if len(allergens) >= 2:
+    if len(allergens) == 2:
         return " and ".join(allergens)
     return ", ".join(allergens[:-1]) + f", and {allergens[-1]}"
 
