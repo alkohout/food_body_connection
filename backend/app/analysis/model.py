@@ -96,12 +96,12 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
                     .tolist()
                 )
 
-                strong_pairs_text = "co-occurring allergens:\n" + ", ".join(pair_strings)
+                strong_pairs_text = "We checked for allergens which are often logged together and found co-occurring allergens:\n" + ", ".join(pair_strings)
                 strong_col_text = "strong co-occurrence detected"
                 strong_col_colour = "red"
 
             else:
-                strong_pairs_text = "no strong co-occurrence detected"
+                strong_pairs_text = ""
                 strong_col_text = "no strong co-occurrence detected"
                 strong_col_colour = "green"
 
@@ -305,7 +305,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
                 f"to be causing symptoms are {top_text}, and the allergens most likely "
                 f"to be improving symptoms are {bot_text}. "
                 f"{overall_reliability_text(metric_lights)}"
-                f"We checked for allergens which are often logged together and found {strong_pairs_text}."
+                f"{strong_pairs_text}."
             )
 
             return summary 
@@ -384,17 +384,17 @@ def overall_reliability_text(metric_lights: dict):
     if worst == "green":
         return (
             "Overall, the model performed well across all evaluation metrics. "
-            "The results are considered reliable and suitable for identifying potential patterns."
+            "The results are considered reliable and suitable for identifying potential patterns. "
         )
 
     if worst == "orange":
         return (
             "Overall, the model showed mixed performance across evaluation metrics. "
-            "The results should be interpreted with some caution, particularly for borderline findings."
+            "The results should be interpreted with some caution, particularly for borderline findings. "
         )
 
     return (
         "Overall, the model showed weak performance on at least one key metric. "
         "The results are considered unreliable and should be interpreted with caution, "
-        "as observed patterns may reflect noise rather than true associations."
+        "as observed patterns may reflect noise rather than true associations. "
     )
