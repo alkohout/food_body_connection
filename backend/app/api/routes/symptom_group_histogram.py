@@ -39,15 +39,15 @@ def symptom_group_histogram(
         if symptom_events.empty:
             raise HTTPException(status_code=400, detail="Not enough data to plot")
 
-        logger.info("Generating system group histogram for user_id=%d", current_user.user_id)
+        logger.info("Generating symptom group histogram for user_id=%d", current_user.user_id)
 
-        system_counts = symptom_events.groupby("symptom_group").size().reset_index(name="count")
-        system_counts = system_counts.sort_values("count", ascending=False)
+        symptom_counts = symptom_events.groupby("symptom_group").size().reset_index(name="count")
+        symptom_counts = symptom_counts.sort_values("count", ascending=False)
 
         sns.set(style="whitegrid")
         fig, ax = plt.subplots(figsize=(10,6))
 
-        sns.barplot(data=system_counts, x="symptom_group", y="count", ax=ax, palette="pastel")
+        sns.barplot(data=symptom_counts, x="symptom_group", y="count", ax=ax, palette="pastel")
         ax.set_title("Symptom Counts by Symptom Group")
         ax.set_xlabel("Symptom Group")
         ax.set_ylabel("Number of Symptoms Logged")
@@ -64,7 +64,7 @@ def symptom_group_histogram(
         return StreamingResponse(buf, media_type="image/png")
 
     except Exception as e:
-        logger.error("Error generating system group histogram: %s", str(e))
+        logger.error("Error generating symptom group histogram: %s", str(e))
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Internal server error")
 
