@@ -15,6 +15,7 @@ import logging
 from sklearn.metrics import make_scorer, recall_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, GridSearchCV, cross_val_score
+from sklearn.metrics import pairwise_distances
 
 import numpy as np
 import traceback 
@@ -54,6 +55,46 @@ def model_classification(db: 'Session', current_user: int):
                     status_code=400,
                     detail="Not enough class variation to train model."
                 )
+            
+            # --- Collinearity check: Jaccard similarity for boolean allergens ---
+            allergen_cols = X.columns.tolist()
+            jaccard_dist = pairwise_distances(X.T, metric="jaccard")
+            jaccard_sim = 1 - jaccard_dist
+            jaccard_df = pd.DataFrame(
+                jaccard_sim,
+                index=allergen_cols,
+                columns=allergen_cols
+            )
+            # Remove self-similarity
+            np.fill_diagonal(jaccard_df.values, 0)
+            # Extract strongly co-occurring pairs
+            strong_pairs = (
+                jaccard_df
+                .stack()
+                .reset_index()
+                .rename(columns={
+                    "level_0": "allergen_a",
+                    "level_1": "allergen_b",
+                    0: "jaccard"
+                })
+                .query("jaccard > 0.7")
+            )
+
+            # Deduplicate A–B vs B–A
+            strong_pairs = strong_pairs[
+                strong_pairs["allergen_a"] < strong_pairs["allergen_b"]
+            ]
+
+            # Turn into readable string
+            if len(strong_pairs) > 0:
+                strong_col_text = "Co-occurring allergens:\n" + ", ".join(
+                    f"{a}–{b}" for a, b in
+                    zip(strong_pairs.allergen_a, strong_pairs.allergen_b)
+                )
+                strong_col_colour = "red"
+            else:
+                strong_col_text = "No strong co-occurrence detected"
+                strong_col_colour = "green"
 
             # --- Nested CV ---
             outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
@@ -159,21 +200,34 @@ def model_classification(db: 'Session', current_user: int):
 
         plt.text(0.67, 0.945, "Model Performance:", transform=ax_top.transAxes, fontsize=12, color="black", zorder=4)
 
-        auc_color = get_color(best_auc, "auc")
-        recall_color = get_color(best_recall, "recall")
-        samples_color = get_color(best_samples, "samples")
-        metrics = [("ROC AUC", best_auc, best_auc_std, auc_color),
-                    ("Symptom recall", best_recall, best_recall_std, recall_color),
-                    ("Samples", best_samples, None, samples_color)]
+        auc_colour = get_colour(best_auc, "auc")
+        recall_colour = get_colour(best_recall, "recall")
+        samples_colour = get_colour(best_samples, "samples")
+        metrics = [("ROC AUC", best_auc, best_auc_std, auc_colour),
+                    ("Symptom recall", best_recall, best_recall_std, recall_colour),
+                    ("Samples", best_samples, None, samples_colour)]
         x_text = 0.95
         y_start = 0.91
         y_step = 0.06
-        for i, (name, val, std, color) in enumerate(metrics):
+        for i, (name, val, std, colour) in enumerate(metrics):
             y = y_start - i * y_step
             text = f"{name}: {val:.2f} ± {std:.2f}" if std is not None else f"{name}: {val}"
             plt.text(x_text, y, text, transform=ax_top.transAxes, fontsize=12,
                         verticalalignment="top", horizontalalignment="right",
-                        color=color, zorder=4)
+                        color=colour, zorder=4)
+        plt.text(
+            x_text,
+            y + y_step,
+            strong_col_text,
+            transform=ax_top.transAxes,
+            fontsize=10,
+            verticalalignment="top",
+            horizontalalignment="right",
+            color=strong_col_colour,
+            zorder=4,
+            wrap=True
+        )
+
 
         # bottom allergens 
         plot_df = or_results.copy()
@@ -222,9 +276,9 @@ def model_classification(db: 'Session', current_user: int):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-def get_color(value, metric):
+def get_colour(value, metric):
     """
-    Return traffic light color based on metric thresholds.
+    Return traffic light colour based on metric thresholds.
     """
     if metric == "auc":
         if value >= 0.75:
