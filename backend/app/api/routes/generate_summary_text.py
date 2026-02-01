@@ -34,7 +34,7 @@ def generate_summary_text(
         buf = model_classification(
             db,
             current_user.user_id,
-            "text"
+            return_text="text"
         )
 
         return Response(content=buf, media_type="text/plain")
