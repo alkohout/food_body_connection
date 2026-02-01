@@ -218,7 +218,7 @@ def model_classification(db: 'Session', current_user: int):
                         color=colour, zorder=4)
         plt.text(
             x_text,
-            y + y_step,
+            y - y_step,
             strong_col_text,
             transform=ax_top.transAxes,
             fontsize=10,
@@ -228,7 +228,6 @@ def model_classification(db: 'Session', current_user: int):
             zorder=4,
             wrap=True
         )
-
 
         # bottom allergens 
         plot_df = or_results.copy()
