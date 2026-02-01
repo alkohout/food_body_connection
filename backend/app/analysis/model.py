@@ -58,7 +58,8 @@ def model_classification(db: 'Session', current_user: int):
             
             # --- Collinearity check: Jaccard similarity for boolean allergens ---
             allergen_cols = X.columns.tolist()
-            jaccard_dist = pairwise_distances(X.T, metric="jaccard")
+            X_bool = X.astype(bool).to_numpy()
+            jaccard_dist = pairwise_distances(X_bool.T, metric="jaccard")
             jaccard_sim = 1 - jaccard_dist
             jaccard_df = pd.DataFrame(
                 jaccard_sim,
