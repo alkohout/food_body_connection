@@ -520,7 +520,10 @@ function updateCaptions(allergenName, symptomGroup, lagText) {
 
 async function getSummaryText() {
     try {
-        const response = await fetch("/analysis/generate_summary_text");
+        const response = await fetch(`${API_URL}/analysis/generate_summary_text`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+        });
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
