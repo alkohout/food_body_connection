@@ -198,26 +198,34 @@
             </figure>
 
             <h3>Deeper Analysis</h3>
-            <label>Using the plots above explore your data deeper by selecting: </label>
-            <label> - an allergen:</label>
-            <input type="text" id="allergen-intensity-input" autocomplete="off" />
-            <input type="hidden" id="allergen-intensity-id" />
+            <p>Using the plots above explore your data deeper by selecting:</p>
+
+            <div class="form-row">
+              <label for="allergen-intensity-input">– an allergen:</label>
+              <input type="text" id="allergen-intensity-input" autocomplete="off" />
+              <input type="hidden" id="allergen-intensity-id" />
+            </div>
             <ul id="allergen-intensity-suggestions" class="suggestions"></ul>
-            <label> - a lag window:</label>
-            <select id="lag-window">
-                <option value="0_6">0 - 6 hrs</option>
-                <option value="6_24">6 - 24 hrs</option>
-                <option value="24_48">24 - 48 hrs</option>
-                <option value="0_24">0 - 24 hrs</option>
-                <option value="0_48">0 - 48 hrs</option>
-                <option value="0_72">0 - 72 hrs</option>
-            </select>
-            <label> - a symptom group:</label>
-            <input type="text" id="symptom-group-input" autocomplete="on" />
-            <input type="hidden" id="symptom-group-id" />
+
+            <div class="form-row">
+              <label for="lag-window">– a lag window:</label>
+              <select id="lag-window">
+                <option value="0_6">0 – 6 hrs</option>
+                <option value="6_24">6 – 24 hrs</option>
+                <option value="24_48">24 – 48 hrs</option>
+                <option value="0_24">0 – 24 hrs</option>
+                <option value="0_48">0 – 48 hrs</option>
+                <option value="0_72">0 – 72 hrs</option>
+              </select>
+            </div>
+
+            <div class="form-row">
+              <label for="symptom-group-input">– a symptom group:</label>
+              <input type="text" id="symptom-group-input" autocomplete="on" />
+              <input type="hidden" id="symptom-group-id" />
+            </div>
             <ul id="symptom-group-suggestions" class="suggestions"></ul>
-            </label>
-            <button type="button" id="update-plot-btn">Generate Analysis on Chosen Allergen</button>
+
 
             <!-- ===================== -->
             <!-- Time lag analysis -->
