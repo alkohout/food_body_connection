@@ -220,3 +220,19 @@ button.primary {
   text-align: justify;
 }
 
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.form-row label {
+  white-space: nowrap;
+}
+
+.form-row input,
+.form-row select {
+  min-width: 200px;
+}
+

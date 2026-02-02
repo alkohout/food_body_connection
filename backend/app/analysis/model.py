@@ -35,7 +35,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         lag_windows = [(0, 6), (6, 24), (24, 48)]
         symptom_counts = symptom_events.groupby("symptom_group").size().reset_index(name="count")
         symptom_counts = symptom_counts.sort_values("count", ascending=False)
-        top_symptom_group = symptom_counts.iloc[0]["symptom_group"]
+        top_symptom_group = symptom_counts.iloc[0]["symptom_group"].lower()
 
         base_model = LogisticRegression(solver="liblinear", max_iter=1000)
         param_grid = {"penalty": ["l1", "l2"], "C": [0.1, 1, 10]}
@@ -304,12 +304,10 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             bot_text = allergen_list_text(bot_allergens)
 
             summary = (
-                f"Using a logistic regression model, we find that the allergens most likely "
-                f"to be causing symptoms are {top_text}, and the allergens most likely "
-                f"to be improving symptoms are {bot_text}. "
-                f"Your symptoms are most frequently {top_symptom_group}. "
+                f"Analysis using a logistic regression model suggests {top_text} are associated with a higher likelihood of symptoms."
+                f"The most commonly reported symptoms were {top_symptom_group}. "
                 f"{overall_reliability_text(metric_lights)}"
-                f"{strong_pairs_text}."
+                f"{strong_pairs_text}"
             )
 
             return summary 
@@ -387,18 +385,18 @@ def overall_reliability_text(metric_lights: dict):
 
     if worst == "green":
         return (
-            "Overall, the model performed well across all evaluation metrics. "
+            "Overall, the logistic regression model performed well across all evaluation metrics. "
             "The results are considered reliable and suitable for identifying potential patterns. "
         )
 
     if worst == "orange":
         return (
-            "Overall, the model showed mixed performance across evaluation metrics. "
+            "Overall, the logistic regression model showed mixed performance across evaluation metrics. "
             "The results should be interpreted with some caution, particularly for borderline findings. "
         )
 
     return (
-        "Overall, the model showed weak performance on at least one key metric. "
+        "Overall, the logistic regression model showed weak performance on at least one key metric. "
         "The results are considered unreliable and should be interpreted with caution, "
         "as observed patterns may reflect noise rather than true associations. "
     )
