@@ -231,14 +231,9 @@ button.primary {
   white-space: nowrap;
 }
 
-.form-row input {
-  border: none;
-  border-bottom: 1px solid #cbd5e1;
-  border-radius: 0;
+.form-row input,
+.form-row select {
+  min-width: 200px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
 }
-
-.form-row input:focus {
-  outline: none;
-  border-bottom-color: #2563eb;
-}
-
