@@ -133,11 +133,17 @@ button.primary {
 }
 
 .suggestions {
+  display: none;
+  background: white;
   list-style: none;
   margin: 0;
   padding: 0;
   border: 1px solid #ccc;
   max-width: 300px;
+}
+
+.suggestions.visible {
+  display: block;
 }
 
 .suggestions li {
@@ -236,4 +242,9 @@ button.primary {
   min-width: 200px;
   border: 1px solid #cbd5e1;
   border-radius: 4px;
+}
+
+.form-row input {
+  width: auto;
+  flex: 1;
 }
