@@ -233,10 +233,6 @@ button.primary {
   margin-bottom: 0.75rem;
 }
 
-.form-row label {
-  white-space: nowrap;
-}
-
 .form-row input,
 .form-row select {
   min-width: 200px;
@@ -248,3 +244,22 @@ button.primary {
   width: auto;
   flex: 1;
 }
+
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-row label {
+  line-height: 2.4rem;
+  margin: 0;
+}
+
+.form-row input,
+.form-row select {
+  height: 2.4rem;
+  padding: 0 0.6rem;
+  box-sizing: border-box;
+}
+
