@@ -226,6 +226,7 @@ button.primary {
   text-align: justify;
 }
 
+
 .form-row {
   display: flex;
   align-items: center;
@@ -233,33 +234,21 @@ button.primary {
   margin-bottom: 0.75rem;
 }
 
-.form-row input,
-.form-row select {
-  min-width: 200px;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-}
-
-.form-row input {
-  width: auto;
-  flex: 1;
-}
-
-.form-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
 .form-row label {
-  line-height: 2.4rem;
   margin: 0;
+  line-height: 2.4rem;
+  white-space: nowrap;
 }
 
 .form-row input,
 .form-row select {
+  flex: 1;
+  min-width: 200px;
   height: 2.4rem;
   padding: 0 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
   box-sizing: border-box;
 }
+
 
