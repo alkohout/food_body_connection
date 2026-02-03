@@ -58,6 +58,9 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
                     status_code=400,
                     detail="Not enough class variation to train model."
                 )
+            pos_rate = y.mean()
+            use_balanced = pos_rate < 0.25 or pos_rate > 0.75
+
             
             # --- Collinearity check: Jaccard similarity for boolean allergens ---
             allergen_cols = X.columns.tolist()
@@ -134,6 +137,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             base_model,
             param_grid,
             cv=5,
+            class_weight = "balanced" if use_balanced else None,
             scoring="roc_auc"
         )
         final_grid.fit(best_X, best_y)
@@ -145,6 +149,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             X=best_X,
             y=best_y,
             feature_names=best_X.columns,
+            class_weight = "balanced" if use_balanced else None,
             params={
                 "penalty": best_params["penalty"],
                 "C": best_params["C"],
