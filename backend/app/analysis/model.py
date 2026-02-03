@@ -59,7 +59,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
                 )
             pos_rate = y.mean()
             use_balanced = pos_rate < 0.25 or pos_rate > 0.75
-            param_grid = {"penalty": ["l1", "l2"], "C": [0.1, 1, 10],"class_weight": "balanced" if use_balanced else None}
+            param_grid = {"penalty": ["l1", "l2"], "C": [0.1, 1, 10],"class_weight": ["balanced"] if use_balanced else [None]}
             
             # --- Collinearity check: Jaccard similarity for boolean allergens ---
             allergen_cols = X.columns.tolist()
