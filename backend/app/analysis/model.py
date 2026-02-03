@@ -149,12 +149,12 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             X=best_X,
             y=best_y,
             feature_names=best_X.columns,
-            class_weight = "balanced" if use_balanced else None,
             params={
                 "penalty": best_params["penalty"],
                 "C": best_params["C"],
                 "solver": "liblinear",
-                "max_iter": 1000
+                "max_iter": 1000,
+                "class_weight": "balanced" if use_balanced else None
             },
             n_boot=500,
             min_occurrences=5
@@ -309,7 +309,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             bot_text = allergen_list_text(bot_allergens)
 
             summary = (
-                f"Analysis using a logistic regression model suggests {top_text} are associated with a higher likelihood of symptoms."
+                f"Analysis using a logistic regression model {' with class weighting to adjust for imbalance' if use_balanced else ''} suggests {top_text} are associated with a higher likelihood of symptoms."
                 f"The most commonly reported symptoms were {top_symptom_group}. "
                 f"{overall_reliability_text(metric_lights)}"
                 f"{strong_pairs_text}"
