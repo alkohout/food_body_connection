@@ -38,7 +38,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         top_symptom_group = symptom_counts.iloc[0]["symptom_group"].lower()
 
         base_model = LogisticRegression(solver="liblinear", max_iter=1000)
-        param_grid = {"penalty": ["l1", "l2"], "C": [0.1, 1, 10]}
+        param_grid = {"penalty": ["l1", "l2"], "C": [0.1, 1, 10],"class_weight": "balanced" if use_balanced else None}
 
         best_auc = 0
         best_recall = 0
@@ -137,7 +137,6 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             base_model,
             param_grid,
             cv=5,
-            class_weight = "balanced" if use_balanced else None,
             scoring="roc_auc"
         )
         final_grid.fit(best_X, best_y)
