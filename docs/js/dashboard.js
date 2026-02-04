@@ -549,7 +549,7 @@ let allAllergensCache = [];
 
 async function fetchAllAllergens() {
   try {
-    const res = await fetch(`${API_URL}/allergens`, {
+    const res = await fetch(`${API_URL}/allergens?q=`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
     });
     if (!res.ok) throw new Error(res.statusText);
@@ -568,17 +568,17 @@ function showSuggestions(filter = "") {
   suggestions.innerHTML = "";
 
   let filtered = allAllergensCache.filter(a =>
-    a.toLowerCase().includes(filter.toLowerCase())
+    a.name.toLowerCase().includes(filter.toLowerCase())
   );
 
   if (filtered.length === 0) return suggestions.classList.remove("visible");
 
   filtered.forEach(a => {
     const li = document.createElement("li");
-    li.textContent = a;
+    li.textContent = a.name;
     li.onclick = () => {
-      input.value = a;
-      hiddenInput.value = a; // or the allergen ID if needed
+      input.value = a.name;
+      hiddenInput.value = a.id; // now store the ID properly
       suggestions.classList.remove("visible");
     };
     suggestions.appendChild(li);
@@ -586,3 +586,12 @@ function showSuggestions(filter = "") {
 
   suggestions.classList.add("visible");
 }
+
+toggleBtn.addEventListener("click", () => {
+  if (suggestions.classList.contains("visible")) {
+    suggestions.classList.remove("visible");
+  } else {
+    showSuggestions(""); // show all allergens
+  }
+});
+
