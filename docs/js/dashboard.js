@@ -150,8 +150,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       // ONLY clear idEl if it exists
       if (idEl !== null && idEl !== undefined) idEl.value = "";
 
-      // clear suggestions
+
       suggestionsEl.innerHTML = "";
+      suggestionsEl.classList.remove("visible");
 
       if (!query) return;
 
@@ -181,6 +182,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         suggestionsEl.appendChild(li);
       });
+      // ✅ show dropdown if results exist
+      if (data.length > 0) {
+        suggestionsEl.classList.add("visible");
+      }
+
     }, 300));
   };
 
