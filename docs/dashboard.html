@@ -35,10 +35,12 @@
 
       <label> Allergen </label>
       <div class="autocomplete-wrapper" style="position: relative;">
-        <input type="text" id="allergen-input" autocomplete="off" />
-        <input type="hidden" id="allergen-id" />
-        <button type="button" id="allergen-toggle" class="dropdown-arrow">&#x25BC;</button>
-        <ul id="allergen-suggestions" class="suggestions"></ul>
+        <select id="allergen-select">
+          <option value="">—</option>
+          <input type="text" id="allergen-input" autocomplete="off" />
+          <input type="hidden" id="allergen-id" />
+          <ul id="allergen-suggestions" class="suggestions"></ul>
+        </select>
       </div>
 
       <label>

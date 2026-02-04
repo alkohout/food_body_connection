@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const dateInput = document.getElementById("allergen-date");
   const unitSelect = document.getElementById("allergen-unit");
+  const allergenSelect = document.getElementById("allergen-select");
 
   const allergenInput = document.getElementById("allergen-input");
   const allergenIdInput = document.getElementById("allergen-id");
@@ -120,6 +121,31 @@ document.addEventListener("DOMContentLoaded", async () => {
   fetchUnits();
 
   // =========================================================
+  // Fetch allergens 
+  // =========================================================
+
+  const fetchAllergens = async () => {
+    try {
+      const res = await fetch(`${API_URL}/allergens`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+      });
+      if (!res.ok) throw new Error(res.statusText);
+
+      const allergens = await res.json();
+      allergens.forEach(u => {
+        const opt_allergen = document.createElement("option");
+        opt_allergen.value = u.allergen_id;
+        opt_allergen.textContent = u.allergen_name;
+        allergenSelect.appendChild(opt);
+      });
+    } catch (err) {
+      console.error("Failed to fetch allergens:", err);
+    }
+  };
+
+  fetchUnits();
+
+  // =========================================================
   // Autocomplete
   // =========================================================
 
@@ -178,7 +204,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         suggestionsEl.appendChild(li);
       });
 
-      // 🔴 THIS LINE IS MANDATORY
       if (data.length > 0) {
         suggestionsEl.classList.add("visible");
       }
