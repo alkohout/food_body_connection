@@ -257,3 +257,30 @@ button.primary {
   border-radius: 4px;
   box-sizing: border-box;
 }
+
+
+.autocomplete-wrapper {
+  position: relative;
+}
+
+#allergen-input {
+  width: 100%;
+  padding-right: 2rem; /* space for the arrow */
+}
+
+#allergen-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 2rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #555;
+}
+
+#allergen-toggle:hover {
+  color: #000;
+}
