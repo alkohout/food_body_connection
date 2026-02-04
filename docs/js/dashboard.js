@@ -136,7 +136,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const opt_allergen = document.createElement("option");
         opt_allergen.value = u.allergen_id;
         opt_allergen.textContent = u.allergen_name;
-        allergenSelect.appendChild(opt);
+        allergenSelect.appendChild(opt_allergen);
       });
     } catch (err) {
       console.error("Failed to fetch allergens:", err);
