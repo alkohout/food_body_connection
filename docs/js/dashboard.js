@@ -147,9 +147,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     inputEl.addEventListener("input", debounce(async () => {
       const query = inputEl.value.trim();
 
-      // ONLY clear idEl if it exists
-      if (idEl !== null && idEl !== undefined) idEl.value = "";
-
+      if (idEl) idEl.value = "";
 
       suggestionsEl.innerHTML = "";
       suggestionsEl.classList.remove("visible");
@@ -162,31 +160,28 @@ document.addEventListener("DOMContentLoaded", async () => {
         const li = document.createElement("li");
         li.textContent =
           type === "symptom" ? item.symptom_name :
-          type === "symptom_group" ? item.symptom_group : // just the string
+          type === "symptom_group" ? item.symptom_group :
           item.allergen_name;
 
         li.addEventListener("click", () => {
           inputEl.value = li.textContent;
 
-          if (idEl) {
+          if (idEl && type !== "symptom_group") {
             idEl.value =
-              type === "symptom" ? item.symptom_id :
-              type === "allergen" ? item.allergen_id :
-              type === "symptom_group" ? item.symptom_group :
-              "";
+              type === "symptom" ? item.symptom_id : item.allergen_id;
           }
 
-
           suggestionsEl.innerHTML = "";
+          suggestionsEl.classList.remove("visible");
         });
 
         suggestionsEl.appendChild(li);
       });
-      // ✅ show dropdown if results exist
+
+      // 🔴 THIS LINE IS MANDATORY
       if (data.length > 0) {
         suggestionsEl.classList.add("visible");
       }
-
     }, 300));
   };
 
