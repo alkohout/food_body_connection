@@ -57,6 +57,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const riskPlotImg = document.getElementById("analysis-risk-plot");
 
   const predictOut = document.getElementById("predict-out");
+  const toggleBtn = document.getElementById("toggle-allergen-suggestions");
 
   //const statsTableBody = document.querySelector("#temporal-stats-table tbody");
 
@@ -549,7 +550,7 @@ let allAllergensCache = [];
 
 async function fetchAllAllergens() {
   try {
-    const res = await fetch(`${API_URL}/allergens?q=`, {
+    const res = await fetch(`${API_URL}/allergens`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
     });
     if (!res.ok) throw new Error(res.statusText);
@@ -568,17 +569,15 @@ function showSuggestions(filter = "") {
   suggestions.innerHTML = "";
 
   let filtered = allAllergensCache.filter(a =>
-    a.name.toLowerCase().includes(filter.toLowerCase())
+    a.toLowerCase().includes(filter.toLowerCase())
   );
-
-  if (filtered.length === 0) return suggestions.classList.remove("visible");
 
   filtered.forEach(a => {
     const li = document.createElement("li");
-    li.textContent = a.name;
+    li.textContent = a;
     li.onclick = () => {
-      input.value = a.name;
-      hiddenInput.value = a.id; // now store the ID properly
+      input.value = a;
+      // hiddenInput.value = ??? if you need an ID, you need to store it in cache
       suggestions.classList.remove("visible");
     };
     suggestions.appendChild(li);
