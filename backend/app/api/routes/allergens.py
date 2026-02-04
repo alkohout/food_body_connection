@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.table_class import Allergen
+from typing import Optional
 
 router = APIRouter(prefix="/allergens", tags=["allergens"], include_in_schema=True)
 
 @router.get("")
 def search_allergens(
-    q: str = Query(..., min_length=1),
+    q: Optional[str] = Query(None, min_length=1),
     db: Session = Depends(get_db),
 ):
     results = (
