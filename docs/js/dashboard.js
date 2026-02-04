@@ -143,12 +143,27 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   toggleBtn?.addEventListener("click", () => {
+    if (!allergenSuggestions) return;
+
     if (allergenSuggestions.classList.contains("visible")) {
       allergenSuggestions.classList.remove("visible");
     } else {
-      showSuggestions(allergenInput, allergenSuggestions, ""); // show all allergens
+      // show all cached allergens
+      allergenSuggestions.innerHTML = "";
+      allAllergensCache.forEach(a => {
+        const li = document.createElement("li");
+        li.textContent = a.name;
+        li.onclick = () => {
+          allergenInput.value = a.name;
+          allergenIdInput.value = a.id;
+          allergenSuggestions.classList.remove("visible");
+        };
+        allergenSuggestions.appendChild(li);
+      });
+      allergenSuggestions.classList.add("visible");
     }
   });
+
 
   allergenInput?.addEventListener("input", debounce(() => {
     showSuggestions(allergenInput, allergenSuggestions, allergenInput.value.trim());
