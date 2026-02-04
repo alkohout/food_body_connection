@@ -95,28 +95,82 @@ document.addEventListener("DOMContentLoaded", async () => {
   // =========================================================
   // Allergen cache + toggle
   // =========================================================
-  let allAllergensCache = [];
+  
+  let allAllergensCache = []; // stores {id, name}
 
-  async function fetchAllAllergens() {
+  // Fetch all allergens (or partial search) safely
+  async function fetchAllAllergens(query = "") {
     try {
-      // Add ?q= to satisfy backend
-      const res = await fetch(`${API_URL}/allergens?q=`, {
+      const res = await fetch(`${API_URL}/allergens?q=${encodeURIComponent(query)}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
       });
 
       if (!res.ok) throw new Error(res.statusText);
 
       const data = await res.json();
-      // Store objects with id + name
+      // store objects with id and name
       allAllergensCache = data.map(a => ({ id: a.allergen_id, name: a.allergen_name }));
+      return allAllergensCache;
 
     } catch (err) {
-      console.error("Failed to fetch all allergens:", err);
+      console.error("Failed to fetch allergens:", err);
+      return [];
     }
   }
 
-  // Call once on page load
-  fetchAllAllergens();
+  // Show suggestions in a dropdown
+  function showAllergenSuggestions(filter = "") {
+    if (!allergenSuggestions) return;
+
+    allergenSuggestions.innerHTML = "";
+
+    const filtered = allAllergensCache.filter(a =>
+      a.name.toLowerCase().includes(filter.toLowerCase())
+    );
+
+    filtered.forEach(a => {
+      const li = document.createElement("li");
+      li.textContent = a.name;
+      li.onclick = () => {
+        allergenInput.value = a.name;
+        allergenIdInput.value = a.id;
+        allergenSuggestions.classList.remove("visible");
+      };
+      allergenSuggestions.appendChild(li);
+    });
+
+    if (filtered.length > 0) allergenSuggestions.classList.add("visible");
+  }
+
+  // Autocomplete input
+  allergenInput?.addEventListener("input", debounce(async () => {
+    const query = allergenInput.value.trim();
+    allergenIdInput.value = "";
+    allergenSuggestions.innerHTML = "";
+    allergenSuggestions.classList.remove("visible");
+
+    if (!query) return;
+
+    await fetchAllAllergens(query);
+    showAllergenSuggestions(query);
+  }, 300));
+
+  // Toggle button to show all allergens
+  toggleBtn?.addEventListener("click", async () => {
+    if (!allergenSuggestions) return;
+
+    if (allergenSuggestions.classList.contains("visible")) {
+      allergenSuggestions.classList.remove("visible");
+    } else {
+      // fetch all allergens if not already cached
+      if (allAllergensCache.length === 0) await fetchAllAllergens(""); 
+      showAllergenSuggestions(""); // show all
+    }
+  });
+
+  // Call once to pre-load allergens for the toggle button
+  fetchAllAllergens("");
+
 
 
   const showSuggestions = (inputEl, suggestionsEl, filter = "") => {
