@@ -33,15 +33,10 @@
     <form id="allergen-form" class="form active">
       <h2>Log allergen consumed</h2>
 
-      <label> Allergen </label>
-      <div class="autocomplete-wrapper" style="position: relative;">
-        <select id="allergen-select">
-          <option value="">—</option>
-          <input type="text" id="allergen-input" autocomplete="off" />
-          <input type="hidden" id="allergen-id" />
-          <ul id="allergen-suggestions" class="suggestions"></ul>
-        </select>
-      </div>
+      <label for="allergen-select">Allergen *</label>
+      <select id="allergen-select" name="allergen_id" required>
+          <option value="">Select an allergen...</option>
+      </select>
 
       <label>
         Date & time
@@ -431,3 +426,4 @@
 
 </body>
 </html>
+
