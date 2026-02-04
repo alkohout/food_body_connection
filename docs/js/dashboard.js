@@ -600,13 +600,15 @@ function showSuggestions(filter = "") {
 input.addEventListener("input", () => showSuggestions(input.value));
 
 // Toggle suggestions on arrow click (show all if input is empty)
-toggleBtn.addEventListener("click", () => {
-  if (suggestions.classList.contains("visible")) {
-    suggestions.classList.remove("visible");
-  } else {
-    showSuggestions(""); // show all options
-  }
-});
+if (toggleBtn) {
+  toggleBtn.addEventListener("click", () => {
+    if (suggestions.classList.contains("visible")) {
+      suggestions.classList.remove("visible");
+    } else {
+      showSuggestions(""); // show all options
+    }
+  });
+}
 
 // Hide suggestions if clicking outside
 document.addEventListener("click", (e) => {
