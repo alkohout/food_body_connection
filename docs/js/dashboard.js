@@ -538,24 +538,39 @@ async function getSummaryText() {
         console.log("Summary text:", text);
 
         // Example: display in a div
-        document.getElementById("summaryDiv").innerText = text;
+        document.getElementById("summaryDiv").innerText = text;G
 
     } catch (error) {
         console.error("Error fetching summary text:", error);
     }
 }
 
-const input = document.getElementById('allergen-input');
-const hiddenInput = document.getElementById('allergen-id');
-const suggestions = document.getElementById('allergen-suggestions');
-const toggleBtn = document.getElementById('allergen-toggle');
+let allAllergensCache = [];
 
-// Example list of allergens
-const allAllergens = ["Peanuts", "Dairy", "Eggs", "Shellfish", "Soy", "Wheat"];
+async function fetchAllAllergens() {
+  try {
+    const res = await fetch(`${API_URL}/allergens`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    });
+    if (!res.ok) throw new Error(res.statusText);
+
+    const data = await res.json();
+    allAllergensCache = data.map(a => a.allergen_name); // store names for dropdown
+  } catch (err) {
+    console.error("Failed to fetch all allergens:", err);
+  }
+}
+
+// Call this once on page load
+fetchAllAllergens();
 
 function showSuggestions(filter = "") {
   suggestions.innerHTML = "";
-  let filtered = allAllergens.filter(a => a.toLowerCase().includes(filter.toLowerCase()));
+
+  let filtered = allAllergensCache.filter(a =>
+    a.toLowerCase().includes(filter.toLowerCase())
+  );
+
   if (filtered.length === 0) return suggestions.classList.remove("visible");
 
   filtered.forEach(a => {
@@ -563,29 +578,11 @@ function showSuggestions(filter = "") {
     li.textContent = a;
     li.onclick = () => {
       input.value = a;
-      hiddenInput.value = a; // or the allergen ID
+      hiddenInput.value = a; // or the allergen ID if needed
       suggestions.classList.remove("visible");
     };
     suggestions.appendChild(li);
   });
+
   suggestions.classList.add("visible");
 }
-
-// Show suggestions as you type
-input.addEventListener("input", () => showSuggestions(input.value));
-
-// Toggle suggestions on arrow click (show all if input is empty)
-toggleBtn.addEventListener("click", () => {
-  if (suggestions.classList.contains("visible")) {
-    suggestions.classList.remove("visible");
-  } else {
-    showSuggestions(""); // show all options
-  }
-});
-
-// Hide suggestions if clicking outside
-document.addEventListener("click", (e) => {
-  if (!e.target.closest(".autocomplete-wrapper")) {
-    suggestions.classList.remove("visible");
-  }
-});
