@@ -167,10 +167,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         li.addEventListener("click", () => {
           inputEl.value = li.textContent;
 
-          // ONLY set idEl if it exists and the type is not symptom_group
-          if (idEl !== null && idEl !== undefined && type !== "symptom_group") {
-            idEl.value = type === "symptom" ? item.symptom_id : item.allergen_id;
+          if (idEl) {
+            idEl.value =
+              type === "symptom" ? item.symptom_id :
+              type === "allergen" ? item.allergen_id :
+              type === "symptom_group" ? item.symptom_group :
+              "";
           }
+
 
           suggestionsEl.innerHTML = "";
         });
