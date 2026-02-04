@@ -97,21 +97,27 @@ document.addEventListener("DOMContentLoaded", async () => {
   // =========================================================
   let allAllergensCache = [];
 
-  const fetchAllAllergens = async () => {
+  async function fetchAllAllergens() {
     try {
+      // Add ?q= to satisfy backend
       const res = await fetch(`${API_URL}/allergens?q=`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
       });
+
       if (!res.ok) throw new Error(res.statusText);
 
       const data = await res.json();
-      // store objects {id, name} for autocomplete
+      // Store objects with id + name
       allAllergensCache = data.map(a => ({ id: a.allergen_id, name: a.allergen_name }));
+
     } catch (err) {
       console.error("Failed to fetch all allergens:", err);
     }
-  };
+  }
+
+  // Call once on page load
   fetchAllAllergens();
+
 
   const showSuggestions = (inputEl, suggestionsEl, filter = "") => {
     suggestionsEl.innerHTML = "";
