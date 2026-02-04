@@ -77,10 +77,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const token = localStorage.getItem("access_token");
       
-      // Add the required 'q' query parameter
-      // For loading all allergens, you might use an empty string or wildcard
+      // Try different search patterns that might return all allergens
       const url = new URL(`${API_URL}/allergens`);
-      url.searchParams.append('q', ''); // or '*' or whatever your API expects for "all"
+      url.searchParams.append('q', '*'); // Wildcard - most likely to work
       
       console.log("Fetching from URL:", url.toString());
       
