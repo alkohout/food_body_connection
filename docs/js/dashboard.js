@@ -1,270 +1,17 @@
 import { getCurrentUser, API_URL } from "./api.js";
 
-// Store the current user
-let currentUser = null;
-
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("Dashboard script loading...");
-  
-  // Store all variables at the top level to avoid "not defined" errors
-  let currentUser = null;
-  
-  const init = async () => {
-    console.log("Initializing dashboard...");
-    
-    // Check authentication
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      console.warn("No access token found, redirecting to login");
-      window.location.href = "index.html";
-      return;
-    }
+  // Elements
+  const logoutBtn = document.getElementById("logout-btn");
+  const allergenSelect = document.getElementById("allergen-select");
+  const unitSelect = document.getElementById("allergen-unit");
+  const allergenQuantity = document.getElementById("allergen-quantity");
+  const dateInput = document.getElementById("allergen-date");
+  const allergenForm = document.getElementById("allergen-form");
+  const allergenFormSuccess = document.getElementById("log-success");
+  const allergenFormError = document.getElementById("log-error");
 
-    // Initialize the app
-    await checkAuthAndInit();
-  };
-
-  const checkAuthAndInit = async () => {
-    try {
-      console.log("Fetching current user...");
-      currentUser = await getCurrentUser();
-      console.log("Current user:", currentUser);
-      
-      if (currentUser && currentUser.email) {
-        document.getElementById("user-email").textContent = currentUser.email;
-        console.log("User authenticated:", currentUser.email);
-        await initDashboard();
-      } else {
-        console.warn("No user data, redirecting to login");
-        window.location.href = "index.html";
-      }
-    } catch (error) {
-      console.error("Auth error:", error);
-      localStorage.removeItem("access_token");
-      window.location.href = "index.html";
-    }
-  };
-
-  const fetchAllergensDropdown = async () => {
-    const allergenSelect = document.getElementById('allergen-select');
-    if (!allergenSelect) {
-      console.error("Allergen select element not found!");
-      return;
-    }
-    
-    try {
-      const res = await fetch(`${API_URL}/allergens`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      
-      if (res.ok) {
-        const allergens = await res.json();
-        console.log("Fetched allergens:", allergens);
-        
-        // Add a default "Select allergen..." option
-        allergenSelect.innerHTML = '<option value="">Select an allergen...</option>';
-        
-        allergens.forEach(allergen => {
-          const option = document.createElement('option');
-          option.value = allergen.allergen_id;
-          option.textContent = allergen.allergen_name;
-          allergenSelect.appendChild(option);
-        });
-      } else {
-        console.error('Failed to fetch allergens:', res.status);
-      }
-    } catch (error) {
-      console.error('Error fetching allergens:', error);
-    }
-  };
-
-  const fetchUnits = async () => {
-    const unitSelect = document.getElementById('unit-select');
-    if (!unitSelect) {
-      console.warn('Unit select element not found');
-      return;
-    }
-    
-    try {
-      const res = await fetch(`${API_URL}/units`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      
-      if (res.ok) {
-        const units = await res.json();
-        // Keep the placeholder
-        unitSelect.innerHTML = '<option value="">Select unit...</option>';
-        
-        units.forEach(unit => {
-          const option = document.createElement('option');
-          option.value = unit.unit_id;
-          option.textContent = unit.unit_name || unit.name;
-          unitSelect.appendChild(option);
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching units:', error);
-    }
-  };
-
-  const setupAllergenForm = () => {
-    const form = document.getElementById('allergen-form');
-    const allergenSelect = document.getElementById('allergen-select');
-    const quantityInput = document.getElementById('allergen-quantity');
-    const unitSelect = document.getElementById('unit-select');
-    const dateInput = document.getElementById('allergen-date');
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const successMsg = document.getElementById('log-success');
-    const errorMsg = document.getElementById('log-error');
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const formData = {
-        allergen_id: allergenSelect.value,
-        quantity: parseFloat(quantityInput.value) || null,
-        unit_id: unitSelect.value,
-        date_time: new Date(dateInput.value).toISOString()
-      };
-      
-      try {
-        const res = await fetch(`${API_URL}/entries/allergens`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-          },
-          body: JSON.stringify(formData)
-        });
-        
-        if (res.ok) {
-          // Show success message
-          successMsg.textContent = 'Allergen logged successfully!';
-          errorMsg.textContent = '';
-          
-          // Reset form
-          form.reset();
-          
-          // Hide success message after 3 seconds
-          setTimeout(() => {
-            successMsg.textContent = '';
-          }, 3000);
-          
-        } else {
-          const errorText = await res.text();
-          errorMsg.textContent = `Error: ${errorText}`;
-          successMsg.textContent = '';
-        }
-      } catch (error) {
-        console.error('Error submitting form:', error);
-        errorMsg.textContent = 'Failed to submit. Please try again.';
-        successMsg.textContent = '';
-      }
-    });
-  };
-
-  const fetchAndPopulateSymptoms = async () => {
-    try {
-      const res = await fetch(`${API_URL}/symptoms`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      
-      if (res.ok) {
-        const symptoms = await res.json();
-        const symptomSelect = document.getElementById('symptom-select');
-        
-        symptomSelect.innerHTML = '<option value="">Select symptom...</option>';
-        symptoms.forEach(symptom => {
-          const option = document.createElement('option');
-          option.value = symptom.symptom_id;
-          option.textContent = symptom.symptom_name;
-          symptomSelect.appendChild(option);
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching symptoms:', error);
-    }
-  };
-
-  const setupTabs = () => {
-    const tabs = document.querySelectorAll('.tab');
-    tabs.forEach(tab => {
-      tab.addEventListener('click', (e) => {
-        const targetTab = e.target.dataset.tab;
-        
-        // Remove active class from all tabs and forms
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.form').forEach(f => f.classList.remove('active'));
-        
-        // Add active class to clicked tab and corresponding form
-        e.target.classList.add('active');
-        document.getElementById(`${targetTab}-form`).classList.add('active');
-        
-        // Fetch data for analysis tab if needed
-        if (targetTab === 'analysis') {
-          loadAnalysisData();
-        }
-      });
-    });
-  };
-
-  const loadAnalysisData = async () => {
-    try {
-      // Fetch analysis data if needed
-      const summaryResponse = await fetch(`${API_URL}/analysis/summary`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      
-      if (summaryResponse.ok) {
-        const summaryData = await summaryResponse.json();
-        // Populate summary statistics
-        // ... (your existing summary logic)
-      }
-    } catch (error) {
-      console.error('Error loading analysis data:', error);
-    }
-  };
-
-  const initializeDashboard = async () => {
-    try {
-      // Load allergens and units for form
-      await fetchAllergens();
-      await fetchUnits();
-      
-      // Set current date for forms
-      const now = new Date();
-      const timezoneOffset = now.getTimezoneOffset() * 60000; // Offset in milliseconds
-      const localISOTime = new Date(Date.now() - timezoneOffset).toISOString().slice(0, 16);
-      
-      const dateInputs = document.querySelectorAll('input[type="datetime-local"]');
-      dateInputs.forEach(input => {
-        input.value = localISOTime;
-      });
-
-      // Setup form event listeners
-      setupAllergenForm();
-      
-      // Setup tabs
-      setupTabs();
-      
-      // Initialize analysis data if on analysis tab
-      if (document.getElementById('analysis-form')?.classList.contains('active')) {
-        await fetchAnalysisData();
-      }
-    } catch (error) {
-      console.error('Initialization error:', error);
-    }
-  };
-
-  // Utility function for debouncing
+  // Debounce helper
   const debounce = (fn, delay = 300) => {
     let timer;
     return (...args) => {
@@ -273,6 +20,230 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
   };
 
-  // Initialize on DOMContentLoaded
+  // Get local date time for input
+  const localDateTimeForInput = (date = new Date()) => {
+    const tzOffset = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+  };
+
+  // Initialize
+  const init = async () => {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      window.location.href = "index.html";
+      return;
+    }
+
+    try {
+      const user = await getCurrentUser();
+      if (!user || !user.email) {
+        throw new Error("No user data");
+      }
+      
+      document.getElementById("user-email").textContent = user.email;
+      
+      // Set current date and time for the allergen form
+      if (dateInput) {
+        dateInput.value = localDateTimeForInput();
+      }
+      
+      // Load data after authentication
+      await loadData();
+      
+      setupEventListeners();
+      fetchAnalysisPlots();
+      
+    } catch (error) {
+      console.error("Auth error:", error);
+      localStorage.removeItem("access_token");
+      window.location.href = "index.html";
+    }
+  };
+
+  const loadData = async () => {
+    // Fetch and populate allergens
+    const allergens = await fetchAllergens();
+    populateDropdown(allergenSelect, allergens, allergen => ({
+      value: allergen.allergen_id,
+      text: allergen.allergen_name
+    }));
+    
+    // Fetch and populate units
+    const units = await fetchUnits();
+    populateDropdown(unitSelect, units, unit => ({
+      value: unit.unit_id,
+      text: unit.unit_name
+    }));
+  };
+
+  const fetchAllergens = async () => {
+    try {
+      const token = localStorage.getItem("access_token");
+      const response = await fetch(`${API_URL}/allergens`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch allergens');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching allergens:', error);
+      return [];
+    }
+  };
+
+  const fetchUnits = async () => {
+    try {
+      const token = localStorage.getItem("access_token");
+      const response = await fetch(`${API_URL}/units`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch units');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching units:', error);
+      return [];
+    }
+  };
+
+  const populateDropdown = (selectElement, data, mapper) => {
+    if (!selectElement) return;
+    
+    // Clear existing options except the first one (if it's a placeholder)
+    while (selectElement.options.length > 1) {
+      selectElement.remove(1);
+    }
+    
+    data.forEach(item => {
+      const mapped = mapper(item);
+      const option = document.createElement('option');
+      option.value = mapped.value;
+      option.textContent = mapped.text;
+      selectElement.appendChild(option);
+    });
+  };
+
+  const populateUnitDropdown = (selectElement, units) => {
+    if (!selectElement) return;
+    
+    // Clear existing options (except first)
+    while (selectElement.options.length > 0) {
+      selectElement.remove(0);
+    }
+    
+    // Add default option
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Select unit...';
+    defaultOption.disabled = true;
+    defaultOption.selected = true;
+    selectElement.appendChild(defaultOption);
+    
+    // Add unit options
+    units.forEach(unit => {
+      const option = document.createElement('option');
+      option.value = unit.unit_id;
+      option.textContent = unit.unit_name;
+      selectElement.appendChild(option);
+    });
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    window.location.href = "index.html";
+  };
+
+  const handleAllergenSubmit = async (e) => {
+    e.preventDefault();
+    
+    const formData = {
+      allergen_id: allergenSelect.value,
+      date_time: dateInput.value,
+      quantity: allergenQuantity.value,
+      unit_id: unitSelect.value
+    };
+
+    try {
+      const response = await fetch(`${API_URL}/entries/allergens`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      if (!response.ok) throw new Error('Submission failed');
+      
+      allergenFormSuccess.textContent = 'Allergen logged successfully!';
+      allergenFormError.textContent = '';
+      
+      // Reset form
+      allergenSelect.value = '';
+      allergenQuantity.value = '';
+      unitSelect.value = '';
+      dateInput.value = localDateTimeForInput();
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        allergenFormSuccess.textContent = '';
+      }, 3000);
+      
+    } catch (error) {
+      allergenFormError.textContent = 'Error logging allergen. Please try again.';
+      console.error('Error logging allergen:', error);
+    }
+  };
+
+  const setupEventListeners = () => {
+    // Logout
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', handleLogout);
+    }
+    
+    // Allergen form submission
+    if (allergenForm) {
+      allergenForm.addEventListener('submit', handleAllergenSubmit);
+    }
+    
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetTab = tab.dataset.tab;
+        
+        // Update active tab button
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        // Show/hide forms
+        document.querySelectorAll('.form').forEach(form => form.classList.remove('active'));
+        document.getElementById(`${targetTab}-form`).classList.add('active');
+        
+        // Load analysis data if on analysis tab
+        if (targetTab === 'analysis') {
+          fetchAnalysisPlots();
+        }
+      });
+    });
+  };
+
+  const fetchAnalysisPlots = async () => {
+    // Your existing analysis plotting code here
+    // (Keep your existing analysis plot fetching logic)
+  };
+
+  // Initialize everything
   init();
 });
