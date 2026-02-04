@@ -147,9 +147,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     inputEl.addEventListener("input", debounce(async () => {
       const query = inputEl.value.trim();
 
-      // ONLY clear idEl if it exists
-      if (idEl !== null && idEl !== undefined) idEl.value = "";
-
+      if (idEl) idEl.value = "";
 
       suggestionsEl.innerHTML = "";
       suggestionsEl.classList.remove("visible");
@@ -162,26 +160,28 @@ document.addEventListener("DOMContentLoaded", async () => {
         const li = document.createElement("li");
         li.textContent =
           type === "symptom" ? item.symptom_name :
-          type === "symptom_group" ? item.symptom_group : // just the string
+          type === "symptom_group" ? item.symptom_group :
           item.allergen_name;
 
         li.addEventListener("click", () => {
           inputEl.value = li.textContent;
 
-          if (idEl) {
+          if (idEl && type !== "symptom_group") {
             idEl.value =
-              type === "symptom" ? item.symptom_id :
-              type === "allergen" ? item.allergen_id :
-              type === "symptom_group" ? item.symptom_group :
-              "";
+              type === "symptom" ? item.symptom_id : item.allergen_id;
           }
 
-
           suggestionsEl.innerHTML = "";
+          suggestionsEl.classList.remove("visible");
         });
 
         suggestionsEl.appendChild(li);
       });
+
+      // 🔴 THIS LINE IS MANDATORY
+      if (data.length > 0) {
+        suggestionsEl.classList.add("visible");
+      }
     }, 300));
   };
 
@@ -545,3 +545,47 @@ async function getSummaryText() {
     }
 }
 
+const input = document.getElementById('allergen-input');
+const hiddenInput = document.getElementById('allergen-id');
+const suggestions = document.getElementById('allergen-suggestions');
+const toggleBtn = document.getElementById('allergen-toggle');
+
+// Example list of allergens
+const allAllergens = ["Peanuts", "Dairy", "Eggs", "Shellfish", "Soy", "Wheat"];
+
+function showSuggestions(filter = "") {
+  suggestions.innerHTML = "";
+  let filtered = allAllergens.filter(a => a.toLowerCase().includes(filter.toLowerCase()));
+  if (filtered.length === 0) return suggestions.classList.remove("visible");
+
+  filtered.forEach(a => {
+    const li = document.createElement("li");
+    li.textContent = a;
+    li.onclick = () => {
+      input.value = a;
+      hiddenInput.value = a; // or the allergen ID
+      suggestions.classList.remove("visible");
+    };
+    suggestions.appendChild(li);
+  });
+  suggestions.classList.add("visible");
+}
+
+// Show suggestions as you type
+input.addEventListener("input", () => showSuggestions(input.value));
+
+// Toggle suggestions on arrow click (show all if input is empty)
+toggleBtn.addEventListener("click", () => {
+  if (suggestions.classList.contains("visible")) {
+    suggestions.classList.remove("visible");
+  } else {
+    showSuggestions(""); // show all options
+  }
+});
+
+// Hide suggestions if clicking outside
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".autocomplete-wrapper")) {
+    suggestions.classList.remove("visible");
+  }
+});
