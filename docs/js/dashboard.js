@@ -143,7 +143,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   };
 
-  fetchUnits();
+  fetchAllergens();
 
   // =========================================================
   // Autocomplete
