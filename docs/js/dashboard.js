@@ -1,33 +1,119 @@
 import { getCurrentUser, API_URL } from "./api.js";
 
-document.addEventListener("DOMContentLoaded", async () => {
-  await init();
+// Store a reference to the initialization promise to avoid multiple inits
+let initializationStarted = false;
 
+document.addEventListener("DOMContentLoaded", async () => {
+  // Only initialize once
+  if (initializationStarted) return;
+  initializationStarted = true;
+  
+  await init();
+  
   // =========================================================
   // Elements
   // =========================================================
-
+  
   const logoutBtn = document.getElementById("logout-btn");
   const dateInput = document.getElementById("allergen-date");
-  const allergenSelect = document.getElementById("allergen-select");
   const unitSelect = document.getElementById("allergen-unit");
-  const allergenQuantity = document.getElementById("allergen-quantity");
-  
+  const allergenSelect = document.getElementById("allergen-select");
+  const symptomInput = document.getElementById("symptom-input");
   const allergenIntInput = document.getElementById("allergen-intensity-input");
-  const allergenIntIdInput = document.getElementById("allergen-intensity-id");
   const symptomGroupInput = document.getElementById("symptom-group-input");
   const lagWindowInput = document.getElementById("lag-window");
 
-  // ... (keep your existing element declarations, but REMOVE the old allergenInput, allergenIdInput)
-
-  // Remove or comment out the old allergen input elements that conflict
-  // const allergenInput = document.getElementById("allergen-input");
-  // const allergenIdInput = document.getElementById("allergen-id");
-
-  // =========================================================
-  // Logout
-  // =========================================================
+  const fetchAndPopulateAllergens = async () => {
+    try {
+      const res = await fetch(`${API_URL}/allergens`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+      });
+      
+      if (!res.ok) {
+        if (res.status === 422) {
+          // Some APIs might require query parameters or have changed
+          const res2 = await fetch(`${API_URL}/allergens?q=`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+          });
+          
+          if (res2.ok) {
+            const allergens = await res2.json();
+            populateAllergenDropdown(allergens);
+          } else {
+            console.error("Failed to fetch allergens");
+          }
+        }
+      } else {
+        const allergens = await res.json();
+        populateAllergenDropdown(allergens);
+      }
+    } catch (err) {
+      console.error("Error fetching allergens:", err);
+    }
+  };
   
+  const populateAllergenDropdown = (allergens) => {
+    // Clear existing options except the first one
+    while (allergenSelect.options.length > 1) {
+      allergenSelect.remove(1);
+    }
+    
+    allergens.forEach(allergen => {
+      const option = document.createElement("option");
+      option.value = allergen.allergen_id;
+      option.textContent = allergen.allergen_name;
+      allergenSelect.appendChild(option);
+    });
+  };
+  
+  // Initialize the date inputs
+  if (dateInput) {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const localISOTime = new Date(now - offset).toISOString().slice(0, 16);
+    dateInput.value = localISOTime.slice(0, 16);
+  }
+
+  // =========================================================
+  // Fetch Allergens for dropdown
+  // =========================================================
+  await fetchAndPopulateAllergens();
+
+  // =========================================================
+  // Fetch Units for unit dropdown
+  // =========================================================
+  const fetchUnits = async () => {
+    try {
+      const res = await fetch(`${API_URL}/units`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+      });
+      
+      if (res.ok) {
+        const units = await res.json();
+        // Clear existing options except first one
+        while (unitSelect.options.length > 1) {
+          unitSelect.remove(1);
+        }
+        
+        units.forEach(unit => {
+          const option = document.createElement("option");
+          option.value = unit.unit_id;
+          option.textContent = unit.unit_name;
+          unitSelect.appendChild(option);
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch units:", err);
+    }
+  };
+  
+  await fetchUnits();
+
+  // =========================================================
+  // Event Listeners
+  // =========================================================
+
+  // Logout
   if (logoutBtn) {
     logoutBtn.addEventListener("click", () => {
       localStorage.removeItem("access_token");
@@ -35,103 +121,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  // =========================================================
-  // Defaults
-  // =========================================================
-  
-  const localDateTimeForInput = (date = new Date()) => {
-    const tzOffsetMs = date.getTimezoneOffset() * 60000;
-    const localTime = new Date(date.getTime() - tzOffsetMs);
-    return localTime.toISOString().slice(0, 16);
-  };
-
-  if (dateInput) dateInput.value = localDateTimeForInput();
-
-  // =========================================================
-  // Fetch and populate allergens
-  // =========================================================
-  
-  async function fetchAndPopulateAllergens() {
+  // Form Submission Handler
+  const submitForm = async (formElement, endpoint, payload) => {
     try {
-      const res = await fetch(`${API_URL}/allergens`, {
-        headers: { 
-          Authorization: `Bearer ${localStorage.getItem("access_token")}` 
-        }
-      });
-      
-      if (!res.ok) throw new Error('Failed to fetch allergens');
-      
-      const allergens = await res.json();
-      const select = document.getElementById('allergen-select');
-      
-      // Clear existing options except the first one (placeholder)
-      select.innerHTML = '<option value="">Select an allergen...</option>';
-      
-      allergens.forEach(allergen => {
-        const option = document.createElement('option');
-        option.value = allergen.allergen_id;
-        option.textContent = allergen.allergen_name;
-        select.appendChild(option);
-      });
-    } catch (err) {
-      console.error("Failed to fetch allergens:", err);
-    }
-  }
-
-  // =========================================================
-  // Fetch units for the unit dropdown
-  // =========================================================
-  
-  async function fetchAndPopulateUnits() {
-    try {
-      const res = await fetch(`${API_URL}/units`, {
-        headers: { 
-          Authorization: `Bearer ${localStorage.getItem("access_token")}` 
-        }
-      });
-      
-      if (!res.ok) throw new Error('Failed to fetch units');
-      
-      const units = await res.json();
-      unitSelect.innerHTML = '<option value="">Select unit...</option>';
-      
-      units.forEach(unit => {
-        const option = document.createElement('option');
-        option.value = unit.unit_id;
-        option.textContent = unit.unit_name;
-        unitSelect.appendChild(option);
-      });
-    } catch (err) {
-      console.error("Failed to fetch units:", err);
-    }
-  }
-
-  // =========================================================
-  // Allergen Form Submission
-  // =========================================================
-  
-  async function handleAllergenFormSubmit(e) {
-    e.preventDefault();
-    
-    const allergenId = document.getElementById('allergen-select').value;
-    const quantity = document.getElementById('allergen-quantity').value;
-    const date = document.getElementById('allergen-date').value;
-    const unitId = document.getElementById('allergen-unit').value;
-    
-    if (!allergenId) {
-      alert('Please select an allergen');
-      return;
-    }
-    
-    try {
-      const payload = {
-        allergen_id: parseInt(allergenId),
-        date_time: new Date(date).toISOString(),
-        quantity: quantity ? parseFloat(quantity) : null,
-        unit_id: unitId ? parseInt(unitId) : null
-      };
-      
-      const res = await fetch(`${API_URL}/entries/allergens`, {
+      const res = await fetch(`${API_URL}/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -140,18 +133,30 @@ document.addEventListener("DOMContentLoaded", async () => {
         body: JSON.stringify(payload)
       });
       
-      if (res.ok) {
-        alert('Allergen logged successfully!');
-        document.getElementById('allergen-form').reset();
-        // Reset allergen select to placeholder
-        document.getElementById('allergen-select').selectedIndex = 0;
-      } else {
-        throw new Error('Failed to log allergen');
-      }
+      if (!res.ok) throw new Error('Submission failed');
+      alert('Logged successfully!');
+      formElement.reset();
     } catch (err) {
-      console.error('Error:', err);
-      alert('Error logging allergen');
+      alert('Error submitting form');
     }
+  };
+
+  // Allergen Form Submission
+  const allergenForm = document.getElementById('allergen-form');
+  if (allergenForm) {
+    allergenForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const payload = {
+        allergen_id: parseInt(allergenSelect.value),
+        date_time: new Date(dateInput.value).toISOString(),
+        quantity: document.getElementById('allergen-quantity').value ? 
+                 parseFloat(document.getElementById('allergen-quantity').value) : null,
+        unit_id: unitSelect.value ? parseInt(unitSelect.value) : null
+      };
+      
+      await submitForm(allergenForm, 'entries/allergens', payload);
+    });
   }
 
   // =========================================================
@@ -159,46 +164,39 @@ document.addEventListener("DOMContentLoaded", async () => {
   // =========================================================
   
   async function init() {
-    if (!localStorage.getItem("access_token")) {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
       window.location.href = "index.html";
       return;
     }
 
     try {
       const user = await getCurrentUser();
+      if (!user || !user.email) {
+        throw new Error('Invalid user session');
+      }
       document.getElementById("user-email").textContent = user.email;
-      
-      // Initialize forms and data
-      await fetchAndPopulateAllergens();
-      await fetchAndPopulateUnits();
-      
-      // Set default date to now
-      if (dateInput) {
-        dateInput.value = localDateTimeForInput();
-      }
-      
-      // Event listeners
-      const allergenForm = document.getElementById('allergen-form');
-      if (allergenForm) {
-        allergenForm.addEventListener('submit', handleAllergenFormSubmit);
-      }
-      
-      // Load initial analysis data if on analysis tab
-      if (window.location.hash === '#analysis') {
-        await fetchAnalysisPlot();
-      }
-      
-    } catch (err) {
+    } catch (error) {
+      console.error('Init error:', error);
       localStorage.removeItem("access_token");
       window.location.href = "index.html";
     }
   }
 
-  // =========================================================
-  // The rest of your existing code for tabs, analysis, etc. goes here
-  // Keep all your existing analysis and other functions...
-  // =========================================================
+  await init();
 
-  // Initialize everything
-  init();
+  // Tabs functionality
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const targetTab = tab.dataset.tab;
+      
+      // Update tab classes
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      
+      // Show target form
+      document.querySelectorAll('.form').forEach(form => form.classList.remove('active'));
+      document.getElementById(targetTab + '-form').classList.add('active');
+    });
+  });
 });
