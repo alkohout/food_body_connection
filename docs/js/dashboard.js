@@ -99,7 +99,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const fetchAllAllergens = async () => {
     try {
-      const res = await fetch(`${API_URL}/allergens`, {
+      const res = await fetch(`${API_URL}/allergens?q=`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
       });
       if (!res.ok) throw new Error(res.statusText);
