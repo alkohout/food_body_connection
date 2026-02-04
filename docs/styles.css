@@ -265,7 +265,7 @@ button.primary {
 
 #allergen-input {
   width: 100%;
-  padding-right: 2rem; /* space for the arrow */
+  padding-right: 3rem; /* space for the arrow */
 }
 
 #allergen-toggle {
