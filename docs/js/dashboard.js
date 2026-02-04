@@ -76,22 +76,41 @@ document.addEventListener("DOMContentLoaded", async () => {
   const fetchAllergens = async () => {
     try {
       const token = localStorage.getItem("access_token");
+      console.log("Fetching allergens with token:", token ? "Present" : "Missing");
+      
       const response = await fetch(`${API_URL}/allergens`, {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         }
       });
 
+      console.log("Response status:", response.status);
+      console.log("Response headers:", [...response.headers.entries()]);
+
       if (!response.ok) {
+        // Try to get error details from response
+        let errorDetails;
+        try {
+          errorDetails = await response.json();
+          console.error("Error response body:", errorDetails);
+        } catch (e) {
+          errorDetails = await response.text();
+          console.error("Error response text:", errorDetails);
+        }
+        
         if (response.status === 401) {
           logout();
           return null;
         }
-        throw new Error(`HTTP error! status: ${response.status}`);
+        
+        throw new Error(`HTTP error! status: ${response.status}, details: ${JSON.stringify(errorDetails)}`);
       }
 
       const allergens = await response.json();
+      console.log("Fetched allergens:", allergens);
       return allergens;
     } catch (error) {
       console.error('Error fetching allergens:', error);
