@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const logoutBtn = document.getElementById("logout-btn");
   const allergenForm = document.getElementById("allergen-form");
   const allergenSelect = document.getElementById("allergen-select");
-  const unitSelect = document.getElementById("allergen-unit");
+  const unitSelect = document.getElementById("allergen-unit"); // Make sure this matches your HTML
   const allergenDateInput = document.getElementById("allergen-date");
   const allergenQuantity = document.getElementById("allergen-quantity");
   const allergenSuccess = document.getElementById("log-success");
@@ -43,7 +43,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       try {
         currentUser = await getCurrentUser();
         if (currentUser && currentUser.email) {
-          document.getElementById("user-email").textContent = currentUser.email;
+          const userEmailEl = document.getElementById("user-email");
+          if (userEmailEl) {
+            userEmailEl.textContent = currentUser.email;
+          }
         } else {
           throw new Error("No user data received");
         }
@@ -54,9 +57,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       // Load initial data
-      await loadAllergens();
+      await populateAllergens(); // Removed loadAllergens() call
       await loadUnits();
-      await populateAllergens();
 
       setupEventListeners();
       setupTabs();
@@ -84,7 +86,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!response.ok) {
         if (response.status === 401) {
           logout();
-          return;
+          return null;
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -101,23 +103,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   const populateAllergens = async () => {
     try {
       const allergens = await fetchAllergens();
-      const select = document.getElementById('allergen-select');
-      if (select) {
+      if (!allergens) return; // Handle case where fetchAllergens returns null due to auth error
+      
+      if (allergenSelect) {
         // Clear existing options except the first option
-        select.innerHTML = '<option value="" selected disabled>Select an allergen...</option>';
+        allergenSelect.innerHTML = '<option value="" selected disabled>Select an allergen...</option>';
         
         allergens.forEach(allergen => {
           if (allergen && allergen.allergen_name && allergen.allergen_id) {
             const option = document.createElement('option');
             option.value = allergen.allergen_id;
             option.textContent = allergen.allergen_name;
-            select.appendChild(option);
+            allergenSelect.appendChild(option);
           }
         });
       }
     } catch (error) {
       console.error('Error loading allergens:', error);
-      alert('Failed to load allergens. Please refresh the page.');
+      showError('Failed to load allergens. Please refresh the page.');
     }
   };
 
@@ -133,12 +136,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       
       if (response.ok) {
         const units = await response.json();
-        const select = document.getElementById('unit-select');
-        if (select) {
+        // Use the same element reference as in form submission
+        if (unitSelect) {
           // Clear and populate unit dropdown
-          while (select.firstChild) {
-            select.removeChild(select.firstChild);
-          }
+          unitSelect.innerHTML = '';
           
           // Add default option
           const defaultOption = document.createElement('option');
@@ -146,7 +147,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           defaultOption.textContent = 'Select unit...';
           defaultOption.disabled = true;
           defaultOption.selected = true;
-          select.appendChild(defaultOption);
+          unitSelect.appendChild(defaultOption);
           
           // Add unit options
           units.forEach(unit => {
@@ -154,10 +155,12 @@ document.addEventListener("DOMContentLoaded", async () => {
               const option = document.createElement('option');
               option.value = unit.unit_id;
               option.textContent = unit.unit_name;
-              select.appendChild(option);
+              unitSelect.appendChild(option);
             }
           });
         }
+      } else if (response.status === 401) {
+        logout();
       }
     } catch (error) {
       console.error('Error loading units:', error);
@@ -180,13 +183,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   const handleAllergenSubmit = async (event) => {
     event.preventDefault();
     
-    const allergenId = allergenSelect.value;
-    const unitId = unitSelect.value;
-    const quantity = allergenQuantity.value || null;
-    const dateTime = allergenDateInput.value;
+    // Clear previous messages
+    if (allergenSuccess) allergenSuccess.style.display = 'none';
+    if (allergenError) allergenError.style.display = 'none';
+    
+    const allergenId = allergenSelect?.value;
+    const unitId = unitSelect?.value;
+    const quantity = allergenQuantity?.value || null;
+    const dateTime = allergenDateInput?.value;
 
     if (!allergenId || isNaN(allergenId)) {
       showError("Please select an allergen.");
+      return;
+    }
+
+    if (!dateTime) {
+      showError("Please select a date and time.");
       return;
     }
 
@@ -209,13 +221,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (response.ok) {
         // Clear form and show success message
         allergenForm.reset();
-        allergenSuccess.style.display = 'block';
-        allergenError.style.display = 'none';
+        if (allergenSuccess) {
+          allergenSuccess.style.display = 'block';
+        }
         
         // Reset form time to now
         if (allergenDateInput) {
-          allergenDateInput.value = new Date().toISOString().slice(0, 16);
+          allergenDateInput.value = localDateTimeForInput();
         }
+      } else if (response.status === 401) {
+        logout();
       } else {
         throw new Error('Failed to log allergen');
       }
@@ -230,6 +245,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       allergenError.textContent = message;
       allergenError.style.display = 'block';
     }
+    if (allergenSuccess) {
+      allergenSuccess.style.display = 'none';
+    }
   };
 
   const setupTabs = () => {
@@ -238,6 +256,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       button.addEventListener('click', (e) => {
         const tabId = e.target.dataset.tab;
         showTab(tabId);
+        
+        // Update active tab button
+        tabButtons.forEach(btn => btn.classList.remove('active'));
+        e.target.classList.add('active');
       });
     });
   };
@@ -261,8 +283,5 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   // Initialize application
-  init();
-
-  // Setup tabs
-  setupTabs();
+  await init(); // Make sure init completes before continuing
 });
