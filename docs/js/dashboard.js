@@ -76,9 +76,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   const fetchAllergens = async () => {
     try {
       const token = localStorage.getItem("access_token");
-      console.log("Fetching allergens with token:", token ? "Present" : "Missing");
       
-      const response = await fetch(`${API_URL}/allergens`, {
+      // Add the required 'q' query parameter
+      // For loading all allergens, you might use an empty string or wildcard
+      const url = new URL(`${API_URL}/allergens`);
+      url.searchParams.append('q', ''); // or '*' or whatever your API expects for "all"
+      
+      console.log("Fetching from URL:", url.toString());
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -87,11 +93,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       });
 
-      console.log("Response status:", response.status);
-      console.log("Response headers:", [...response.headers.entries()]);
-
       if (!response.ok) {
-        // Try to get error details from response
         let errorDetails;
         try {
           errorDetails = await response.json();
