@@ -48,7 +48,7 @@ The goal of the project is **decision support**, not diagnosis: to surface patte
 
 ### 1. Logging & Data Collection
 
-* Log **allergen exposure events** (food items, quantities, units, timestamps).
+* Log **allergen exposure events** (allergens, quantities, units, timestamps).
 * Log **symptom events** (symptom type, severity, timestamps).
 * Data stored in a relational database via SQLAlchemy models.
 * Designed to handle **frequent exposure logging** with relatively **rare symptom events**.
@@ -60,7 +60,6 @@ The goal of the project is **decision support**, not diagnosis: to surface patte
 
   * Aligning allergen events with subsequent symptom events
   * Encoding exposure presence/absence (and optionally dose)
-  * Aggregating across users or analyzing per‑user
 
 ### 3. Statistical & Machine Learning Analysis
 
@@ -73,24 +72,17 @@ The goal of the project is **decision support**, not diagnosis: to surface patte
 #### Logistic Regression
 - **Purpose:** Estimate the **association between an allergen and symptom occurrence**.  
 - **Target:** Binary outcome — symptom occurred (1) or not (0).  
+
 - **Key features:**
   - Coefficients can be exponentiated to obtain **odds ratios**, providing an intuitive measure of effect size.  
-  - Handles **categorical and continuous predictors**.  
-  - Stable for **small or imbalanced datasets**.  
-  - Regularization (L1 or L2) prevents overfitting.  
-  - Fast computation allows rapid iteration and model testing.  
-  - Includes Nested Cross Validation with metrics and uncertainty estimates, since dataset is likely relatively small
-- **Use case:** Identify which allergens are significantly associated with symptoms and quantify the strength of that association.
+  - Relatively stable for **small or imbalanced datasets** due to:
+    - its **low-variance parametric form**
+    - **regularization (L1 or L2)** to reduce overfitting and mitigate collinearity  
+    - **class weighting**, when necessary, to reduce bias from class imbalance  
+    - **nested cross-validation** to estimate performance metrics and quantify uncertainty in small samples  
+  - Fast computation enables rapid iteration, model testing, and timely outputs for users.  
 
-#### Generalized Additive Models (GAM)
-- **Purpose:** Estimate **risk and dose-response relationships** between allergen exposure and symptom probability.  
-- **Target:** Binary outcome — symptom occurred (1) or not (0), but with **non-linear effects** of predictors.  
-- **Key features:**
-  - Models **smooth, flexible functions** of predictors, allowing non-linear or threshold effects.  
-  - Suitable for **continuous exposures** (dose levels) as well as categorical variables.  
-  - Outputs **absolute risk curves** (probability of symptom) rather than odds ratios.  
-  - Captures complex temporal or exposure–response patterns.  
-- **Use case:** Determine how **different exposure levels impact symptom risk**, identify thresholds, and visualize dose-response dynamics.
+- **Use case:** Identify which allergens are significantly associated with symptoms and quantify the strength of those associations.
 
 #### Fisher Exact Test
 - **Purpose:** Test for **association between categorical variables** when sample sizes are small.  
@@ -106,8 +98,6 @@ The goal of the project is **decision support**, not diagnosis: to surface patte
   * Symptom recall
   * Bootstrapping / confidence intervals
   * p-value
-  * Pseudo R^2 (proportion of uncertainty explained by model - outcome not continous or normally distributed, so R^2 not appropriate)
-  * Effective degrees of freedom
 
 ### 4. Interpretability & Visualisation
 
