@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, Query
+from app.api.routes.auth import get_current_user
+from app.models.table_class import User
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.table_class import Allergen
@@ -13,13 +15,18 @@ router = APIRouter(prefix="/allergens", tags=["allergens"], include_in_schema=Tr
 def search_allergens(
     q: Optional[str] = Query(None, min_length=1),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     # ADD DEBUG LOGGING
     logger.info(f"=== SEARCH ALLERGENS CALLED ===")
     logger.info(f"Query param 'q': {q}")
+    logger.info(f"Current user: {current_user}")
 
     # BUILD QUERY
-    query = db.query(Allergen)
+    query = (
+        db.query(Allergen)
+        .filter(Allergen.user_id == current_user.user_id)
+    )
     logger.info(f"Base query: {query}")
 
     # Apply search filter if provided
@@ -27,11 +34,9 @@ def search_allergens(
         query = query.filter(Allergen.allergen_name.ilike(f"%{q}%"))
         logger.info(f"With search filter: {query}")
         results = (
-            db.query(Allergen)
-            .filter(Allergen.allergen_name.ilike(f"%{q}%"))
-            .order_by(Allergen.allergen_name)
-            .limit(10)
-            .all()
+            query.order_by(Allergen.allergen_name)
+                 .limit(10)
+                 .all()
         )
     else:
         results = query.order_by(Allergen.allergen_name).all()

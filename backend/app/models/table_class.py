@@ -2,6 +2,7 @@
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, CheckConstraint
 from sqlalchemy.orm import relationship
+from sqlalchemy import UniqueConstraint
 from datetime import datetime, timezone
 from app.database import Base
 
@@ -16,21 +17,30 @@ class User(Base):
     # Relationships
     allergen_log = relationship("AllergenLog", back_populates="user", cascade="all, delete-orphan")
     symptom_log = relationship("SymptomLog", back_populates="user", cascade="all, delete-orphan")
+    allergen = relationship("Allergen",back_populates="user", cascade="all, delete-orphan")
+    symptom = relationship("Symptom",back_populates="user", cascade="all, delete-orphan")
 
 class Allergen(Base):
     __tablename__ = 'allergen'
     
     allergen_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'),nullable=False)
     allergen_name = Column(String(255), nullable=False)
     
     # Relationships
     allergen_log = relationship("AllergenLog", back_populates="allergen", cascade="all, delete-orphan")
+    user = relationship("User", back_populates="allergen")
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'allergen_name', name='uq_user_allergen'),
+    )
+
 
 class Unit(Base):
     __tablename__ = 'unit'
     
     unit_id = Column(Integer, primary_key=True)
-    unit_name = Column(String(100), nullable=False)
+    unit_name = Column(String(100), nullable=False, unique=True)
     unit_conversion = Column(Integer, nullable=False)  
     
     # Relationships
@@ -40,11 +50,18 @@ class Symptom(Base):
     __tablename__ = 'symptom'
     
     symptom_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'),nullable=False)
     symptom_name = Column(String(255), nullable=False)
     symptom_group = Column(String(255), nullable=True)
     
     # Relationships
     symptom_log = relationship("SymptomLog", back_populates="symptom", cascade="all, delete-orphan")
+    user = relationship("User", back_populates="symptom")
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'symptom_name', name='uq_user_symptom'),
+    )
+
 
 class AllergenLog(Base):
     __tablename__ = 'allergen_log'
