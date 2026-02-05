@@ -263,6 +263,7 @@ const setupAutocomplete = (inputEl, idEl, suggestionsEl, type) => {
 
     const data = await fetchSuggestions(query, type);
 
+    // Populate suggestions list
     data.forEach(item => {
       const li = document.createElement("li");
       li.textContent =
@@ -288,34 +289,32 @@ const setupAutocomplete = (inputEl, idEl, suggestionsEl, type) => {
     if (data.length > 0) {
       suggestionsEl.classList.add("visible");
     }
+
+    if (type === "allergen") {
+      const addBtnWrapper = getElement("add-allergen-wrapper");
+      const addBtn = getElement("add-allergen-btn");
+
+      if (data.length === 0 && query.length > 1) {
+        addBtnWrapper.style.display = "block";
+        addBtn.textContent = `Add "${query}" as a new allergen`;
+
+        addBtn.onclick = async () => {
+          const created = await addNewAllergen(query);
+          if (created) {
+            addBtnWrapper.style.display = "none";
+          }
+        };
+
+        suggestionsEl.innerHTML = "";
+        suggestionsEl.classList.remove("visible");
+      } else {
+        addBtnWrapper.style.display = "none";
+      }
+    }
+
   }, 300);
 
   inputEl.addEventListener("input", handleInput);
-
-  if (type === "allergen") {
-    const addBtnWrapper = getElement("add-allergen-wrapper");
-    const addBtn = getElement("add-allergen-btn");
-
-    if (data.length === 0 && inputEl.value.trim().length > 1) {
-      addBtnWrapper.style.display = "block";
-      addBtn.textContent = `Add "${inputEl.value.trim()}" as a new allergen`;
-
-      addBtn.onclick = async () => {
-        const newName = inputEl.value.trim();
-
-        const created = await addNewAllergen(newName);
-        if (created) {
-          // Hide the button again
-          addBtnWrapper.style.display = "none";
-        }
-      };
-      suggestionsEl.innerHTML = "";
-      suggestionsEl.classList.remove("visible");
-    } else {
-      addBtnWrapper.style.display = "none";
-    }
-  }
-
 };
 
 
