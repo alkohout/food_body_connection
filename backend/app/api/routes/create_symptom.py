@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from typing import Optional
 from app.database import get_db
 from app.models.table_class import Symptom
 from app.api.routes.auth import get_current_user
@@ -9,7 +10,7 @@ router = APIRouter(prefix="/symptoms", tags=["symptoms"])
 
 class SymptomCreate(BaseModel):
     symptom_name: str
-    symptom_group: str | None = None
+    symptom_group: Optional[str] = None
 
 @router.post("")
 def create_symptom(
