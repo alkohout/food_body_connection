@@ -97,7 +97,7 @@ const fetchUnits = async () => {
 };
 
 // =========================================================
-// Fetch allergens (ROBUST VERSION)
+// Fetch allergens 
 // =========================================================
 
 const fetchAllergens = async () => {
@@ -492,18 +492,18 @@ const fetchAnalysisPlot = async () => {
     }
 
     // Prediction
-    const predictOut = getElement("predict-out");
-    if (predictOut) {
-      const res = await fetch(`${API_URL}/analysis/predict`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`
-        }
-      });
-      if (res.ok) {
-        predictOut.textContent = await res.text();
-      }
-    }
+    //const predictOut = getElement("predict-out");
+    //if (predictOut) {
+    //  const res = await fetch(`${API_URL}/analysis/predict`, {
+    //    method: "POST",
+    //    headers: {
+    //      Authorization: `Bearer ${localStorage.getItem("access_token")}`
+    //    }
+    //  });
+    //  if (res.ok) {
+    //    predictOut.textContent = await res.text();
+    //  }
+    //}
 
     await getSummaryText();
 
@@ -657,6 +657,9 @@ async function init() {
 
     // Set up forms
     setupForms();
+
+    // Set up analysis
+    setupAnalysis();
 
     // Initialize captions
     initializeCaptions();
