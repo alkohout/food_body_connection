@@ -28,7 +28,7 @@ def search_allergens(
         logger.info(f"With search filter: {query}")
     
     # Execute query
-    results = query.order_by(Allergen.allergen_name).limit(10).all()
+    results = query.order_by(Allergen.allergen_name).all()
     
     logger.info(f"Raw SQL: {query.statement.compile(compile_kwargs={'literal_binds': True})}")
     logger.info(f"Results count: {len(results)}")
