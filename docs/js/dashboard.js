@@ -225,7 +225,7 @@ async function addNewAllergen(name) {
 const fetchSuggestions = async (query, type) => {
   if (!query) return [];
 
-  let endpoint;
+  let endpoint = 
   type === "allergen" ? "allergens" :
   type === "symptom_group" ? "symptom_groups" :
   type === "symptom" ? "symptoms" :
