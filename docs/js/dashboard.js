@@ -637,12 +637,6 @@ async function init() {
     // Set up autocomplete (after data is loaded)
     console.log("Setting up autocomplete...");
     setupAutocomplete(
-      getElement("allergen-input"),
-      getElement("allergen-id"),
-      getElement("allergen-suggestions"),
-      "allergen"
-    );
-    setupAutocomplete(
       getElement("symptom-input"),
       getElement("symptom-id"),
       getElement("symptom-suggestions"),
