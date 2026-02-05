@@ -226,10 +226,10 @@ const fetchSuggestions = async (query, type) => {
   if (!query) return [];
 
   let endpoint;
-  if (type === "allergen") endpoint = "allergens";
-  else if (type === "symptom_group") endpoint = "symptom_groups";
-  else if (type === "symptom") endpoint = "symptoms";
-  else throw new Error("Invalid autocomplete type: " + type);
+  type === "allergen" ? "allergens" :
+  type === "symptom_group" ? "symptom_groups" :
+  type === "symptom" ? "symptoms" :
+  "allergens";
 
   try {
     const res = await fetch(
