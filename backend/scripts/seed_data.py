@@ -105,10 +105,22 @@ def main():
     # ---------------------------------------------------
     # 6. Add demo logs for test@example.com
     # ---------------------------------------------------
+
+    # Get the first allergen for this user
+    first_allergen = db.query(Allergen).filter(
+        Allergen.user_id == test_user.user_id
+    ).first()
+
+    # Get the first symptom for this user
+    first_symptom = db.query(Symptom).filter(
+        Symptom.user_id == test_user.user_id
+    ).first()
+
+    # Add logs using correct user-specific IDs
     db.add(AllergenLog(
         user_id=test_user.user_id,
         date_time=datetime.now(timezone.utc),
-        allergen_id=1,
+        allergen_id=first_allergen.allergen_id,
         quantity=2,
         unit_id=1
     ))
@@ -116,7 +128,7 @@ def main():
     db.add(SymptomLog(
         user_id=test_user.user_id,
         date_time=datetime.now(timezone.utc),
-        symptom_id=1,
+        symptom_id=first_symptom.symptom_id,
         symptom_intensity=3
     ))
 
