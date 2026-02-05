@@ -533,7 +533,6 @@ window.location.href = "index.html";
 return;
 }
 
-text
 try {
   const user = await getCurrentUser();
   document.getElementById("user-email").textContent = user.email;
