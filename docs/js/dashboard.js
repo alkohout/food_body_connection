@@ -612,6 +612,28 @@ async function init() {
     ]);
     console.log("Data loading complete");
 
+    // -----------------------------------------
+    // Sync allergen select → inputs
+    // -----------------------------------------
+    const allergenSelect = getElement("allergen-select");
+    const allergenInput = getElement("allergen-input");
+    const allergenIdInput = getElement("allergen-id");
+
+    if (allergenSelect) {
+      allergenSelect.addEventListener("change", () => {
+        const selectedOption = allergenSelect.selectedOptions[0];
+
+        if (!selectedOption || !allergenSelect.value) {
+          allergenInput.value = "";
+          allergenIdInput.value = "";
+          return;
+        }
+
+        allergenIdInput.value = allergenSelect.value;
+        allergenInput.value = selectedOption.textContent;
+      });
+    }
+
     // Set up autocomplete (after data is loaded)
     console.log("Setting up autocomplete...");
     setupAutocomplete(
