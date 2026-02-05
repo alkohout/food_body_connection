@@ -559,7 +559,6 @@ const response = await fetch(`${API_URL}/analysis/generate_summary_text`, {
 headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
 });
 
-text
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
     }
