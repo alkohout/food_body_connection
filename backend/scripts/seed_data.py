@@ -140,7 +140,13 @@ def main():
             "Perfume"
         ]
 
-        allergen_objects = [Allergen(allergen_name=a) for a in allergens]
+        allergen_objects = [
+            Allergen(
+                allergen_name=a,
+                user_id=test_user.user_id
+            )
+            for a in allergens
+        ]
         db.add_all(allergen_objects)
         db.commit()
         for a in allergen_objects:
