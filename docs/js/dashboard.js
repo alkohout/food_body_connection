@@ -226,10 +226,10 @@ const fetchSuggestions = async (query, type) => {
   if (!query) return [];
 
   let endpoint = 
-  type === "allergen" ? "allergens" :
-  type === "symptom_group" ? "symptom_groups" :
-  type === "symptom" ? "symptoms" :
-  "allergens";
+    type === "allergen" ? "allergens" :
+    type === "symptom_group" ? "symptom_groups" :
+    type === "symptom" ? "symptoms" :
+    "allergens";
 
   try {
     const res = await fetch(
