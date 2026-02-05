@@ -13,8 +13,7 @@ router = APIRouter(prefix="/allergens", tags=["allergens"], include_in_schema=Tr
 def search_allergens(
     q: Optional[str] = Query(None, min_length=1),
     db: Session = Depends(get_db),
-    # ADD USER AUTHENTICATION
-    # current_user: User = Depends(get_current_user)  # Uncomment this
+    current_user: User = Depends(get_current_user)  # Uncomment this
 ):
     # ADD DEBUG LOGGING
     logger.info(f"=== SEARCH ALLERGENS CALLED ===")
