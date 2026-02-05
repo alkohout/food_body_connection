@@ -20,19 +20,15 @@ const localDateTimeForInput = (date = new Date()) => {
 };
 
 // =========================================================
-// Safe element getter
+// Elements (re-query inside functions for safety)
 // =========================================================
 
-const elementCache = new Map();
+// Don't cache element references at module load time
 const getElement = (id) => {
-  if (elementCache.has(id)) return elementCache.get(id);
-  
   const el = document.getElementById(id);
-  if (!el && !elementCache.has(id)) {
-    console.warn(`Element "${id}" not found in DOM`);
+  if (!el) {
+    console.warn(`Element with id "${id}" not found`);
   }
-  
-  elementCache.set(id, el);
   return el;
 };
 
@@ -46,7 +42,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 // =========================================================
-// Setup Functions (safe to fail)
+// Logout
 // =========================================================
 
 function setupLogout() {
@@ -59,6 +55,10 @@ function setupLogout() {
   });
 }
 
+// =========================================================
+// Defaults
+// =========================================================
+
 function setupDefaults() {
   const dateInput = getElement("allergen-date");
   const symptomDateInput = getElement("symptom-date");
@@ -67,165 +67,8 @@ function setupDefaults() {
   if (symptomDateInput) symptomDateInput.value = localDateTimeForInput();
 }
 
-function setupTabs() {
-  document.querySelectorAll(".tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-      const target = tab.dataset.tab;
-
-      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-      document.querySelectorAll(".form").forEach(f => f.classList.remove("active"));
-
-      tab.classList.add("active");
-      const targetForm = getElement(`${target}-form`);
-      if (targetForm) targetForm.classList.add("active");
-
-      if (target === "analysis") fetchAnalysisPlot();
-    });
-  });
-}
-
-function setupForms() {
-  // Allergen form - FIXED: uses select element
-  const allergenForm = getElement("allergen-form");
-  const allergenSelect = getElement("allergen-select");
-  const allergenQuantityInput = getElement("allergen-quantity");
-  const dateInput = getElement("allergen-date");
-  const unitSelect = getElement("allergen-unit");
-
-  if (allergenForm) {
-    submitForm(
-      allergenForm,
-      "entries/allergens",
-      () => ({
-        allergen_id: Number(allergenSelect?.value || 0),
-        date_time: new Date(dateInput?.value || Date.now()).toISOString(),
-        quantity: Number(allergenQuantityInput?.value) || null,
-        unit_id: Number(unitSelect?.value) || null
-      }),
-      getElement("log-success"),
-      getElement("log-error"),
-      [allergenQuantityInput, dateInput]
-    );
-  }
-
-  // Symptom form
-  const symptomForm = getElement("symptom-form");
-  const symptomIdInput = getElement("symptom-id");
-  const symptomInput = getElement("symptom-input");
-  const symptomDateInput = getElement("symptom-date");
-  const symptomIntensityInput = getElement("symptom-intensity");
-
-  if (symptomForm) {
-    submitForm(
-      symptomForm,
-      "entries/symptoms",
-      () => ({
-        symptom_id: Number(symptomIdInput?.value || 0),
-        date_time: new Date(symptomDateInput?.value || Date.now()).toISOString(),
-        intensity: Number(symptomIntensityInput?.value) || null
-      }),
-      getElement("symptom-success"),
-      getElement("symptom-error"),
-      [symptomInput, symptomIdInput, symptomDateInput]
-    );
-  }
-}
-
-function setupAnalysis() {
-  const updatePlotButton = getElement("update-plot-btn");
-  if (!updatePlotButton) return;
-
-  updatePlotButton.addEventListener("click", async () => {
-    const allergenIntInput = getElement("allergen-intensity-input");
-    const lagWindowInput = getElement("lag-window");
-    const symptomGroupInput = getElement("symptom-group-input");
-    
-    const allergenName = allergenIntInput?.value || "Dairy";
-    const lagWindow = lagWindowInput?.value || "0_6";
-    
-    const LAG_WINDOWS = {
-      "0_6": { start: 0, end: 6 },
-      "6_24": { start: 6, end: 24 },
-      "24_48": { start: 24, end: 48 },
-      "0_24": { start: 0, end: 24 },
-      "0_48": { start: 0, end: 48 },
-      "0_72": { start: 0, end: 72 }
-    };
-    
-    const { start, end } = LAG_WINDOWS[lagWindow] || LAG_WINDOWS["0_6"];
-    const symptomGroup = symptomGroupInput?.value || "";
-    const lagWindowText = `${start} - ${end} hrs`;
-
-    updateCaptions(allergenName, symptomGroup, lagWindowText);
-
-    try {
-      const cacheBust = Date.now();
-      
-      // Fetch all plots in parallel
-      const plotRequests = [];
-      
-      const intensityVolumePlotImg = getElement("analysis-intensity-volume-plot");
-      if (intensityVolumePlotImg) {
-        plotRequests.push(
-          fetch(
-            `${API_URL}/analysis/intensity_volume?allergen_name=${encodeURIComponent(allergenName)}&lag_start=${start}&lag_end=${end}&_=${cacheBust}`,
-            { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }, cache: "no-store" }
-          ).then(res => res.blob()).then(blob => {
-            if (intensityVolumePlotImg.src) URL.revokeObjectURL(intensityVolumePlotImg.src);
-            intensityVolumePlotImg.src = URL.createObjectURL(blob);
-          })
-        );
-      }
-
-      const timeSeriesPlotImg = getElement("analysis-time-series-plot");
-      if (timeSeriesPlotImg) {
-        plotRequests.push(
-          fetch(
-            `${API_URL}/analysis/plot_time_series?allergen_name=${encodeURIComponent(allergenName)}`,
-            { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
-          ).then(res => res.blob()).then(blob => {
-            timeSeriesPlotImg.src = URL.createObjectURL(blob);
-          })
-        );
-      }
-
-      const barPlotImg = getElement("analysis-bar-plot");
-      if (barPlotImg && symptomGroup) {
-        plotRequests.push(
-          fetch(
-            `${API_URL}/analysis/plot_bar_plots?allergen_name=${encodeURIComponent(allergenName)}&lag_start=${start}&lag_end=${end}&symptom_group=${encodeURIComponent(symptomGroup)}&_=${cacheBust}`,
-            { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
-          ).then(res => res.blob()).then(blob => {
-            if (barPlotImg.src) URL.revokeObjectURL(barPlotImg.src);
-            barPlotImg.src = URL.createObjectURL(blob);
-          })
-        );
-      }
-
-      const riskPlotImg = getElement("analysis-risk-plot");
-      if (riskPlotImg && symptomGroup) {
-        plotRequests.push(
-          fetch(
-            `${API_URL}/analysis/plot_risk?allergen_name=${encodeURIComponent(allergenName)}&lag_start=${start}&lag_end=${end}&symptom_group=${encodeURIComponent(symptomGroup)}&_=${cacheBust}`,
-            { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
-          ).then(res => res.blob()).then(blob => {
-            if (riskPlotImg.src) URL.revokeObjectURL(riskPlotImg.src);
-            riskPlotImg.src = URL.createObjectURL(blob);
-          })
-        );
-      }
-
-      await Promise.all(plotRequests);
-      await fetchTemporalStats(allergenName);
-
-    } catch (err) {
-      console.error("Failed to update analysis plots:", err);
-    }
-  });
-}
-
 // =========================================================
-// Data Fetching (safe to fail)
+// Fetch units
 // =========================================================
 
 const fetchUnits = async () => {
@@ -233,14 +76,14 @@ const fetchUnits = async () => {
   if (!unitSelect) return;
 
   try {
-    console.log("Fetching units...");
+    console.log("Fetching units from:", `${API_URL}/units`);
     const res = await fetch(`${API_URL}/units`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
     });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
 
     const units = await res.json();
-    console.log(`✅ Loaded ${units.length} units`);
+    console.log(`Loaded ${units.length} units`);
     
     units.forEach(u => {
       const opt = document.createElement("option");
@@ -249,26 +92,34 @@ const fetchUnits = async () => {
       unitSelect.appendChild(opt);
     });
   } catch (err) {
-    console.error("❌ Failed to fetch units:", err);
-    // Don't throw - let the app continue
+    console.error("Failed to fetch units:", err);
   }
 };
 
+// =========================================================
+// Fetch allergens (ROBUST VERSION)
+// =========================================================
+
 const fetchAllergens = async () => {
   const allergenSelect = getElement("allergen-select");
-  if (!allergenSelect) return;
+  if (!allergenSelect) {
+    console.error("CRITICAL: allergen-select element not found!");
+    return;
+  }
 
-  // Show loading state
-  allergenSelect.innerHTML = '<option value="">Loading allergens...</option>';
+  console.log("Starting to fetch allergens...");
   
   try {
-    const token = localStorage.getItem("access_token");
-    if (!token) throw new Error("No access token");
-
-    // Call search endpoint with empty query to get all
-    const url = `${API_URL}/allergens?q=`;
-    console.log("Fetching allergens from:", url);
+    const url = `${API_URL}/allergens`;
+    console.log("API URL:", url);
     
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      console.error("No access token found");
+      return;
+    }
+    
+    console.log("Making authenticated request...");
     const res = await fetch(url, {
       headers: { 
         "Authorization": `Bearer ${token}`,
@@ -276,41 +127,33 @@ const fetchAllergens = async () => {
       }
     });
     
+    console.log("Response status:", res.status, res.statusText);
+    
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`HTTP ${res.status}: ${res.statusText} - ${errorText}`);
     }
 
     const allergens = await res.json();
-    console.log("✅ API response:", allergens);
+    console.log("Raw allergens data:", allergens);
     
     if (!Array.isArray(allergens)) {
-      throw new Error(`Invalid data format: expected array, got ${typeof allergens}`);
+      console.error("Expected array but got:", typeof allergens, allergens);
+      throw new Error("Invalid data format: expected array");
     }
 
+    console.log(`Processing ${allergens.length} allergens...`);
+    
     // Clear and repopulate
     allergenSelect.innerHTML = '<option value="">Select an allergen...</option>';
     
     if (allergens.length === 0) {
-      console.warn("⚠️ API returned empty allergens array!");
-      
-      // FOR DEVELOPMENT ONLY: Uncomment to use mock data
-      /*
-      const mockAllergens = [
-        { allergen_id: 1, allergen_name: "Dairy" },
-        { allergen_id: 2, allergen_name: "Gluten" },
-        { allergen_id: 3, allergen_name: "Nuts" }
-      ];
-      allergens = mockAllergens;
-      */
-      
-      if (allergens.length === 0) {
-        const opt = document.createElement("option");
-        opt.value = "";
-        opt.textContent = "No allergens found";
-        allergenSelect.appendChild(opt);
-        return;
-      }
+      console.warn("API returned empty allergens array");
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "No allergens available";
+      allergenSelect.appendChild(opt);
+      return;
     }
 
     allergens.forEach((u, i) => {
@@ -318,23 +161,25 @@ const fetchAllergens = async () => {
         console.warn(`Allergen ${i} missing properties:`, u);
         return;
       }
-      const opt = document.createElement("option");
-      opt.value = u.allergen_id;
-      opt.textContent = u.allergen_name;
-      allergenSelect.appendChild(opt);
+      const opt_allergen = document.createElement("option");
+      opt_allergen.value = u.allergen_id;
+      opt_allergen.textContent = u.allergen_name;
+      allergenSelect.appendChild(opt_allergen);
     });
     
-    console.log(`✅ Populated dropdown with ${allergens.length} allergens`);
+    console.log(`✅ Successfully populated dropdown with ${allergens.length} allergens`);
+    console.log("Dropdown HTML:", allergenSelect.innerHTML.substring(0, 200) + "...");
     
   } catch (err) {
     console.error("❌ Failed to fetch allergens:", err);
+    
+    // Show error in dropdown
     allergenSelect.innerHTML = '<option value="">Error loading allergens</option>';
-    // Don't throw - let the app continue
   }
 };
 
 // =========================================================
-// Autocomplete (only for elements that exist)
+// Autocomplete
 // =========================================================
 
 const fetchSuggestions = async (query, type) => {
@@ -361,8 +206,10 @@ const fetchSuggestions = async (query, type) => {
 };
 
 const setupAutocomplete = (inputEl, idEl, suggestionsEl, type) => {
-  // Silent return if elements don't exist
-  if (!inputEl || !suggestionsEl) return;
+  if (!inputEl || !suggestionsEl) {
+    console.warn("Autocomplete missing required elements", { inputEl, suggestionsEl, type });
+    return;
+  }
 
   const handleInput = debounce(async () => {
     const query = inputEl.value.trim();
@@ -411,7 +258,10 @@ const setupAutocomplete = (inputEl, idEl, suggestionsEl, type) => {
 // =========================================================
 
 const submitForm = (formEl, endpoint, payloadFn, successEl, errorEl, resetFields = []) => {
-  if (!formEl) return;
+  if (!formEl) {
+    console.warn("Form element not found for", endpoint);
+    return;
+  }
 
   formEl.addEventListener("submit", async e => {
     e.preventDefault();
@@ -431,12 +281,8 @@ const submitForm = (formEl, endpoint, payloadFn, successEl, errorEl, resetFields
         throw new Error(text);
       }
 
-      if (successEl) {
-        successEl.textContent = "Logged successfully!";
-        setTimeout(() => { successEl.textContent = ""; }, 3000);
-      }
+      if (successEl) successEl.textContent = "Logged successfully!";
       if (errorEl) errorEl.textContent = "";
-      
       resetFields.forEach(f => {
         if (f) f.value = "";
       });
@@ -445,6 +291,54 @@ const submitForm = (formEl, endpoint, payloadFn, successEl, errorEl, resetFields
     }
   });
 };
+
+// =========================================================
+// Forms
+// =========================================================
+
+function setupForms() {
+  // Allergen form
+  const allergenForm = getElement("allergen-form");
+  const allergenIdInput = getElement("allergen-id");
+  const allergenInput = getElement("allergen-input");
+  const allergenQuantityInput = getElement("allergen-quantity");
+  const dateInput = getElement("allergen-date");
+  const unitSelect = getElement("allergen-unit");
+
+  submitForm(
+    allergenForm,
+    "entries/allergens",
+    () => ({
+      allergen_id: Number(allergenIdInput?.value || 0),
+      date_time: new Date(dateInput?.value || Date.now()).toISOString(),
+      quantity: Number(allergenQuantityInput?.value) || null,
+      unit_id: Number(unitSelect?.value) || null
+    }),
+    getElement("log-success"),
+    getElement("log-error"),
+    [allergenInput, allergenIdInput, dateInput, allergenQuantityInput]
+  );
+
+  // Symptom form
+  const symptomForm = getElement("symptom-form");
+  const symptomIdInput = getElement("symptom-id");
+  const symptomInput = getElement("symptom-input");
+  const symptomDateInput = getElement("symptom-date");
+  const symptomIntensityInput = getElement("symptom-intensity");
+
+  submitForm(
+    symptomForm,
+    "entries/symptoms",
+    () => ({
+      symptom_id: Number(symptomIdInput?.value || 0),
+      date_time: new Date(symptomDateInput?.value || Date.now()).toISOString(),
+      intensity: Number(symptomIntensityInput?.value) || null
+    }),
+    getElement("symptom-success"),
+    getElement("symptom-error"),
+    [symptomInput, symptomIdInput, symptomDateInput]
+  );
+}
 
 // =========================================================
 // Analysis
@@ -466,41 +360,182 @@ const fetchTemporalStats = async (allergenName) => {
   }
 };
 
+const setupAnalysis = () => {
+  const updatePlotButton = getElement("update-plot-btn");
+  if (!updatePlotButton) return;
+
+  updatePlotButton.addEventListener("click", async () => {
+    const allergenIntInput = getElement("allergen-intensity-input");
+    const lagWindowInput = getElement("lag-window");
+    const symptomGroupInput = getElement("symptom-group-input");
+    
+    const allergenName = allergenIntInput?.value || "Dairy";
+    const lagWindow = lagWindowInput?.value || "0_6";
+    
+    const LAG_WINDOWS = {
+      "0_6": { start: 0, end: 6 },
+      "6_24": { start: 6, end: 24 },
+      "24_48": { start: 24, end: 48 },
+      "0_24": { start: 0, end: 24 },
+      "0_48": { start: 0, end: 48 },
+      "0_72": { start: 0, end: 72 }
+    };
+    
+    const { start, end } = LAG_WINDOWS[lagWindow] || LAG_WINDOWS["0_6"];
+    const symptomGroup = symptomGroupInput?.value || "";
+    const lagWindowText = `${start} - ${end} hrs`;
+
+    updateCaptions(allergenName, symptomGroup, lagWindowText);
+
+    try {
+      const cacheBust = Date.now();
+      
+      // Fetch intensity-volume plot
+      const intensityVolumePlotImg = getElement("analysis-intensity-volume-plot");
+      if (intensityVolumePlotImg) {
+        const res = await fetch(
+          `${API_URL}/analysis/intensity_volume?allergen_name=${encodeURIComponent(allergenName)}&lag_start=${start}&lag_end=${end}&_=${cacheBust}`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }, cache: "no-store" }
+        );
+        const blob = await res.blob();
+        if (intensityVolumePlotImg.src) URL.revokeObjectURL(intensityVolumePlotImg.src);
+        intensityVolumePlotImg.src = URL.createObjectURL(blob);
+      }
+
+      // Fetch time series plot
+      const timeSeriesPlotImg = getElement("analysis-time-series-plot");
+      if (timeSeriesPlotImg) {
+        const res = await fetch(
+          `${API_URL}/analysis/plot_time_series?allergen_name=${encodeURIComponent(allergenName)}`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
+        );
+        const blob = await res.blob();
+        timeSeriesPlotImg.src = URL.createObjectURL(blob);
+      }
+
+      // Fetch bar plot
+      const barPlotImg = getElement("analysis-bar-plot");
+      if (barPlotImg && symptomGroup) {
+        const res = await fetch(
+          `${API_URL}/analysis/plot_bar_plots?allergen_name=${encodeURIComponent(allergenName)}&lag_start=${start}&lag_end=${end}&symptom_group=${encodeURIComponent(symptomGroup)}&_=${cacheBust}`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
+        );
+        const blob = await res.blob();
+        if (barPlotImg.src) URL.revokeObjectURL(barPlotImg.src);
+        barPlotImg.src = URL.createObjectURL(blob);
+      }
+
+      // Fetch risk plot
+      const riskPlotImg = getElement("analysis-risk-plot");
+      if (riskPlotImg && symptomGroup) {
+        const res = await fetch(
+          `${API_URL}/analysis/plot_risk?allergen_name=${encodeURIComponent(allergenName)}&lag_start=${start}&lag_end=${end}&symptom_group=${encodeURIComponent(symptomGroup)}&_=${cacheBust}`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
+        );
+        const blob = await res.blob();
+        if (riskPlotImg.src) URL.revokeObjectURL(riskPlotImg.src);
+        riskPlotImg.src = URL.createObjectURL(blob);
+      }
+
+      await fetchTemporalStats(allergenName);
+
+    } catch (err) {
+      console.error("Failed to update analysis plots:", err);
+    }
+  });
+};
+
+const fetchAnalysisPlot = async () => {
+  try {
+    // Stats
+    const statsRes = await fetch(`${API_URL}/analysis/stats`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    });
+
+    if (statsRes.ok) {
+      const stats = await statsRes.json();
+      
+      const totalEntriesEl = getElement("stat-total-entries");
+      if (totalEntriesEl) {
+        totalEntriesEl.textContent = 
+          (stats["Total allergens logged"] || 0) + (stats["Total symptoms logged"] || 0);
+      }
+
+      const daysEl = getElement("stat-days");
+      if (daysEl) {
+        daysEl.textContent = stats["Total days tracked"] || 0;
+      }
+    }
+
+    // Histogram plot
+    const histogramPlotImg = getElement("group_histogram");
+    if (histogramPlotImg) {
+      const res = await fetch(`${API_URL}/analysis/symptom_group_histogram`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        histogramPlotImg.src = URL.createObjectURL(blob);
+      }
+    }
+
+    // Allergen rank plot
+    const allergenrankPlotImg = getElement("allergenrank-plot");
+    if (allergenrankPlotImg) {
+      const res = await fetch(`${API_URL}/analysis/plot_allergen_rank`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        allergenrankPlotImg.src = URL.createObjectURL(blob);
+      }
+    }
+
+    // Prediction
+    const predictOut = getElement("predict-out");
+    if (predictOut) {
+      const res = await fetch(`${API_URL}/analysis/predict`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`
+        }
+      });
+      if (res.ok) {
+        predictOut.textContent = await res.text();
+      }
+    }
+
+    await getSummaryText();
+
+  } catch (err) {
+    console.error("Failed to fetch analysis plots:", err);
+  }
+};
+
+// =========================================================
+// Tabs
+// =========================================================
+
+const setupTabs = () => {
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      const target = tab.dataset.tab;
+
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".form").forEach(f => f.classList.remove("active"));
+
+      tab.classList.add("active");
+      const targetForm = getElement(`${target}-form`);
+      if (targetForm) targetForm.classList.add("active");
+
+      if (target === "analysis") fetchAnalysisPlot();
+    });
+  });
+};
+
 // =========================================================
 // Captions
 // =========================================================
-
-function initializeCaptions() {
-  const allergenIntInput = getElement("allergen-intensity-input");
-  const symptomGroupInput = getElement("symptom-group-input");
-  const lagWindowInput = getElement("lag-window");
-
-  const captionAllergen = getElement("caption-allergen");
-  const captionSymptomGroup = getElement("caption-symptom-group");
-  const captionLag = getElement("caption-lag");
-  const captionLagDose = getElement("caption-lag-dose");
-  const captionAllergenDose = getElement("caption-allergen-dose");
-
-  if (captionAllergen && allergenIntInput) {
-    captionAllergen.textContent = allergenIntInput.value || "";
-  }
-  
-  if (captionSymptomGroup && symptomGroupInput) {
-    captionSymptomGroup.textContent = symptomGroupInput.value || "";
-  }
-  
-  if (captionLag && lagWindowInput && lagWindowInput.selectedOptions[0]) {
-    captionLag.textContent = lagWindowInput.selectedOptions[0].text || "";
-  }
-  
-  if (captionLagDose && lagWindowInput && lagWindowInput.selectedOptions[0]) {
-    captionLagDose.textContent = lagWindowInput.selectedOptions[0].text || "";
-  }
-  
-  if (captionAllergenDose && allergenIntInput) {
-    captionAllergenDose.textContent = allergenIntInput.value || "";
-  }
-}
 
 function updateCaptions(allergenName, symptomGroup, lagText) {
   const elements = {
@@ -535,7 +570,7 @@ async function getSummaryText() {
 }
 
 // =========================================================
-// Global click handler
+// Global click handler for hiding suggestions
 // =========================================================
 
 document.addEventListener("click", (e) => {
@@ -545,7 +580,7 @@ document.addEventListener("click", (e) => {
 });
 
 // =========================================================
-// Init (FIXED: Only log out on auth errors)
+// Init
 // =========================================================
 
 async function init() {
@@ -557,51 +592,96 @@ async function init() {
     return;
   }
 
-  // Set up core UI first (safe operations)
-  setupLogout();
-  setupDefaults();
-  setupTabs();
-
-  // Try to authenticate user (this is the only critical step)
-  let user;
   try {
-    user = await getCurrentUser();
-    console.log("✅ User authenticated:", user?.email);
-  } catch (err) {
-    console.error("❌ Authentication failed:", err);
-    localStorage.removeItem("access_token");
-    window.location.href = "index.html";
-    return; // Stop here - don't proceed if auth fails
-  }
+    const user = await getCurrentUser();
+    console.log("Current user:", user);
+    
+    const userEmailEl = getElement("user-email");
+    if (userEmailEl) userEmailEl.textContent = user.email;
 
-  // Display user info
-  const userEmailEl = getElement("user-email");
-  if (userEmailEl) userEmailEl.textContent = user.email;
+    // Set up UI components
+    setupLogout();
+    setupDefaults();
+    setupTabs();
 
-  // Load data and set up UI (non-critical - errors here won't log you out)
-  try {
-    console.log("Loading data...");
+    // Load data (run in parallel)
+    console.log("Loading units and allergens...");
     await Promise.all([
       fetchUnits(),
       fetchAllergens()
     ]);
-    console.log("✅ Data loaded");
-  } catch (err) {
-    console.error("❌ Data loading error (non-critical):", err);
-    // Continue anyway - don't log out for data issues
-  }
+    console.log("Data loading complete");
 
-  try {
-    // Set up UI components
+    // Set up autocomplete (after data is loaded)
+    console.log("Setting up autocomplete...");
+    setupAutocomplete(
+      getElement("allergen-input"),
+      getElement("allergen-id"),
+      getElement("allergen-suggestions"),
+      "allergen"
+    );
+    setupAutocomplete(
+      getElement("symptom-input"),
+      getElement("symptom-id"),
+      getElement("symptom-suggestions"),
+      "symptom"
+    );
+    setupAutocomplete(
+      getElement("allergen-intensity-input"),
+      getElement("allergen-intensity-id"),
+      getElement("allergen-intensity-suggestions"),
+      "allergen"
+    );
+    setupAutocomplete(
+      getElement("symptom-group-input"),
+      null,
+      getElement("symptom-group-suggestions"),
+      "symptom_group"
+    );
+
+    // Set up forms
     setupForms();
-    setupAnalysis();
-    initializeCaptions();
-    
-    console.log("✅ UI setup complete");
-  } catch (err) {
-    console.error("❌ UI setup error (non-critical):", err);
-    // Continue anyway
-  }
 
-  console.log("✅ init() completed successfully");
+    // Initialize captions
+    initializeCaptions();
+
+    console.log("✅ init() completed successfully");
+
+  } catch (err) {
+    console.error("❌ init() failed:", err);
+    localStorage.removeItem("access_token");
+    window.location.href = "index.html";
+  }
+}
+
+function initializeCaptions() {
+  const allergenIntInput = getElement("allergen-intensity-input");
+  const symptomGroupInput = getElement("symptom-group-input");
+  const lagWindowInput = getElement("lag-window");
+
+  const captionAllergen = getElement("caption-allergen");
+  const captionSymptomGroup = getElement("caption-symptom-group");
+  const captionLag = getElement("caption-lag");
+  const captionLagDose = getElement("caption-lag-dose");
+  const captionAllergenDose = getElement("caption-allergen-dose");
+
+  if (captionAllergen && allergenIntInput) {
+    captionAllergen.textContent = allergenIntInput.value || "";
+  }
+  
+  if (captionSymptomGroup && symptomGroupInput) {
+    captionSymptomGroup.textContent = symptomGroupInput.value || "";
+  }
+  
+  if (captionLag && lagWindowInput && lagWindowInput.selectedOptions[0]) {
+    captionLag.textContent = lagWindowInput.selectedOptions[0].text || "";
+  }
+  
+  if (captionLagDose && lagWindowInput && lagWindowInput.selectedOptions[0]) {
+    captionLagDose.textContent = lagWindowInput.selectedOptions[0].text || "";
+  }
+  
+  if (captionAllergenDose && allergenIntInput) {
+    captionAllergenDose.textContent = allergenIntInput.value || "";
+  }
 }
