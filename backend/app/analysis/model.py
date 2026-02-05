@@ -45,7 +45,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         for lag_window in lag_windows:
 
             # --- Load data ---
-            X, y = get_xy(db, allergen_events, symptom_events, lag_window)
+            X, y = get_xy(db, current_user, allergen_events, symptom_events, lag_window)
 
             # One-hot encode allergens
             X = pd.get_dummies(X["allergen_name"])

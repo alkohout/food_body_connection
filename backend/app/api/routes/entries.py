@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models.table_class import AllergenLog, SymptomLog, User
+from app.models.table_class import AllergenLog, SymptomLog, User, Allergen, Symptom
 from app.api.routes.auth import get_current_user
 from app.schemas import AllergenLogCreate, SymptomLogCreate
 
@@ -15,6 +15,21 @@ def log_allergen(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+
+    # Validate allergen belongs to current user
+    allergen = (
+        db.query(Allergen)
+        .filter(Allergen.allergen_id == payload.allergen_id)
+        .filter(Allergen.user_id == current_user.user_id)
+        .first()
+    )
+
+    if not allergen:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid allergen_id: this allergen does not belong to the current user"
+        )
+
     new_entry = AllergenLog(
         user_id=current_user.user_id,
         allergen_id=payload.allergen_id,
@@ -33,6 +48,18 @@ def log_symptom(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+
+    # Validate symptom belongs to user
+    symptom = (
+        db.query(Symptom)
+        .filter(Symptom.symptom_id == payload.symptom_id)
+        .filter(Symptom.user_id == current_user.user_id)
+        .first()
+    )
+
+    if not symptom:
+        raise HTTPException(400, "Invalid symptom ID for this user")
+
     new_entry = SymptomLog(
         user_id=current_user.user_id,
         symptom_id=payload.symptom_id,

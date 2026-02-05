@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 import pandas as pd
 
-def get_xy(db: Session, allergen_df: pd.DataFrame, symptom_df: pd.DataFrame, lag_window: tuple[int, int] = (6, 24)):
+def get_xy(db: Session, current_user: int, allergen_df: pd.DataFrame, symptom_df: pd.DataFrame, lag_window: tuple[int, int] = (6, 24)):
     """
     Constructs the feature matrix X for prediction based on allergen and symptom dataframes.
     """
@@ -14,7 +14,7 @@ def get_xy(db: Session, allergen_df: pd.DataFrame, symptom_df: pd.DataFrame, lag
     for _, allergen_event in allergen_df.iterrows():
         exposure_time = allergen_event["date_time"]
         allergen_id = allergen_event["allergen_id"]
-        allergen_name = get_allergen_name_str(db, allergen_id) 
+        allergen_name = get_allergen_name_str(db, current_user, allergen_id) 
         volume = allergen_event.get("volume", 0.0)  # return 0.0 if volume not present
 
         lag_start, lag_end = lag_window  # hours

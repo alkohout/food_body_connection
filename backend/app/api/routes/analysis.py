@@ -91,6 +91,7 @@ def plot_data(
         db.query(AllergenLog.date_time)
         .join(Allergen)
         .filter(AllergenLog.user_id == current_user.user_id)
+        .filter(Allergen.user_id == current_user.user_id)
         .filter(Allergen.allergen_name == allergen)
     )
 
@@ -99,6 +100,7 @@ def plot_data(
         db.query(SymptomLog.date_time)
         .join(Symptom)
         .filter(SymptomLog.user_id == current_user.user_id)
+        .filter(Symptom.user_id == current_user.user_id)
         .filter(Symptom.symptom_name == symptom)
     )
 

@@ -5,7 +5,13 @@ from app.models.table_class import AllergenLog, SymptomLog, Allergen, Symptom, U
 import pandas as pd
 
 def get_allergen_events(db: Session, user_id: int, allergen_name: str, start_dt=None, end_dt=None):
-    allergen = db.query(Allergen).filter(Allergen.allergen_name == allergen_name).first()
+
+    allergen = (
+        db.query(Allergen)
+        .filter(Allergen.user_id == user_id)
+        .filter(Allergen.allergen_name == allergen_name)
+        .first()
+    )
     if not allergen:
         return [] 
 
@@ -52,7 +58,12 @@ def get_allergen_events_df(
     return df
 
 def get_symptom_events(db: Session, user_id: int, symptom_name: str, start_dt=None, end_dt=None):
-    symptom = db.query(Symptom).filter(Symptom.symptom_name == symptom_name).first()
+    symptom = (
+        db.query(Symptom)
+        .filter(Symptom.user_id == user_id)
+        .filter(Symptom.symptom_name == symptom_name)
+        .first()
+    )
     if not symptom:
         return []
 
@@ -82,7 +93,12 @@ def get_all_symptom_events_df(db: Session, user_id: int, symptom_name=None, symp
 
     rows = []
     for e in events:
-        symptom = db.query(Symptom).filter(Symptom.symptom_id == e.symptom_id).first()
+        symptom = (
+            db.query(Symptom)
+            .filter(Symptom.user_id == user_id)
+            .filter(Symptom.symptom_id == e.symptom_id)
+            .first()
+        )
         rows.append({
             "date_time": e.date_time,
             "symptom_id": e.symptom_id,
@@ -116,7 +132,12 @@ def get_all_allergen_events_df(db: Session, user_id: int, allergen_name=None,sta
 
     rows = []
     for e in events:
-        allergen = db.query(Allergen).filter(Allergen.allergen_id == e.allergen_id).first()
+        allergen = (
+            db.query(Allergen)
+            .filter(Allergen.user_id == user_id)
+            .filter(Allergen.allergen_id == e.allergen_id)
+            .first()
+        )
         unit_obj = get_unit(db, unit_id=e.unit_id)
         conversion = unit_obj.unit_conversion if unit_obj else None
         volume = e.quantity * conversion if e.quantity and conversion else None
@@ -147,30 +168,47 @@ def get_unit(db: Session, unit_id=None, unit_name=None):
     else:
         return None
 
-def get_allergen(db: Session, allergen_id=None, allergen_name=None):
+def get_allergen(db: Session, user_id: int, allergen_id=None, allergen_name=None):
     if allergen_name:
-        query = db.query(Allergen).filter(Allergen.allergen_name == allergen_name)
+        query = (
+            db.query(Allergen)
+            .filter(Allergen.user_id == user_id)
+            .filter(Allergen.allergen_name == allergen_name)
+        )
         return query.first()
     elif allergen_id:
-        query = db.query(Allergen).filter(Allergen.allergen_id == allergen_id)
+        query = (
+            db.query(Allergen)
+            .filter(Allergen.user_id == user_id)
+            .filter(Allergen.allergen_id == allergen_id)
+        )
         return query.first()
     else:
         return None
 
-def get_symptom(db: Session, symptom_id=None, symptom_name=None):
+def get_symptom(db: Session, user_id: int, symptom_id=None, symptom_name=None):
     if symptom_name:
-        query = db.query(Symptom).filter(Symptom.symptom_name == symptom_name)
+        query = (
+            db.query(Symptom)
+            .filter(Symptom.user_id == user_id)
+            .filter(Symptom.symptom_name == symptom_name)
+        )
         return query.first()
     elif symptom_id:
-        query = db.query(Symptom).filter(Symptom.symptom_id == symptom_id)
+        query = (
+            db.query(Symptom)
+            .filter(Symptom.user_id == user_id)
+            .filter(Symptom.symptom_id == symptom_id)
+        )
         return query.first()
     else:
         return None
 
-def get_allergen_name_str(db: Session, allergen_id=None):
+def get_allergen_name_str(db: Session, user_id: int, allergen_id=None):
     if allergen_id:
         obj = (
             db.query(Allergen)
+            .filter(Allergen.user_id == user_id)
             .filter(Allergen.allergen_id == allergen_id)
             .first()
         )

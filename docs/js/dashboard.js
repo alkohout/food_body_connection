@@ -148,12 +148,8 @@ const fetchAllergens = async () => {
     allergenSelect.innerHTML = '<option value="">Select an allergen...</option>';
     
     if (allergens.length === 0) {
-      console.warn("API returned empty allergens array");
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = "No allergens available";
-      allergenSelect.appendChild(opt);
-      return;
+        allergenSelect.innerHTML = '<option value="">No allergens found — add one above</option>';
+        return;
     }
 
     allergens.forEach((u, i) => {
@@ -178,6 +174,50 @@ const fetchAllergens = async () => {
   }
 };
 
+async function addNewAllergen(name) {
+  const token = localStorage.getItem("access_token");
+  if (!token) return;
+
+  try {
+    const res = await fetch(`${API_URL}/allergens`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ allergen_name: name })
+    });
+
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(txt);
+    }
+
+    const data = await res.json();
+    console.log("Created allergen:", data);
+
+    // Refresh dropdown with new list
+    await fetchAllergens();
+
+    // AUTO‑SELECT the newly added allergen
+    const select = getElement("allergen-select");
+    if (select) {
+      select.value = data.allergen_id;
+    }
+
+    // Fill the text input and ID hidden input
+    const input = getElement("allergen-input");
+    const idInput = getElement("allergen-id");
+    if (input) input.value = data.allergen_name;
+    if (idInput) idInput.value = data.allergen_id;
+
+    return data;
+  } catch (err) {
+    console.error("Failed to create allergen:", err);
+    alert("Error adding allergen: " + err.message);
+  }
+}
+
 // =========================================================
 // Autocomplete
 // =========================================================
@@ -185,11 +225,11 @@ const fetchAllergens = async () => {
 const fetchSuggestions = async (query, type) => {
   if (!query) return [];
 
-  const endpoint =
-    type === "allergen" ? "allergens" :
-    type === "symptom_group" ? "symptom_groups" :
-    type === "symptom" ? "symptoms" :
-    "allergens";
+  let endpoint;
+  if (type === "allergen") endpoint = "allergens";
+  else if (type === "symptom_group") endpoint = "symptom_groups";
+  else if (type === "symptom") endpoint = "symptoms";
+  else throw new Error("Invalid autocomplete type: " + type);
 
   try {
     const res = await fetch(
@@ -252,6 +292,30 @@ const setupAutocomplete = (inputEl, idEl, suggestionsEl, type) => {
 
   inputEl.addEventListener("input", handleInput);
 };
+
+if (type === "allergen") {
+  const addBtnWrapper = getElement("add-allergen-wrapper");
+  const addBtn = getElement("add-allergen-btn");
+
+  if (data.length === 0 && inputEl.value.trim().length > 1) {
+    addBtnWrapper.style.display = "block";
+    addBtn.textContent = `Add "${inputEl.value.trim()}" as a new allergen`;
+
+    addBtn.onclick = async () => {
+      const newName = inputEl.value.trim();
+
+      const created = await addNewAllergen(newName);
+      if (created) {
+        // Hide the button again
+        addBtnWrapper.style.display = "none";
+      }
+    };
+    suggestionsEl.innerHTML = "";
+    suggestionsEl.classList.remove("visible");
+  } else {
+    addBtnWrapper.style.display = "none";
+  }
+}
 
 // =========================================================
 // Generic form submitter

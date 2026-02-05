@@ -4,7 +4,9 @@ from app.database import engine, Base
 from app.api.routes.auth import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
 import app.api.routes.allergens as allergens
+import app.api.routes.create_allergen as create_allergen
 import app.api.routes.symptoms as symptoms 
+import app.api.routes.create_symptom as create_symptom
 import app.api.routes.symptom_groups as symptom_groups 
 import app.api.routes.analysis as analysis
 import app.api.routes.intensity_volume as intensity_volume
@@ -38,7 +40,9 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(allergens.router)
+app.include_router(create_allergen.router)
 app.include_router(symptoms.router)
+app.include_router(create_symptom.router)
 app.include_router(symptom_groups.router)
 app.include_router(units.router)
 app.include_router(entries.router)
