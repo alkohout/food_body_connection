@@ -657,9 +657,13 @@ async function init() {
   }
 
   try {
+
     const user = await getCurrentUser();
     console.log("Current user:", user);
-    
+    if (!user || !user.email) {
+        console.warn("getCurrentUser() returned invalid user:", user);
+    }
+
     const userEmailEl = getElement("user-email");
     if (userEmailEl) userEmailEl.textContent = user.email;
 
