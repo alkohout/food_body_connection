@@ -83,7 +83,7 @@ def main():
         symptom_objects = []
         for group_name, symptoms in SYMPTOM_GROUPS.items():
             for s in symptoms:
-                symptom_objects.append(Symptom(symptom_name=s, symptom_group=group_name))
+                symptom_objects.append(Symptom(symptom_name=s, symptom_group=group_name, user_id=test_user.user_id))
 
         db.add_all(symptom_objects)
         db.commit()
