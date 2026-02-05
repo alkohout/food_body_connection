@@ -658,10 +658,13 @@ async function init() {
 
   try {
 
+    console.log("Calling getCurrentUser()");
     const user = await getCurrentUser();
-    console.log("Current user:", user);
+    console.log("Received user:", user);
+
     if (!user || !user.email) {
-        console.warn("getCurrentUser() returned invalid user:", user);
+      console.error("Invalid user object!", user);
+      throw new Error("Invalid user");
     }
 
     const userEmailEl = getElement("user-email");
@@ -736,8 +739,8 @@ async function init() {
 
   } catch (err) {
     console.error("❌ init() failed:", err);
-    localStorage.removeItem("access_token");
-    window.location.href = "index.html";
+    //localStorage.removeItem("access_token");
+    //window.location.href = "index.html";
   }
 }
 
@@ -772,3 +775,9 @@ function initializeCaptions() {
     captionAllergenDose.textContent = allergenIntInput.value || "";
   }
 }
+
+fetch(API_URL + "/auth/me", {
+   headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+})
+.then(r => r.text())
+.then(t => console.log("AUTH RAW RESPONSE:", t));
