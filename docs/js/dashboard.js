@@ -291,31 +291,33 @@ const setupAutocomplete = (inputEl, idEl, suggestionsEl, type) => {
   }, 300);
 
   inputEl.addEventListener("input", handleInput);
+
+  if (type === "allergen") {
+    const addBtnWrapper = getElement("add-allergen-wrapper");
+    const addBtn = getElement("add-allergen-btn");
+
+    if (data.length === 0 && inputEl.value.trim().length > 1) {
+      addBtnWrapper.style.display = "block";
+      addBtn.textContent = `Add "${inputEl.value.trim()}" as a new allergen`;
+
+      addBtn.onclick = async () => {
+        const newName = inputEl.value.trim();
+
+        const created = await addNewAllergen(newName);
+        if (created) {
+          // Hide the button again
+          addBtnWrapper.style.display = "none";
+        }
+      };
+      suggestionsEl.innerHTML = "";
+      suggestionsEl.classList.remove("visible");
+    } else {
+      addBtnWrapper.style.display = "none";
+    }
+  }
+
 };
 
-if (type === "allergen") {
-  const addBtnWrapper = getElement("add-allergen-wrapper");
-  const addBtn = getElement("add-allergen-btn");
-
-  if (data.length === 0 && inputEl.value.trim().length > 1) {
-    addBtnWrapper.style.display = "block";
-    addBtn.textContent = `Add "${inputEl.value.trim()}" as a new allergen`;
-
-    addBtn.onclick = async () => {
-      const newName = inputEl.value.trim();
-
-      const created = await addNewAllergen(newName);
-      if (created) {
-        // Hide the button again
-        addBtnWrapper.style.display = "none";
-      }
-    };
-    suggestionsEl.innerHTML = "";
-    suggestionsEl.classList.remove("visible");
-  } else {
-    addBtnWrapper.style.display = "none";
-  }
-}
 
 // =========================================================
 // Generic form submitter
