@@ -26,21 +26,19 @@ def search_allergens(
     if q:
         query = query.filter(Allergen.allergen_name.ilike(f"%{q}%"))
         logger.info(f"With search filter: {query}")
-    
-    # Execute query
-    results = query.order_by(Allergen.allergen_name).all()
+        results = (
+            db.query(Allergen)
+            .filter(Allergen.allergen_name.ilike(f"%{q}%"))
+            .order_by(Allergen.allergen_name)
+            .limit(10)
+            .all()
+        )
+    else:
+        results = query.order_by(Allergen.allergen_name).all()
     
     logger.info(f"Raw SQL: {query.statement.compile(compile_kwargs={'literal_binds': True})}")
     logger.info(f"Results count: {len(results)}")
     logger.info(f"Results: {[(r.allergen_id, r.allergen_name) for r in results[:3]]}")
-
-#    results = (
-#        db.query(Allergen)
-#        .filter(Allergen.allergen_name.ilike(f"%{q}%"))
-#        .order_by(Allergen.allergen_name)
-#        .limit(10)
-#        .all()
-#    )
 
     return [
         {
