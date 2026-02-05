@@ -105,7 +105,6 @@ headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
 });
 if (!res.ok) throw new Error(res.statusText);
 
-text
   const units = await res.json();
   units.forEach(u => {
     const opt = document.createElement("option");
@@ -131,7 +130,6 @@ headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
 });
 if (!res.ok) throw new Error(res.statusText);
 
-text
   const allergens = await res.json();
   allergens.forEach(u => {
     const opt_allergen = document.createElement("option");
@@ -153,7 +151,6 @@ fetchAllergens();
 const fetchSuggestions = async (query, type) => {
 if (!query) return [];
 
-text
 const endpoint =
   type === "allergen" ? "allergens" :
   type === "symptom_group" ? "symptom_groups" :
@@ -172,7 +169,6 @@ return await res.json();
 const setupAutocomplete = (inputEl, idEl, suggestionsEl, type) => {
 if (!inputEl) return;
 
-text
 inputEl.addEventListener("input", debounce(async () => {
   const query = inputEl.value.trim();
 
@@ -225,7 +221,6 @@ setupAutocomplete(symptomGroupInput, null, symptomGroupSuggestions, "symptom_gro
 const submitForm = (formEl, endpoint, payloadFn, successEl, errorEl, resetFields = []) => {
 if (!formEl) return;
 
-text
 formEl.addEventListener("submit", async e => {
   e.preventDefault();
 
@@ -299,12 +294,10 @@ const res = await fetch(
 { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
 );
 
-text
   if (!res.ok) throw new Error(res.statusText);
   const data = await res.json();
 };
 
-text
   //statsTableBody.innerHTML = "";
 
   //if (statsTableBody){
@@ -341,7 +334,6 @@ text
 //}
 document.getElementById("update-plot-btn")?.addEventListener("click", async () => {
 
-text
 const allergenName = allergenIntInput.value || "Dairy";
 //const lagWindow = lagWindowInput.value || "0_6";
 const lagWindow = lagWindowInput.value;
@@ -444,7 +436,6 @@ const statsRes = await fetch(`${API_URL}/analysis/stats`, {
 headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
 });
 
-text
 if (!statsRes.ok) throw new Error(statsRes.statusText);
 const stats = await statsRes.json();
 
@@ -512,7 +503,6 @@ document.querySelectorAll(".tab").forEach(tab => {
 tab.addEventListener("click", () => {
 const target = tab.dataset.tab;
 
-text
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
   document.querySelectorAll(".form").forEach(f => f.classList.remove("active"));
 
