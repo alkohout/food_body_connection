@@ -19,6 +19,23 @@ const localDateTimeForInput = (date = new Date()) => {
   return new Date(date.getTime() - tzOffsetMs).toISOString().slice(0, 16);
 };
 
+function positionRangeLabels(sliderId, labelsId) {
+  const slider = document.getElementById(sliderId);
+  const labelsContainer = document.getElementById(labelsId);
+
+  if (!slider || !labelsContainer) return;
+
+  const min = Number(slider.min);
+  const max = Number(slider.max);
+  const labels = labelsContainer.querySelectorAll("span");
+
+  labels.forEach(label => {
+    const value = Number(label.dataset.value);
+    const percent = (value - min) / (max - min);
+    label.style.left = `${percent * 100}%`;
+  });
+}
+
 // =========================================================
 // Elements (re-query inside functions for safety)
 // =========================================================
@@ -930,6 +947,14 @@ async function init() {
     // Set up forms
     setupForms();
 
+    // ✅ Position slider labels
+    positionRangeLabels("symptom-intensity", "intensity-labels");
+
+    // Re-position on resize
+    window.addEventListener("resize", () =>
+      positionRangeLabels("symptom-intensity", "intensity-labels")
+    );
+
     // Set up analysis
     setupAnalysis();
 
@@ -982,3 +1007,4 @@ fetch(API_URL + "/auth/me", {
 })
 .then(r => r.text())
 .then(t => console.log("AUTH RAW RESPONSE:", t));
+

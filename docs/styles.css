@@ -317,10 +317,22 @@ select:focus {
 
 .range-wrapper {
   width: 100%;
+  position: relative;
+}
+
+.range-wrapper input[type="range"] {
+  width: 100%;
 }
 
 .range-labels {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  position: relative;
+  height: 1.5em;
   margin-top: 6px;
+}
+
+.range-labels span {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 0.85em;
+  white-space: nowrap;
 }
