@@ -30,7 +30,7 @@ def main():
     # ---------------------------------------------------
     random_user = create_user(db, "random_user@example.com")
     significant_user = create_user(db, "significant_stat@example.com")
-    test_user = create_user(db, "test@example.com")
+    seed_user = create_user(db, "seed@data.com")
 
     users = db.query(User).all()
 
@@ -103,22 +103,22 @@ def main():
     db.commit()
 
     # ---------------------------------------------------
-    # 6. Add demo logs for test@example.com
+    # 6. Add demo logs for seed@data.com
     # ---------------------------------------------------
 
     # Get the first allergen for this user
     first_allergen = db.query(Allergen).filter(
-        Allergen.user_id == test_user.user_id
+        Allergen.user_id == seed_user.user_id
     ).first()
 
     # Get the first symptom for this user
     first_symptom = db.query(Symptom).filter(
-        Symptom.user_id == test_user.user_id
+        Symptom.user_id == seed_user.user_id
     ).first()
 
     # Add logs using correct user-specific IDs
     db.add(AllergenLog(
-        user_id=test_user.user_id,
+        user_id=seed_user.user_id,
         date_time=datetime.now(timezone.utc),
         allergen_id=first_allergen.allergen_id,
         quantity=2,
@@ -126,7 +126,7 @@ def main():
     ))
 
     db.add(SymptomLog(
-        user_id=test_user.user_id,
+        user_id=seed_user.user_id,
         date_time=datetime.now(timezone.utc),
         symptom_id=first_symptom.symptom_id,
         symptom_intensity=3
