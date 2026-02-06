@@ -321,7 +321,7 @@ select:focus {
 }
 
 .range-wrapper input[type="range"] {
-  width: 100%;
+  width: 90%;
 }
 
 .range-labels {
