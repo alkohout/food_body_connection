@@ -43,8 +43,8 @@ def search_symptoms(
 
     return [
         {
-            "allergen_id": a.allergen_id,
-            "allergen_name": a.allergen_name
+            "symptom_id": a.symptom_id,
+            "symptom_name": a.symptom_name
         }
         for a in results
     ]
