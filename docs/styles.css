@@ -309,13 +309,14 @@ button.primary {
   margin: 0.25rem 0 0.75rem;
 }
 
-/* Improve inline add layout (no behavior change) */
 .inline-add {
-  display: flex;
+  display: inline-flex;
+  align-items: center;
   gap: 0.5rem;
 }
 
-.inline-add input {
+.inline-add input[type="text"] {
+  width: 20ch;
   flex: 1;
 }
 
