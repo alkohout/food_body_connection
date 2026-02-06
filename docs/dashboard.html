@@ -89,27 +89,39 @@
         </select>
       </div>
 
-      <label> Symptom </label>
-      <div class="autocomplete-wrapper" style="position: relative;">
-        <input type="text" id="symptom-input" autocomplete="off" />
-        <input type="hidden" id="symptom-id" />
-        <ul id="symptom-suggestions" class="suggestions"></ul>
+      <p class="helper-text">
+        Can’t find the symptom you’re looking for? Add a new one below.
+      </p>
+
+      <div class="form-row">
+        <label></label>
+        <div class="inline-add">
+          <input
+            type="text"
+            id="new-symptom-name"
+            placeholder="New symptom name"
+          />
+          <button type="button" class="secondary" id="add-symptom-btn">Add</button>
+        </div>
       </div>
 
-      <label>
-        Date & time
-        <input type="datetime-local" id="symptom-date" />
-      </label>
+      <input type="hidden" id="symptom-id">
+
+      <div class="form-row">
+        <label for="symptom-date">Date &amp; time</label>
+        <input type="datetime-local" id="symptom-date" required />
+      </div>
 
       <label>
         Intensity 
         <input type="range" id="symptom-intensity" min="0" max="3" />
       </label>
 
-      <button type="submit" class="primary">Log symptom</button>
+      <button type="submit" class="primary">Log allergen</button>
 
-      <p id="symptom-success" class="success"></p>
-      <p id="symptom-error" class="error"></p>
+      <p id="log-success" class="success"></p>
+      <p id="log-error" class="error"></p>
+
     </form>
 
     <!-- Analysis tab -->

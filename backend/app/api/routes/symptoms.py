@@ -6,6 +6,7 @@ from app.models.table_class import User
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.table_class import Symptom
+from typing import Optional
 import logging
 
 logger = logging.getLogger(__name__)
