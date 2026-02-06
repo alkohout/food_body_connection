@@ -30,52 +30,53 @@
     </div>
 
     <!-- Allergen tab -->
-    <form id="allergen-form" class="form active">
-      <label for="allergen-select" class="inline-label">Allergen</label>
-      <select id="allergen-select" required>
-        <option value="">Select an allergen...</option>
-      </select>
+     <form id="allergen-form" class="form active">
 
-      <p></p>
+      <div class="form-row">
+        <label for="allergen-select">Allergen</label>
+        <select id="allergen-select" required>
+          <option value="">Select an allergen…</option>
+        </select>
+      </div>
+
       <p class="helper-text">
         Can’t find the allergen you’re looking for? Add a new one below.
       </p>
 
-      <div class="inline-add">
-        <input
-          type="text"
-          id="new-allergen-name"
-          placeholder="New allergen name"
-        />
-        <button type="button" id="add-allergen-btn" class="secondary">
-          Add
-        </button>
+      <div class="form-row">
+        <label></label>
+        <div class="inline-add">
+          <input
+            type="text"
+            id="new-allergen-name"
+            placeholder="New allergen name"
+          />
+          <button type="button" class="secondary">Add</button>
+        </div>
       </div>
 
       <input type="hidden" id="allergen-id">
 
-      <p></p>
-      <label for="allergen-date" class="inline-label">
-        Date &amp; time
+      <div class="form-row">
+        <label for="allergen-date">Date &amp; time</label>
         <input type="datetime-local" id="allergen-date" required />
-      </label>
+      </div>
 
-      <label>
-        Quantity
-        <input type="number" step="1.0" id="allergen-quantity" />
-      </label>
-
-      <label>
-        Unit
-        <select id="allergen-unit">
-          <option value="">—</option>
-        </select>
-      </label>
+      <div class="form-row">
+        <label for="allergen-quantity">Quantity</label>
+        <div class="inline-fields">
+          <input type="number" step="1" id="allergen-quantity" />
+          <select id="allergen-unit">
+            <option value="">—</option>
+          </select>
+        </div>
+      </div>
 
       <button type="submit" class="primary">Log allergen</button>
 
       <p id="log-success" class="success"></p>
       <p id="log-error" class="error"></p>
+
     </form>
 
     <!-- Symptom tab -->

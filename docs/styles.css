@@ -1,37 +1,45 @@
-body {
-  color: #1F3A5F;
+/* =========================
+   Base / Reset
+   ========================= */
+
+html, body {
+  height: 100%;
   margin: 0;
-  padding: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background-image:
-    linear-gradient(
-      rgba(255, 255, 255, 0.15),
-      rgba(255, 255, 255, 0.15)
-    ),
-    url("assets/images/background.png");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
 }
 
-/* Mobile / portrait screens */
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #1f3a5f;
+  background:
+    linear-gradient(rgba(255,255,255,0.15), rgba(255,255,255,0.15)),
+    url("assets/images/background.png") center / cover no-repeat fixed;
+}
+
+/* Mobile background */
 @media (max-width: 768px) {
   body {
-    background-image: url('assets/images/foodbody_background_mobile.jpg');
+    background: url("assets/images/foodbody_background_mobile.jpg") center / cover no-repeat;
   }
 }
+
+
+/* =========================
+   Layout
+   ========================= */
 
 .container {
   max-width: 640px;
   margin: 4rem auto;
   padding: 5rem 2.5rem;
-
-  background: rgba(255, 251, 252, .9); /* dark slate, transparent */
+  background: rgba(255, 251, 252, 0.9);
   border-radius: 12px;
-
   box-shadow: 0 20px 40px rgba(229, 231, 235, 0.6);
 }
+
+
+/* =========================
+   Typography
+   ========================= */
 
 h1 {
   font-size: 2.2rem;
@@ -50,42 +58,27 @@ h1 {
   color: #9ca3af;
 }
 
-.actions {
-  margin-top: 2rem;
-}
-
-.button {
-  display: inline-block;
-  padding: 0.75rem 1.25rem;
-  text-decoration: none;
-  border-radius: 6px;
-  font-weight: 600;
-}
-
-.primary {
-  background: #2563eb;
-  color: white;
-}
-
-.primary:hover {
-  background: #1d4ed8;
-}
-
 .success {
   color: #1a7f37;
-  margin-top: 1rem;
   font-weight: 600;
+  margin-top: 1rem;
 }
 
 .error {
-  color:#b42318;
+  color: #b42318;
+  font-weight: 600;
   margin-top: 1rem;
 }
 
-html, body {
-  height: 100%;
-  margin: 0;
+.helper-text {
+  font-size: 0.85rem;
+  color: #64748b;
 }
+
+
+/* =========================
+   Tabs
+   ========================= */
 
 .tabs {
   display: flex;
@@ -108,44 +101,140 @@ html, body {
   border-bottom-color: #4f46e5;
 }
 
-.form {
-  display: none;
+
+/* =========================
+   Buttons
+   ========================= */
+
+button {
+  font-family: inherit;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
-.form.active {
-  display: block;
+.primary {
+  background: #2563eb;
+  color: #fff;
+  border: none;
 }
 
-label {
-  display: block;
-  margin-bottom: 1rem;
+.primary:hover {
+  background: #1d4ed8;
 }
 
-input {
-  width: 100%;
-  padding: 0.6rem;
-  margin-top: 0.25rem;
+.secondary {
+  background: #e5e7eb;
+  color: #1f2937;
+  border: 1px solid #cbd5e1;
+}
+
+.secondary:hover {
+  background: #d1d5db;
 }
 
 button.primary {
   width: 100%;
-  margin-top: 1rem;
+  margin-top: 0.75rem;
+}
+
+
+/* =========================
+   Forms – unified system
+   ========================= */
+
+.form {
+  display: none;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.form.active {
+  display: flex;
+}
+
+/* One row = label + control */
+.form-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Labels */
+.form-row label {
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+/* Inputs & selects */
+input,
+select {
+  height: 2.4rem;
+  padding: 0 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Focus */
+input:focus,
+select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+/* Inline groups (quantity + unit, add allergen) */
+.inline-fields,
+.inline-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Field sizing */
+#allergen-quantity,
+#allergen-unit {
+  width: 80px;
+}
+
+#allergen-date {
+  width: 200px;
+}
+
+.inline-add input[type="text"] {
+  width: 20ch;
+}
+
+/* Helper text alignment */
+.form-row + .helper-text {
+  margin-left: 130px;
+}
+
+
+/* =========================
+   Autocomplete
+   ========================= */
+
+.autocomplete-wrapper {
+  position: relative;
 }
 
 .suggestions {
   display: none;
-  background: white;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border: 1px solid #ccc;
-  max-width: 300px;
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-
   z-index: 1000;
+  background: #fff;
+  border: 1px solid #ccc;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 300px;
 }
 
 .suggestions.visible {
@@ -161,67 +250,46 @@ button.primary {
   background: #eee;
 }
 
-.secondary {
-  background: rgba(255, 255, 255, 0.12);
-  color: #e5e7eb;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-}
 
-.secondary:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.stat-card--secondary {
-  margin-left: 1rem;        /* indent */
-  padding: 0.75rem;         /* slightly tighter */
-  opacity: 0.9;             /* optional: visually de-emphasise */
-}
-
-.stat-card--secondary h4 {
-  font-size: 0.85rem;
-  font-weight: 500;
-  margin-bottom: 0.25rem;
-}
-
-.stat-card--secondary div {
-  font-size: 1.1rem;        /* smaller number */
-}
+/* =========================
+   Stats / Analysis
+   ========================= */
 
 .stat-inline {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
   padding: 0.25rem 0.5rem;
   margin-left: 1rem;
-  gap: 0.5rem;
+  opacity: 0.9;
 }
 
-.stat-inline .stat-label {
-  display: inline-block;
-  width: 110px;  /* adjust so labels align nicely */
+.stat-label {
+  width: 110px;
   font-size: 0.85rem;
   color: #666;
 }
 
-.stat-inline .stat-value {
+.stat-value {
   font-size: 0.85rem;
   font-weight: 500;
-}
-
-.indicator {
-  font-size: 1.2em;
-  margin-left: 6px;
 }
 
 .green { color: #2e7d32; }
 .orange { color: #ef6c00; }
 .red { color: #c62828; }
 
+
+/* =========================
+   Figures / Images
+   ========================= */
+
 .img-figure {
-  display: inline-block;   /* shrink-wrap to image */
+  display: inline-block;
 }
 
 .img-figure img {
-  display: block;          /* remove inline spacing */
+  display: block;
   max-width: 100%;
   height: auto;
 }
@@ -233,140 +301,16 @@ button.primary {
 }
 
 
-.form-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-  position: relative;
-}
+/* =========================
+   Responsive
+   ========================= */
 
-.form-row label {
-  margin: 0;
-  line-height: 2.4rem;
-  white-space: nowrap;
-}
+@media (max-width: 600px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
 
-.form-row input,
-.form-row select {
-  flex: 1;
-  min-width: 200px;
-  height: 2.4rem;
-  padding: 0 0.6rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
-
-.autocomplete-wrapper {
-  position: relative;
-}
-
-#allergen-input {
-  width: 100%;
-  padding-right: 3rem; /* space for the arrow */
-}
-
-#allergen-toggle {
-  position: absolute;
-  top: 0;
-  right: 0;
-  height: 100%;
-  width: 2rem;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-size: 1rem;
-  color: #555;
-}
-
-#allergen-toggle:hover {
-  color: #000;
-}
-
-.success {
-  color: #28a745;
-}
-
-.error {
-  color: #dc3545;
-}
-
-.form > * + * {
-  margin-top: .1rem;
-}
-
-.form-section {
-  border: none;
-  padding: 0;
-}
-/* ---- Safe form polish ---- */
-
-.helper-text {
-  font-size: 0.85rem;
-  color: #64748b;
-  margin: 0.25rem 0 0.75rem;
-}
-
-.inline-add {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.inline-add input[type="text"] {
-  width: 20ch;
-  flex: 1;
-}
-
-/* Make inputs & selects visually consistent */
-input,
-select {
-  border-radius: 4px;
-  border: 1px solid #cbd5e1;
-}
-
-/* Subtle focus styling */
-input:focus,
-select:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
-}
-
-/* Slight spacing improvement without layout changes */
-label {
-  margin-bottom: 1.25rem;
-}
-
-/* Make secondary button readable on light background */
-.secondary {
-  background: #e5e7eb;
-  color: #1f2937;
-  border: 1px solid #cbd5e1;
-}
-
-.secondary:hover {
-  background: #d1d5db;
-}
-
-.quantity-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem; /* space between label text and input */
-}
-
-#allergen-quantity {
-  width: 80px; /* adjust as needed */
-}
-
-.inline-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-#allergen-date {
-  width: 200px; /* adjust to taste */
+  .form-row + .helper-text {
+    margin-left: 0;
+  }
 }
