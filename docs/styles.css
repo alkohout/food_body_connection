@@ -319,18 +319,8 @@ select:focus {
   width: 100%;
 }
 
-.range-wrapper input[type="range"] {
-  width: 100%;
-  margin: 0;
-}
-
 .range-labels {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   margin-top: 6px;
-}
-
-.range-labels span {
-  text-align: center;
-  font-size: 0.85em;
 }
