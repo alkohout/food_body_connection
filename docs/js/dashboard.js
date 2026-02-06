@@ -249,11 +249,11 @@ function setupAddAllergen() {
 const fetchSymptoms = async () => {
   const symptomSelect = getElement("symptom-select");
   if (!symptomSelect) {
-    console.error("CRITICAL: allergen-select element not found!");
+    console.error("CRITICAL: symptom-select element not found!");
     return;
   }
 
-  console.log("Starting to fetch allergens...");
+  console.log("Starting to fetch symptoms...");
   
   try {
     const url = `${API_URL}/symptoms`;
@@ -331,7 +331,7 @@ async function addNewSymptom(name) {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       },
-      body: JSON.stringify({ allergen_name: name })
+      body: JSON.stringify({ symptom_name: name })
     });
 
     if (!res.ok) {
@@ -857,8 +857,10 @@ async function init() {
     await Promise.all([
       fetchUnits(),
       fetchAllergens(),
-      setupAddAllergen(),
+      fetchSymptoms()
     ]);
+    setupAddAllergen(),
+    setupAddSymptom(),
     console.log("Data loading complete");
 
     // -----------------------------------------
@@ -880,6 +882,27 @@ async function init() {
 
         allergenIdInput.value = allergenSelect.value;
         allergenInput.value = selectedOption.textContent;
+      });
+    }
+    // -----------------------------------------
+    // Sync allergen select → inputs
+    // -----------------------------------------
+    const symptomSelect = getElement("symptom-select");
+    const symptomInput = getElement("symptom-input");
+    const symptomIdInput = getElement("symptom-id");
+
+    if (symptomSelect) {
+      symptomSelect.addEventListener("change", () => {
+        const selectedOption = symptomSelect.selectedOptions[0];
+
+        if (!selectedOption || !symptomSelect.value) {
+          symptomInput.value = "";
+          symptomIdInput.value = "";
+          return;
+        }
+
+        symptomIdInput.value = symptomSelect.value;
+        symptomInput.value = selectedOption.textContent;
       });
     }
 
