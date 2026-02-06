@@ -336,3 +336,20 @@ select:focus {
   font-size: 0.85em;
   white-space: nowrap;
 }
+
+.footnote-links {
+  font-size: 0.8em;
+  color: #777;
+  margin-top: 1.5rem;
+}
+
+.footnote-links a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.footnote-links a:hover {
+  color: #333;
+}
