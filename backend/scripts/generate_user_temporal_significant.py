@@ -41,9 +41,14 @@ def generate_significant_allergen_data(
             db.commit()
             db.refresh(user)
 
-        allergens = db.query(Allergen).all()
         units = db.query(Unit).all()
-        symptoms = db.query(Symptom).all()
+        allergens = db.query(Allergen).filter(
+            Allergen.user_id == user.user_id
+        ).all()
+
+        symptoms = db.query(Symptom).filter(
+            Symptom.user_id == user.user_id
+        ).all()
 
         significant_objs = [a for a in allergens if a.allergen_name in significant_allergens]
         neutral_objs = [a for a in allergens if a.allergen_name not in significant_allergens]
