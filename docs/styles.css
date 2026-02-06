@@ -316,12 +316,12 @@ select:focus {
 }
 
 .range-wrapper {
-  width: 90%;
+  width: 100%;
   position: relative;
 }
 
 .range-wrapper input[type="range"] {
-  width: 90%;
+  width: 100%;
 }
 
 .range-labels {
