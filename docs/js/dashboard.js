@@ -740,8 +740,8 @@ async function init() {
 
   } catch (err) {
     console.error("❌ init() failed:", err);
-    //localStorage.removeItem("access_token");
-    //window.location.href = "index.html";
+    localStorage.removeItem("access_token");
+    window.location.href = "index.html";
   }
 }
 
