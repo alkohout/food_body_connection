@@ -349,3 +349,13 @@ label {
 .secondary:hover {
   background: #d1d5db;
 }
+
+.quantity-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem; /* space between label text and input */
+}
+
+#allergen-quantity {
+  width: 80px; /* adjust as needed */
+}
