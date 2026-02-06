@@ -337,19 +337,28 @@ select:focus {
   white-space: nowrap;
 }
 
-.footnote-links {
-  font-size: 0.8em;
-  color: #777;
-  margin-top: 1.5rem;
+
+.project-card {
+  position: relative;
+  padding-bottom: 2.5rem; /* room for footnote */
 }
 
-.footnote-links a {
+.project-footnote {
+  position: absolute;
+  bottom: 0.75rem;
+  right: 0.75rem;
+
+  font-size: 0.75em;
+  color: #888;
+  white-space: nowrap;
+}
+
+.project-footnote a {
   color: inherit;
   text-decoration: underline;
   text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
 }
 
-.footnote-links a:hover {
-  color: #333;
+.project-footnote a:hover {
+  color: #444;
 }
