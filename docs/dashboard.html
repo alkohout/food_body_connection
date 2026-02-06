@@ -116,11 +116,20 @@
         Intensity 
         <input type="range" id="symptom-intensity" min="0" max="3" />
       </label>
+      <div class="range-wrapper">
+        <input type="range" id="symptom-intensity" min="0" max="3" step="1" />
+        <div class="range-labels">
+          <span>0</span>
+          <span>1</span>
+          <span>2</span>
+          <span>3</span>
+        </div>
+      </div>
 
-      <button type="submit" class="primary">Log allergen</button>
+      <button type="submit" class="primary">Log symptom</button>
 
-      <p id="log-success" class="success"></p>
-      <p id="log-error" class="error"></p>
+      <p id="symptom-success" class="success"></p>
+      <p id="symptom-error" class="error"></p>
 
     </form>
 

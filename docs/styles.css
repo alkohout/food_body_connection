@@ -314,3 +314,14 @@ select:focus {
     margin-left: 0;
   }
 }
+
+.range-wrapper {
+  width: 200px;
+}
+
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85em;
+  margin-top: 4px;
+}
