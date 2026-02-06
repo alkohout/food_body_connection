@@ -359,3 +359,13 @@ label {
 #allergen-quantity {
   width: 80px; /* adjust as needed */
 }
+
+.inline-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#allergen-date {
+  width: 200px; /* adjust to taste */
+}
