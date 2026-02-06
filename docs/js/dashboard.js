@@ -94,7 +94,7 @@ const fetchUnits = async () => {
   } catch (err) {
     console.error("Failed to fetch units:", err);
   }
-};
+}
 
 // =========================================================
 // Fetch allergens 
@@ -236,6 +236,151 @@ function setupAddAllergen() {
     // Select newly created allergen
     select.value = created.allergen_id;
     idInput.value = created.allergen_id;
+
+    // Clear input
+    nameInput.value = "";
+  });
+};
+
+// =========================================================
+// Fetch symtpoms 
+// =========================================================
+
+const fetchSymptoms = async () => {
+  const symptomSelect = getElement("symptom-select");
+  if (!symptomSelect) {
+    console.error("CRITICAL: allergen-select element not found!");
+    return;
+  }
+
+  console.log("Starting to fetch allergens...");
+  
+  try {
+    const url = `${API_URL}/symptoms`;
+    console.log("API URL:", url);
+    
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      console.error("No access token found");
+      return;
+    }
+    
+    console.log("Making authenticated request...");
+    const res = await fetch(url, {
+      headers: { 
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/json"
+      }
+    });
+    
+    console.log("Response status:", res.status, res.statusText);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${res.statusText} - ${errorText}`);
+    }
+
+    const symptoms = await res.json();
+    console.log("Raw symptoms data:", symptoms);
+    
+    if (!Array.isArray(symptoms)) {
+      console.error("Expected array but got:", typeof symptoms, symptoms);
+      throw new Error("Invalid data format: expected array");
+    }
+
+    console.log(`Processing ${symptoms.length} symptoms...`);
+    
+    // Clear and repopulate
+    symptomSelect.innerHTML = '<option value="">Select a symptom...</option>';
+    
+    if (symptoms.length === 0) {
+        symptomSelect.innerHTML = '<option value="">No symptoms found — add one above</option>';
+        return;
+    }
+
+    symptoms.forEach((u, i) => {
+      if (!u.symptom_id || !u.symptom_name) {
+        console.warn(`Symptom ${i} missing properties:`, u);
+        return;
+      }
+      const opt_symptom = document.createElement("option");
+      opt_symptom.value = u.symptom_id;
+      opt_symptom.textContent = u.symptom_name;
+      symptomSelect.appendChild(opt_symptom);
+    });
+    
+    console.log(`✅ Successfully populated dropdown with ${symptoms.length} symptoms`);
+    console.log("Dropdown HTML:", symptomSelect.innerHTML.substring(0, 200) + "...");
+    
+  } catch (err) {
+    console.error("❌ Failed to fetch symptoms:", err);
+    
+    // Show error in dropdown
+    symptomSelect.innerHTML = '<option value="">Error loading symptoms</option>';
+  }
+};
+
+async function addNewSymptom(name) {
+  const token = localStorage.getItem("access_token");
+  if (!token) return;
+
+  try {
+    const res = await fetch(`${API_URL}/symptoms`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ allergen_name: name })
+    });
+
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(txt);
+    }
+
+    const data = await res.json();
+    console.log("Created symptom:", data);
+
+    // Refresh dropdown with new list
+    await fetchSymptoms();
+
+    // AUTO‑SELECT the newly added symptom
+    const select = getElement("symptom-select");
+    if (select) {
+      select.value = data.symptom_id;
+    }
+
+    // Fill the text input and ID hidden input
+    const input = getElement("symptom-input");
+    const idInput = getElement("symptom-id");
+    if (input) input.value = data.symptom_name;
+    if (idInput) idInput.value = data.symptom_id;
+
+    return data;
+  } catch (err) {
+    console.error("Failed to create symptom:", err);
+    alert("Error adding symptom: " + err.message);
+  }
+}
+
+function setupAddSymptom() {
+  const addBtn = getElement("add-symptom-btn");
+  const nameInput = getElement("new-symptom-name");
+  const select = getElement("symptom-select");
+  const idInput = getElement("symptom-id");
+
+  if (!addBtn || !nameInput) return;
+
+  addBtn.addEventListener("click", async () => {
+    const name = nameInput.value.trim();
+    if (!name) return alert("Enter a symptom name");
+    const created = await addNewSymptom(name);
+    if (!created) return;
+
+    // Select newly created symptom
+    select.value = created.symptom_id;
+    idInput.value = created.symptom_id;
 
     // Clear input
     nameInput.value = "";
