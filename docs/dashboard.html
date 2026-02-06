@@ -34,15 +34,23 @@
       <h2>Log allergen consumed</h2>
 
       <label for="allergen-select">Allergen</label>
-      <select id="allergen-select" name="allergen_id" required>
-          <option value="">Select an allergen...</option>
+      <select id="allergen-select" required>
+        <option value="">Select an allergen...</option>
       </select>
-      <input type="hidden" id="allergen-input">
+
+      <div class="inline-add">
+        <input
+          type="text"
+          id="new-allergen-name"
+          placeholder="New allergen name"
+        />
+        <button type="button" id="add-allergen-btn" class="secondary">
+          Add
+        </button>
+      </div>
+
       <input type="hidden" id="allergen-id">
 
-      <div id="add-allergen-wrapper" style="display:none; margin-top:4px;">
-        <button id="add-allergen-btn">Add as new allergen</button>
-      </div>
 
       <p></p> <!-- spacing -->
       <label>

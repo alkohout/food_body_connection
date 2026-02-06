@@ -218,6 +218,30 @@ async function addNewAllergen(name) {
   }
 }
 
+function setupAddAllergen() {
+  const addBtn = getElement("add-allergen-btn");
+  const nameInput = getElement("new-allergen-name");
+  const select = getElement("allergen-select");
+  const idInput = getElement("allergen-id");
+
+  if (!addBtn || !nameInput) return;
+
+  addBtn.addEventListener("click", async () => {
+    const name = nameInput.value.trim();
+    if (!name) return alert("Enter an allergen name");
+
+    const created = await addNewAllergen(name);
+    if (!created) return;
+
+    // Select newly created allergen
+    select.value = created.allergen_id;
+    idInput.value = created.allergen_id;
+
+    // Clear input
+    nameInput.value = "";
+  });
+}
+
 // =========================================================
 // Autocomplete
 // =========================================================
@@ -373,15 +397,22 @@ function setupForms() {
   submitForm(
     allergenForm,
     "entries/allergens",
-    () => ({
-      allergen_id: Number(allergenIdInput?.value || 0),
-      date_time: new Date(dateInput?.value || Date.now()).toISOString(),
-      quantity: Number(allergenQuantityInput?.value) || null,
-      unit_id: Number(unitSelect?.value) || null
-    }),
+    () => {
+      const allergenId = Number(allergenIdInput?.value);
+      if (!allergenId) {
+        throw new Error("Please select an allergen");
+      }
+
+      return {
+        allergen_id: allergenId,
+        date_time: new Date(dateInput.value).toISOString(),
+        quantity: Number(allergenQuantityInput.value) || null,
+        unit_id: Number(unitSelect.value) || null
+      };
+    },
     getElement("log-success"),
     getElement("log-error"),
-    [allergenInput, allergenIdInput, dateInput, allergenQuantityInput]
+    [dateInput, allergenQuantityInput]
   );
 
   // Symptom form
@@ -680,7 +711,8 @@ async function init() {
     console.log("Loading units and allergens...");
     await Promise.all([
       fetchUnits(),
-      fetchAllergens()
+      fetchAllergens(),
+      setupAddAllergen(),
     ]);
     console.log("Data loading complete");
 
