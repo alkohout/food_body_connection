@@ -80,7 +80,14 @@
     </form>
 
     <!-- Symptom tab -->
-    <form id="symptom-form" class="form">
+    <form id="symptom-form" class="form active">
+
+      <div class="form-row">
+        <label for="symptom-select">Symptom</label>
+        <select id="symptom-select" required>
+          <option value="">Select an symptom…</option>
+        </select>
+      </div>
 
       <label> Symptom </label>
       <div class="autocomplete-wrapper" style="position: relative;">
