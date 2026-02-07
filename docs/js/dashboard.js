@@ -117,78 +117,154 @@ const fetchUnits = async () => {
 // Fetch allergens 
 // =========================================================
 
+
 const fetchAllergens = async () => {
+  console.log("Starting to fetch allergens...");
+  
+  const url = `${API_URL}/allergens`;
+  console.log("API URL:", url);
+  
+  const token = localStorage.getItem("access_token");
+  if (!token) {
+    console.error("No access token found");
+    return [];
+  }
+  
+  console.log("Making authenticated request...");
+  const res = await fetch(url, {
+    headers: { 
+      "Authorization": `Bearer ${token}`,
+      "Accept": "application/json"
+    }
+  });
+}
+  
+const fetchRecentAllergens = async (limit = 5) => {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      console.error("No access token found");
+      return [];
+    }
+
+    const url = `${API_URL}/allergens/recent?limit=${limit}`;
+    console.log("Fetching recent allergens from:", url);
+
+    const res = await fetch(url, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/json",
+      },
+    });
+
+    console.log("Recent allergens response status:", res.status, res.statusText);
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${res.statusText} - ${errorText}`);
+    }
+
+    const recentAllergens = await res.json();
+    console.log("Recent allergens data:", recentAllergens);
+
+    if (!Array.isArray(recentAllergens)) {
+      console.error("Expected array but got:", typeof recentAllergens, recentAllergens);
+      throw new Error("Invalid data format for /allergens/recent: expected array");
+    }
+
+    return recentAllergens;
+};
+
+// =========================================================
+// Populate allergen <select> with recent + all
+// =========================================================
+
+const populateAllergenSelect = (allergens, recentAllergens) => {
   const allergenSelect = getElement("allergen-select");
   if (!allergenSelect) {
     console.error("CRITICAL: allergen-select element not found!");
     return;
   }
 
-  console.log("Starting to fetch allergens...");
-  
-  try {
-    const url = `${API_URL}/allergens`;
-    console.log("API URL:", url);
-    
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      console.error("No access token found");
-      return;
-    }
-    
-    console.log("Making authenticated request...");
-    const res = await fetch(url, {
-      headers: { 
-        "Authorization": `Bearer ${token}`,
-        "Accept": "application/json"
-      }
-    });
-    
-    console.log("Response status:", res.status, res.statusText);
-    
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`HTTP ${res.status}: ${res.statusText} - ${errorText}`);
-    }
+  // Normalize
+  allergens = Array.isArray(allergens) ? allergens : [];
+  recentAllergens = Array.isArray(recentAllergens) ? recentAllergens : [];
 
-    const allergens = await res.json();
-    console.log("Raw allergens data:", allergens);
-    
-    if (!Array.isArray(allergens)) {
-      console.error("Expected array but got:", typeof allergens, allergens);
-      throw new Error("Invalid data format: expected array");
-    }
+  // Clear existing
+  allergenSelect.innerHTML = "";
 
-    console.log(`Processing ${allergens.length} allergens...`);
-    
-    // Clear and repopulate
-    allergenSelect.innerHTML = '<option value="">Select an allergen...</option>';
-    
-    if (allergens.length === 0) {
-        allergenSelect.innerHTML = '<option value="">No allergens found — add one above</option>';
-        return;
-    }
-
-    allergens.forEach((u, i) => {
-      if (!u.allergen_id || !u.allergen_name) {
-        console.warn(`Allergen ${i} missing properties:`, u);
-        return;
-      }
-      const opt_allergen = document.createElement("option");
-      opt_allergen.value = u.allergen_id;
-      opt_allergen.textContent = u.allergen_name;
-      allergenSelect.appendChild(opt_allergen);
-    });
-    
-    console.log(`✅ Successfully populated dropdown with ${allergens.length} allergens`);
-    console.log("Dropdown HTML:", allergenSelect.innerHTML.substring(0, 200) + "...");
-    
-  } catch (err) {
-    console.error("❌ Failed to fetch allergens:", err);
-    
-    // Show error in dropdown
-    allergenSelect.innerHTML = '<option value="">Error loading allergens</option>';
+  // If nothing at all:
+  if (allergens.length === 0 && recentAllergens.length === 0) {
+    allergenSelect.innerHTML = '<option value="">No allergens found — add one below</option>';
+    return;
   }
+
+  // Default placeholder
+  const defaultOpt = document.createElement("option");
+  defaultOpt.value = "";
+  defaultOpt.textContent = "Select an allergen…";
+  allergenSelect.appendChild(defaultOpt);
+
+  // Track which IDs we already used (to avoid duplicates)
+  const usedIds = new Set();
+
+  // --- Recent allergens group ---
+  if (recentAllergens.length > 0) {
+    const recentGroup = document.createElement("optgroup");
+    recentGroup.label = "Recent allergens";
+
+    recentAllergens.forEach((a, i) => {
+      if (!a.allergen_id || !a.allergen_name) {
+        console.warn(`Recent allergen ${i} missing properties:`, a);
+        return;
+      }
+      usedIds.add(a.allergen_id);
+
+      const opt = document.createElement("option");
+      opt.value = a.allergen_id;
+      opt.textContent = a.allergen_name;
+      recentGroup.appendChild(opt);
+    });
+
+    if (recentGroup.children.length > 0) {
+      allergenSelect.appendChild(recentGroup);
+    }
+  }
+
+  // --- Dashed divider (visual only) ---
+  if (allergens.length > 0) {
+    const divider = document.createElement("option");
+    divider.disabled = true;
+    divider.textContent = "──────────────";
+    allergenSelect.appendChild(divider);
+  }
+
+  // --- All allergens group (excluding ones already in recent) ---
+  if (allergens.length > 0) {
+    const allGroup = document.createElement("optgroup");
+    allGroup.label = "All allergens";
+
+    allergens.forEach((a, i) => {
+      if (!a.allergen_id || !a.allergen_name) {
+        console.warn(`Allergen ${i} missing properties:`, a);
+        return;
+      }
+      if (usedIds.has(a.allergen_id)) {
+        // Skip duplicates that already appear in Recent
+        return;
+      }
+
+      const opt = document.createElement("option");
+      opt.value = a.allergen_id;
+      opt.textContent = a.allergen_name;
+      allGroup.appendChild(opt);
+    });
+
+    if (allGroup.children.length > 0) {
+      allergenSelect.appendChild(allGroup);
+    }
+  }
+
+  console.log("✅ Allergen dropdown populated with recent + all");
 };
 
 async function addNewAllergen(name) {
@@ -869,15 +945,27 @@ async function init() {
     setupDefaults();
     setupTabs();
 
-    // Load data (run in parallel)
-    console.log("Loading units and allergens...");
-    await Promise.all([
-      fetchUnits(),
-      fetchAllergens(),
-      fetchSymptoms()
-    ]);
-    setupAddAllergen(),
-    setupAddSymptom(),
+    try {
+      const [units, allergens, recentAllergens, symptoms] = await Promise.all([
+        fetchUnits(),
+        fetchAllergens(),
+        fetchRecentAllergens(5),
+        fetchSymptoms(),
+      ]);
+
+      populateAllergenSelect(allergens, recentAllergens);
+
+      setupAddAllergen();
+      setupAddSymptom();
+    } catch (err) {
+      console.error("Error during page init:", err);
+
+      const allergenSelect = getElement("allergen-select");
+      if (allergenSelect) {
+        allergenSelect.innerHTML = '<option value="">Error loading allergens</option>';
+      }
+    }
+
     console.log("Data loading complete");
 
     // -----------------------------------------
