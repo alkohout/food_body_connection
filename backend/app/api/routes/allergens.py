@@ -60,7 +60,7 @@ def get_recent_logs(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Return the most recent logs for the current user, ordered by created_at DESC.
+    Return the most recent logs for the current user, ordered by date_timeDESC.
     Default limit: 5 (up to max 50).
     """
 
@@ -70,7 +70,7 @@ def get_recent_logs(
     query = (
         db.query(AllergenLog)
         .filter(AllergenLog.user_id == current_user.user_id)
-        .order_by(AllergenLog.created_at.desc())
+        .order_by(AllergenLog.date_time.desc())
         .limit(limit)
     )
 
@@ -85,8 +85,8 @@ def get_recent_logs(
     # Shape the response
     return [
         {
-            "log_id": l.log_id,
-            "created_at": l.created_at.isoformat() if getattr(l, "created_at", None) else None,
+            "allergen_log_id": l.log_id,
+            "date_time": l.date_time.isoformat() if getattr(l, "date_time", None) else None,
             # Add any fields you want to expose:
             # "message": l.message,
             # "level": l.level,
