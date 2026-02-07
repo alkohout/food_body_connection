@@ -38,10 +38,10 @@ def analysis_stats(
 
     # Combine and take min/max
     all_times = pd.DataFrame(allergen_df["date_time"] + symptom_df["date_time"])
-    total_days = all_times["date_time"].dt.date.nunique()
 
     total_allergen_records = allergen_df["allergen_name"].count()
     total_symptom_records = symptom_df["symptom_name"].count()
+    total_days = total_allergen_records + total_symptom_records
 
     avg_allergens_per_day = allergen_df.groupby(allergen_df["date_time"].dt.date)["allergen_name"].count().mean()
     avg_symptoms_per_day = symptom_df.groupby(symptom_df["date_time"].dt.date)["symptom_name"].count().mean()
