@@ -20,7 +20,7 @@ import traceback
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
 import pandas as pd
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("app/api/routes/stats_report.py")
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
