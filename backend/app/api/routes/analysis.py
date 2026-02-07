@@ -25,37 +25,6 @@ DEFAULT_SYMPTOM = "Nausea"          # default symptom if none selected
 DEFAULT_START_DATE = date(2025, 1, 1)  # earliest date
 DEFAULT_END_DATE = date.today()        # today
 
-@router.get("/stats")
-def analysis_stats(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-
-    all_dates = union_all(
-        select(func.date(AllergenLog.date_time).label("date"))
-            .where(AllergenLog.user_id == current_user.user_id),
-        select(func.date(SymptomLog.date_time).label("date"))
-            .where(SymptomLog.user_id == current_user.user_id),
-    ).subquery()
-
-    total_days = (
-        db.query(func.count(func.distinct(all_dates.c.date)))
-        .scalar()
-    )
-
-    total_allergens = db.query(func.count(AllergenLog.allergen_log_id)) \
-                         .filter(AllergenLog.user_id == current_user.user_id) \
-                         .scalar()
-    total_symptoms = db.query(func.count(SymptomLog.symptom_log_id)) \
-                        .filter(SymptomLog.user_id == current_user.user_id) \
-                        .scalar()
-
-    return {
-        "Total allergens logged": total_allergens,
-        "Total symptoms logged": total_symptoms,
-        "Total days tracked": total_days    
-    }
-
 @router.get("/plot-data")
 
 def plot_data(
