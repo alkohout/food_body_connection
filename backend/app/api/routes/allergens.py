@@ -54,35 +54,50 @@ def search_allergens(
     ]
 
 @router.get("/recent")
-def get_recent_allergens(
-    limit: int = Query(5, ge=1, le=50),
+def get_recent_logs(
+    limit: int = Query(5, ge=1, le=50, description="Max number of recent logs to return"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    logger.info("=== GET /allergens/recent CALLED ===")
+    """
+    Return the most recent logs for the current user, ordered by date_timeDESC.
+    Default limit: 5 (up to max 50).
+    """
+
+    logger.info("=== GET /logs/recent CALLED ===")
     logger.info(f"User: {current_user.user_id}, limit: {limit}")
 
     query = (
-        db.query(Allergen)
-        .join(AllergenLog, AllergenLog.allergen_id == Allergen.allergen_id)
+        db.query(AllergenLog, Allergen)
+        .join(Allergen, Allergen.allergen_id == AllergenLog.allergen_id)
         .filter(AllergenLog.user_id == current_user.user_id)
         .order_by(AllergenLog.date_time.desc())
-        .distinct(Allergen.allergen_id)
         .limit(limit)
     )
 
     logger.info(
-        "Recent allergens SQL: %s",
+        "Recent logs SQL: %s",
         query.statement.compile(compile_kwargs={"literal_binds": True})
     )
 
-    allergens = query.all()
-    logger.info(f"Recent allergens count: {len(allergens)}")
+    logs = query.all()
+    logger.info(f"Recent logs count: {len(logs)}")
 
-    return [
-        {
-            "allergen_id": a.allergen_id,
-            "allergen_name": a.allergen_name,
-        }
-        for a in allergens
-    ]
+    # Shape the response
+   # Deduplicate allergens while preserving order (important!)
+    seen = set()
+    recent_allergens = []
+
+    for log, allergen in rows:
+        if allergen.allergen_id in seen:
+            continue
+        seen.add(allergen.allergen_id)
+        recent_allergens.append({
+            "allergen_id": allergen.allergen_id,
+            "allergen_name": allergen.allergen_name,
+        })
+
+        if len(recent_allergens) >= limit:
+            break
+
+    return recent_allergens
