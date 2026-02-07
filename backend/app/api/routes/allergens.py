@@ -85,7 +85,7 @@ def get_recent_logs(
     # Shape the response
     return [
         {
-            "allergen_log_id": l.log_id,
+            "allergen_log_id": l.allergen_log_id,
             "date_time": l.date_time.isoformat() if getattr(l, "date_time", None) else None,
             # Add any fields you want to expose:
             # "message": l.message,
