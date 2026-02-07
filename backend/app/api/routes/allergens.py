@@ -3,7 +3,7 @@ from app.api.routes.auth import get_current_user
 from app.models.table_class import User
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models.table_class import Allergen
+from app.models.table_class import Allergen, AllergenLog
 from typing import Optional
 import logging
 
@@ -51,4 +51,46 @@ def search_allergens(
             "allergen_name": a.allergen_name
         }
         for a in results
+    ]
+
+@router.get("/recent")
+def get_recent_logs(
+    limit: int = Query(5, ge=1, le=50, description="Max number of recent logs to return"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Return the most recent logs for the current user, ordered by created_at DESC.
+    Default limit: 5 (up to max 50).
+    """
+
+    logger.info("=== GET /logs/recent CALLED ===")
+    logger.info(f"User: {current_user.user_id}, limit: {limit}")
+
+    query = (
+        db.query(AllergenLog)
+        .filter(AllergenLog.user_id == current_user.user_id)
+        .order_by(AllergenLog.created_at.desc())
+        .limit(limit)
+    )
+
+    logger.info(
+        "Recent logs SQL: %s",
+        query.statement.compile(compile_kwargs={"literal_binds": True})
+    )
+
+    logs = query.all()
+    logger.info(f"Recent logs count: {len(logs)}")
+
+    # Shape the response
+    return [
+        {
+            "log_id": l.log_id,
+            "created_at": l.created_at.isoformat() if getattr(l, "created_at", None) else None,
+            # Add any fields you want to expose:
+            # "message": l.message,
+            # "level": l.level,
+            # "metadata": l.metadata,
+        }
+        for l in logs
     ]
