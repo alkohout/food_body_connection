@@ -180,43 +180,25 @@ const fetchRecentAllergens = async (limit = 5) => {
 
 const populateAllergenSelect = (allergens, recentAllergens) => {
   const allergenSelect = getElement("allergen-select");
-  if (!allergenSelect) {
-    console.error("CRITICAL: allergen-select element not found!");
-    return;
-  }
+  if (!allergenSelect) return;
 
-  // Normalize
-  allergens = Array.isArray(allergens) ? allergens : [];
-  recentAllergens = Array.isArray(recentAllergens) ? recentAllergens : [];
-
-  // Clear existing
   allergenSelect.innerHTML = "";
 
-  // If nothing at all:
-  if (allergens.length === 0 && recentAllergens.length === 0) {
-    allergenSelect.innerHTML = '<option value="">No allergens found — add one below</option>';
-    return;
-  }
+  // Placeholder
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select an allergen…";
+  allergenSelect.appendChild(placeholder);
 
-  // Default placeholder
-  const defaultOpt = document.createElement("option");
-  defaultOpt.value = "";
-  defaultOpt.textContent = "Select an allergen…";
-  allergenSelect.appendChild(defaultOpt);
-
-  // Track which IDs we already used (to avoid duplicates)
   const usedIds = new Set();
 
-  // --- Recent allergens group ---
-  if (recentAllergens.length > 0) {
+  // ---- Recent allergens ----
+  if (Array.isArray(recentAllergens) && recentAllergens.length > 0) {
     const recentGroup = document.createElement("optgroup");
     recentGroup.label = "Recent allergens";
 
-    recentAllergens.forEach((a, i) => {
-      if (!a.allergen_id || !a.allergen_name) {
-        console.warn(`Recent allergen ${i} missing properties:`, a);
-        return;
-      }
+    recentAllergens.forEach(a => {
+      if (!a.allergen_id || !a.allergen_name) return;
       usedIds.add(a.allergen_id);
 
       const opt = document.createElement("option");
@@ -230,28 +212,22 @@ const populateAllergenSelect = (allergens, recentAllergens) => {
     }
   }
 
-  // --- Dashed divider (visual only) ---
-  if (allergens.length > 0) {
+  // Divider
+  if (Array.isArray(allergens) && allergens.length > 0) {
     const divider = document.createElement("option");
     divider.disabled = true;
     divider.textContent = "──────────────";
     allergenSelect.appendChild(divider);
   }
 
-  // --- All allergens group (excluding ones already in recent) ---
-  if (allergens.length > 0) {
+  // ---- All allergens ----
+  if (Array.isArray(allergens) && allergens.length > 0) {
     const allGroup = document.createElement("optgroup");
     allGroup.label = "All allergens";
 
-    allergens.forEach((a, i) => {
-      if (!a.allergen_id || !a.allergen_name) {
-        console.warn(`Allergen ${i} missing properties:`, a);
-        return;
-      }
-      if (usedIds.has(a.allergen_id)) {
-        // Skip duplicates that already appear in Recent
-        return;
-      }
+    allergens.forEach(a => {
+      if (!a.allergen_id || !a.allergen_name) return;
+      if (usedIds.has(a.allergen_id)) return;
 
       const opt = document.createElement("option");
       opt.value = a.allergen_id;
@@ -263,9 +239,8 @@ const populateAllergenSelect = (allergens, recentAllergens) => {
       allergenSelect.appendChild(allGroup);
     }
   }
-
-  console.log("✅ Allergen dropdown populated with recent + all");
 };
+
 
 async function addNewAllergen(name) {
   const token = localStorage.getItem("access_token");
