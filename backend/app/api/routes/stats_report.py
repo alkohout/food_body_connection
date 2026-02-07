@@ -44,6 +44,8 @@ def analysis_stats(
     avg_allergens_per_day = allergen_df.groupby(allergen_df["date_time"].dt.date)["allergen_name"].count().mean()
     avg_symptoms_per_day = symptom_df.groupby(symptom_df["date_time"].dt.date)["symptom_name"].count().mean()
 
+    logger.info(f" Averge allergens per day: {avg_allergens_per_day}, Average symptoms per day: {avg_symptoms_per_day}")
+
     return {
         "Total allergen records logged": total_allergen_records,
         "Total symptom records logged": total_symptom_records,

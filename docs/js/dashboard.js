@@ -37,19 +37,6 @@ function positionRangeLabels(sliderId, labelsId) {
 }
 
 // =========================================================
-// Elements (re-query inside functions for safety)
-// =========================================================
-
-// Don't cache element references at module load time
-const getElement = (id) => {
-  const el = document.getElementById(id);
-  if (!el) {
-    console.warn(`Element with id "${id}" not found`);
-  }
-  return el;
-};
-
-// =========================================================
 // Initialization
 // =========================================================
 
