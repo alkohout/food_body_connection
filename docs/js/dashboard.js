@@ -119,25 +119,30 @@ const fetchUnits = async () => {
 
 
 const fetchAllergens = async () => {
-  console.log("Starting to fetch allergens...");
-  
   const url = `${API_URL}/allergens`;
-  console.log("API URL:", url);
-  
   const token = localStorage.getItem("access_token");
-  if (!token) {
-    console.error("No access token found");
-    return [];
-  }
-  
-  console.log("Making authenticated request...");
+
   const res = await fetch(url, {
-    headers: { 
-      "Authorization": `Bearer ${token}`,
-      "Accept": "application/json"
-    }
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
   });
-}
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch allergens (${res.status})`);
+  }
+
+  const allergens = await res.json();
+
+  if (!Array.isArray(allergens)) {
+    throw new Error("Invalid allergens response");
+  }
+
+  console.log("✅ Loaded all allergens:", allergens.length);
+  return allergens;
+};
+
   
 const fetchRecentAllergens = async (limit = 5) => {
     const token = localStorage.getItem("access_token");
@@ -256,28 +261,18 @@ async function addNewAllergen(name) {
       body: JSON.stringify({ allergen_name: name })
     });
 
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(txt);
-    }
+    if (!res.ok) throw new Error(await res.text());
 
     const data = await res.json();
     console.log("Created allergen:", data);
 
-    // Refresh dropdown with new list
-    await fetchAllergens();
+    // ✅ FULL refresh, correctly
+    const allergens = await fetchAllergens();
+    const recentAllergens = await fetchRecentAllergens(5);
+    populateAllergenSelect(allergens, recentAllergens);
 
-    // AUTO‑SELECT the newly added allergen
     const select = getElement("allergen-select");
-    if (select) {
-      select.value = data.allergen_id;
-    }
-
-    // Fill the text input and ID hidden input
-    const input = getElement("allergen-input");
-    const idInput = getElement("allergen-id");
-    if (input) input.value = data.allergen_name;
-    if (idInput) idInput.value = data.allergen_id;
+    if (select) select.value = data.allergen_id;
 
     return data;
   } catch (err) {
