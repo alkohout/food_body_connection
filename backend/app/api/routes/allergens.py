@@ -88,7 +88,7 @@ def get_recent_logs(
     seen = set()
     recent_allergens = []
 
-    for log, allergen in rows:
+    for log, allergen in logs:
         if allergen.allergen_id in seen:
             continue
         seen.add(allergen.allergen_id)
