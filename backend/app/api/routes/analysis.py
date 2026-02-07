@@ -36,9 +36,6 @@ def analysis_stats(
     allergen_df = get_all_allergen_events_df(db, current_user.user_id)
     symptom_df = get_all_symptom_events_df(db, current_user.user_id)
 
-    # Combine and take min/max
-    all_times = pd.DataFrame(allergen_df["date_time"] + symptom_df["date_time"])
-
     total_allergen_records = allergen_df["allergen_name"].count()
     total_symptom_records = symptom_df["symptom_name"].count()
     total_days = total_allergen_records + total_symptom_records
