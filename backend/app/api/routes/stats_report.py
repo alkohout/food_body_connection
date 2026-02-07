@@ -47,10 +47,10 @@ def analysis_stats(
     logger.info(f" Averge allergens per day: {avg_allergens_per_day}, Average symptoms per day: {avg_symptoms_per_day}")
 
     return {
-        "Total allergen logged": total_allergen_records,
-        "Total symptom logged": total_symptom_records,
-        "Total days tracked": total_days,    
+        "Total allergens logged": total_allergen_records,
+        "Total symptoms logged": total_symptom_records,
+        "Total days tracked": total_days,
         "Average allergens logged per day": round(avg_allergens_per_day, 2),
-        "Average symptoms logged per day": round(avg_symptoms_per_day, 2)
+        "Average symptoms logged per day": round(avg_symptoms_per_day, 2),
     }
 
