@@ -759,6 +759,16 @@ const fetchAnalysisPlot = async () => {
     if (statsRes.ok) {
       const stats = await statsRes.json();
       
+      const totalAllergensEl = getElement("stat-total-allergens");
+      if (totalAllergensEl) {
+        totalAllergensEl.textContent = stats["Total allergens logged"] || 0;
+      }
+
+      const totalSymptomsEl = getElement("stat-total-symptoms");
+      if (totalSymptomsEl) {
+        totalSymptomsEl.textContent = stats["Total symptoms logged"] || 0;
+      }
+
       const totalEntriesEl = getElement("stat-total-entries");
       if (totalEntriesEl) {
         totalEntriesEl.textContent = 
