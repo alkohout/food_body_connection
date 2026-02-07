@@ -779,6 +779,17 @@ const fetchAnalysisPlot = async () => {
       if (daysEl) {
         daysEl.textContent = stats["Total days tracked"] || 0;
       }
+
+      const avgAllergensPerDayEl = getElement("stat-avg-allergens-per-day");
+      if (avgAllergensPerDayEl) {
+        avgAllergensPerDayEl.textContent = stats["Average allergens logged per day"] || 0;
+      }
+
+      const avgSymptomsPerDayEl = getElement("stat-avg-symptoms-per-day");
+      if (avgSymptomsPerDayEl) {
+        avgSymptomsPerDayEl.textContent = stats["Average symptoms logged per day"] || 0;
+      }
+
     }
 
     // Histogram plot
