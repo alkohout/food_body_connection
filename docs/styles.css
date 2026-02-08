@@ -266,14 +266,14 @@ select:focus {
 }
 
 .stat-label {
-  flex: 0 0 auto; 
+  flex: 0 0 200px; 
   width: 200px; /* Increased width to make it longer, adjust as needed */
   font-size: 0.85rem;
   color: #666;
 }
 
 .stat-value {
-  flex: 0 0 auto; 
+  flex: 0 0 80px; 
   font-size: 0.85rem;
   font-weight: 500;
   text-align: right;        /* right-align the digits */
