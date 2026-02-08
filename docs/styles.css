@@ -256,7 +256,7 @@ select:focus {
    ========================= */
 .stat-inline {
   display: grid;
-  grid-template-columns: max-content 5fr; /* label fits its content, value column flexes */
+  grid-template-columns: max-content auto; /* label fits its content, value column flexes */
   column-gap: 12px;                      /* fixed distance from label -> value */
   align-items: baseline;
   padding: 0.25rem 0.5rem;
