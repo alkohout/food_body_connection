@@ -990,9 +990,9 @@ async function init() {
       const [units, allergens, recentAllergens, symptoms, recentSymptoms] = await Promise.all([
         fetchUnits(),
         fetchAllergens(),
-        fetchRecentAllergens(6),
+        fetchRecentAllergens(10),
         fetchSymptoms(),
-        fetchRecentSymptoms(6)
+        fetchRecentSymptoms(10)
       ]);
 
       populateAllergenSelect(allergens, recentAllergens);
