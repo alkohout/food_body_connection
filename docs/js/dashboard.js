@@ -309,77 +309,27 @@ function setupAddAllergen() {
 // =========================================================
 
 const fetchSymptoms = async () => {
-  const symptomSelect = getElement("symptom-select");
-  if (!symptomSelect) {
-    console.error("CRITICAL: symptom-select element not found!");
-    return;
+  const url = `${API_URL}/symptoms`;
+  const token = localStorage.getItem("access_token");
+
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch symptoms (${res.status})`);
   }
 
-  console.log("Starting to fetch symptoms...");
-  
-  try {
-    const url = `${API_URL}/symptoms`;
-    console.log("API URL:", url);
-    
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      console.error("No access token found");
-      return;
-    }
-    
-    console.log("Making authenticated request...");
-    const res = await fetch(url, {
-      headers: { 
-        "Authorization": `Bearer ${token}`,
-        "Accept": "application/json"
-      }
-    });
-    
-    console.log("Response status:", res.status, res.statusText);
-    
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`HTTP ${res.status}: ${res.statusText} - ${errorText}`);
-    }
-
-    const symptoms = await res.json();
-    console.log("Raw symptoms data:", symptoms);
-    
-    if (!Array.isArray(symptoms)) {
-      console.error("Expected array but got:", typeof symptoms, symptoms);
-      throw new Error("Invalid data format: expected array");
-    }
-
-    console.log(`Processing ${symptoms.length} symptoms...`);
-    
-    // Clear and repopulate
-    symptomSelect.innerHTML = '<option value="">Select a symptom...</option>';
-    
-    if (symptoms.length === 0) {
-        symptomSelect.innerHTML = '<option value="">No symptoms found — add one above</option>';
-        return;
-    }
-
-    symptoms.forEach((u, i) => {
-      if (!u.symptom_id || !u.symptom_name) {
-        console.warn(`Symptom ${i} missing properties:`, u);
-        return;
-      }
-      const opt_symptom = document.createElement("option");
-      opt_symptom.value = u.symptom_id;
-      opt_symptom.textContent = u.symptom_name;
-      symptomSelect.appendChild(opt_symptom);
-    });
-    
-    console.log(`✅ Successfully populated dropdown with ${symptoms.length} symptoms`);
-    console.log("Dropdown HTML:", symptomSelect.innerHTML.substring(0, 200) + "...");
-    
-  } catch (err) {
-    console.error("❌ Failed to fetch symptoms:", err);
-    
-    // Show error in dropdown
-    symptomSelect.innerHTML = '<option value="">Error loading symptoms</option>';
+  const symptoms = await res.json();
+  if (!Array.isArray(symptoms)) {
+    throw new Error("Invalid symptoms response");
   }
+
+  console.log("✅ Loaded all symptoms:", symptoms.length);
+  return symptoms;
 };
 
 const fetchRecentSymptoms = async (limit = 5) => {
