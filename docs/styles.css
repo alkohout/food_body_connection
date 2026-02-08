@@ -254,27 +254,38 @@ select:focus {
 /* =========================
    Stats / Analysis
    ========================= */
-
-
 .stat-inline {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem; 
+  display: grid;
+  grid-template-columns: max-content 1fr; /* label fits its content, value column flexes */
+  column-gap: 12px;                      /* fixed distance from label -> value */
+  align-items: baseline;
   padding: 0.25rem 0.5rem;
   margin-left: 1rem;
   opacity: 0.9;
 }
 
 .stat-label {
-  flex: 0 0 300px;
   font-size: 0.85rem;
   color: #666;
+  white-space: nowrap; /* keeps label/value on one line on larger screens */
 }
 
 .stat-value {
-  flex: 0 0 auto; 
   font-size: 0.85rem;
   font-weight: 500;
+  min-width: 0;        /* prevents overflow issues in grid */
+}
+
+/* Phone-friendly: stack label over value */
+@media (max-width: 600px) {
+  .stat-inline {
+    grid-template-columns: 1fr;
+    row-gap: 2px;
+  }
+
+  .stat-label {
+    white-space: normal; /* allow wrapping on small screens */
+  }
 }
 
 .green { color: #2e7d32; }
