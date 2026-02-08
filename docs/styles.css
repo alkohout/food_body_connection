@@ -259,20 +259,21 @@ select:focus {
 .stat-inline {
   display: flex;
   align-items: center;
-  /* Remove gap here if you want stat-value to be pushed all the way right */
-  gap: 0.5rem; */
+  gap: 0.5rem; 
   padding: 0.25rem 0.5rem;
   margin-left: 1rem;
   opacity: 0.9;
 }
 
 .stat-label {
+  flex: 0 0 auto; 
   width: 300px; /* Increased width to make it longer, adjust as needed */
   font-size: 0.85rem;
   color: #666;
 }
 
 .stat-value {
+  flex: 0 0 auto; 
   font-size: 0.85rem;
   font-weight: 500;
   margin-left: auto; /* This pushes the stat-value as far right as possible */
