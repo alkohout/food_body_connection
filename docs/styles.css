@@ -10,25 +10,15 @@ html, body {
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #1f3a5f;
-
   background:
     linear-gradient(rgba(255,255,255,0.15), rgba(255,255,255,0.15)),
-    url("assets/images/background.png") center / cover no-repeat;
-
+    url("assets/images/background.png") center / cover no-repeat fixed;
 }
 
 /* Mobile background */
 @media (max-width: 768px) {
   body {
-    background:
-      url("assets/images/foodbody_background_mobile.jpg")
-      center / cover no-repeat;
-  }
-}
-
-@supports (height: 100svh) {
-  body {
-    min-height: 100svh;
+    background: url("assets/images/foodbody_background_mobile.jpg") center / cover no-repeat;
   }
 }
 
