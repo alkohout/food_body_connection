@@ -267,7 +267,7 @@ select:focus {
 
 .stat-label {
   flex: 0 0 auto; 
-  width: 300px; /* Increased width to make it longer, adjust as needed */
+  width: 200px; /* Increased width to make it longer, adjust as needed */
   font-size: 0.85rem;
   color: #666;
 }
