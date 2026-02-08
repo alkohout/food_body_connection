@@ -143,7 +143,6 @@ const fetchAllergens = async () => {
   return allergens;
 };
 
-  
 const fetchRecentAllergens = async (limit = 5) => {
     const token = localStorage.getItem("access_token");
     if (!token) {
@@ -380,6 +379,107 @@ const fetchSymptoms = async () => {
     
     // Show error in dropdown
     symptomSelect.innerHTML = '<option value="">Error loading symptoms</option>';
+  }
+};
+
+const fetchRecentSymptoms = async (limit = 5) => {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      console.error("No access token found");
+      return [];
+    }
+
+    const url = `${API_URL}/symptoms/recent?limit=${limit}`;
+    console.log("Fetching recent symptoms from:", url);
+
+    const res = await fetch(url, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/json",
+      },
+    });
+
+    console.log("Recent symptoms response status:", res.status, res.statusText);
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${res.statusText} - ${errorText}`);
+    }
+
+    const recentSymptoms = await res.json();
+    console.log("Recent symptoms data:", recentSymptoms);
+
+    if (!Array.isArray(recentSymptoms)) {
+      console.error("Expected array but got:", typeof recentSymptoms, recentSymptoms);
+      throw new Error("Invalid data format for /symptoms/recent: expected array");
+    }
+
+    return recentSymptoms;
+};
+
+// =========================================================
+// Populate symptom <select> with recent + all
+// =========================================================
+
+const populateSymptomSelect = (symptoms, recentSymptoms) => {
+  const symptomSelect = getElement("symptom-select");
+  if (!symptomSelect) return;
+
+  symptomSelect.innerHTML = "";
+
+  // Placeholder
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select a symptom…";
+  symptomSelect.appendChild(placeholder);
+
+  const usedIds = new Set();
+
+  // ---- Recent symptoms ----
+  if (Array.isArray(recentSymptoms) && recentSymptoms.length > 0) {
+    const recentGroup = document.createElement("optgroup");
+    recentGroup.label = "Recent symptoms";
+
+    recentSymptoms.forEach(a => {
+      if (!a.symptom_id || !a.symptom_name) return;
+      usedIds.add(a.symptom_id);
+
+      const opt = document.createElement("option");
+      opt.value = a.symptom_id;
+      opt.textContent = a.symptom_name;
+      recentGroup.appendChild(opt);
+    });
+
+    if (recentGroup.children.length > 0) {
+      symptomSelect.appendChild(recentGroup);
+    }
+  }
+
+  // Divider
+  if (Array.isArray(symptoms) && symptoms.length > 0) {
+    const divider = document.createElement("option");
+    divider.disabled = true;
+    divider.textContent = "──────────────";
+    symptomSelect.appendChild(divider);
+  }
+
+  // ---- All symptoms ----
+  if (Array.isArray(symptoms) && symptoms.length > 0) {
+    const allGroup = document.createElement("optgroup");
+    allGroup.label = "All symptoms";
+
+    symptoms.forEach(a => {
+      if (!a.symptom_id || !a.symptom_name) return;
+      if (usedIds.has(a.symptom_id)) return;
+
+      const opt = document.createElement("option");
+      opt.value = a.symptom_id;
+      opt.textContent = a.symptom_name;
+      allGroup.appendChild(opt);
+    });
+
+    if (allGroup.children.length > 0) {
+      symptomSelect.appendChild(allGroup);
+    }
   }
 };
 
@@ -937,14 +1037,16 @@ async function init() {
     setupTabs();
 
     try {
-      const [units, allergens, recentAllergens, symptoms] = await Promise.all([
+      const [units, allergens, recentAllergens, symptoms, recentSymptoms] = await Promise.all([
         fetchUnits(),
         fetchAllergens(),
-        fetchRecentAllergens(5),
+        fetchRecentAllergens(6),
         fetchSymptoms(),
+        fetchRecentSymptoms(6)
       ]);
 
       populateAllergenSelect(allergens, recentAllergens);
+      populateSymptomSelect(allergens, recentSymptoms);
 
       setupAddAllergen();
       setupAddSymptom();
