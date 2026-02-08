@@ -1046,7 +1046,7 @@ async function init() {
       ]);
 
       populateAllergenSelect(allergens, recentAllergens);
-      populateSymptomSelect(allergens, recentSymptoms);
+      populateSymptomSelect(symptoms, recentSymptoms);
 
       setupAddAllergen();
       setupAddSymptom();
