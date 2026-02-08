@@ -266,15 +266,15 @@ select:focus {
 }
 
 .stat-label {
-  width: 300px; /* Increased width to make it longer, adjust as needed */
+  flex: 0 0 300px;
   font-size: 0.85rem;
   color: #666;
 }
 
 .stat-value {
+  flex: 0 0 auto; 
   font-size: 0.85rem;
   font-weight: 500;
-  margin-left: auto; /* This pushes the stat-value as far right as possible */
 }
 
 .green { color: #2e7d32; }
