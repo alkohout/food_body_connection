@@ -86,6 +86,7 @@ def generate_significant_allergen_data(
         # --------------------------------------------------
         # Generate exposures
         # --------------------------------------------------
+      
         for day in range(days):
             day_time = start_date + timedelta(days=day)
             n_entries = rng.randint(1, entries_per_day)
@@ -103,14 +104,20 @@ def generate_significant_allergen_data(
                 else:
                     allergen = rng.choice(neutral_objs)
                     symptom_prob = 0.05
-                
+
+                target_volume = rng.uniform(0, 1000)  
+                unit_idx = rng.randrange(len(units))
+                conversion = conversions[unit_idx]
+                quantity=target_volume / conversion
+
                 allergen_log = AllergenLog(
                     user_id=user.user_id,
                     date_time=exposure_time,
                     allergen_id=allergen.allergen_id,
-                    quantity=rng.randint(1, 4),
-                    unit_id=rng.choice(units).unit_id,
+                    quantity=quantity,
+                    unit_id=units[unit_idx].unit_id,
                 )
+
                 db.add(allergen_log)
                 db.commit()
                 db.refresh(allergen_log)
@@ -138,9 +145,8 @@ def generate_significant_allergen_data(
                 # --------------------------------------------------
                 if allergen.allergen_name == "Peanuts":
                     # Base intensity 0–3
-                    # Add small dose effect, but cap at 3
-                    quantity = allergen_log.quantity
-                    symptom_intensity = min( 3, round(scale_quantity_to_0_3(quantity, quantity.min(), quantity.max())) )
+                    # Add dose effect, but cap at 3
+                    symptom_intensity = min( 3, round(scale_quantity_to_0_3(target_volume, 0, 1000)) )
                 else:
                     # Normal intensity for other allergens
                     symptom_intensity = rng.randint(0, 3)
