@@ -31,7 +31,7 @@ Essentially, the Food–Body Connection is a health analytics application that a
   * Aligning allergen events with subsequent symptom events
   * Encoding exposure presence/absence (and optionally dose)
 
-### 3. Statistical & Machine Learning Analysis
+### Statistical & Machine Learning Analysis
 #### Design Principles
 * **Interpretability first** – users must understand outputs
 * **Time‑aware analysis** – symptoms are delayed responses
@@ -104,7 +104,7 @@ Essentially, the Food–Body Connection is a health analytics application that a
     - annotated effect size summaries  
   - Sensitivity analysis across different **post‑exposure lag windows**
 
-### 4. Interpretability & Visualisation
+### Interpretability & Visualisation
 * Simple visual indicators (green / orange / red) for model confidence or risk level
 * Designed for **non‑technical end users**
 
@@ -114,7 +114,7 @@ Essentially, the Food–Body Connection is a health analytics application that a
 * Small sample sizes can inflate uncertainty
 * Results should not be used for medical diagnosis
 
-### 5. Architecture
+### Architecture
 
 Static Frontend (GitHub Pages)
 ↓ HTTPS (fetch, JWT auth)
@@ -165,15 +165,100 @@ app/
 
 ---
 
-## SQL Structure 
+# Database Schema Overview
 
-* **User** – application user
-* **Allergen** – identifiable allergen (e.g. dairy, eggs, nuts)
-* **AllergenLog** – timestamped exposure events
-* **Symptom** – symptom type (e.g. headache, nausea)
-* **SymptomLog** – timestamped symptom events
-* **Unit** - unit used to define quantity in allergen log (e.g. cups, litres )
-Relationships are structured to allow many exposures and symptoms per user over time.
+The database tracks user-defined allergens and symptoms, along with timestamped
+exposure and symptom events over time.
+
+## Tables
+
+### users
+Application users.
+
+| Column | Type | Key | Description |
+|------|------|-----|-------------|
+| user_id | Integer | PK | Unique user identifier |
+| email | String |  | User email (unique) |
+| password_hash | String |  | Hashed password |
+| created_at | DateTime (UTC) |  | Account creation time |
+
+---
+
+### allergen
+User-defined allergens (e.g. dairy, eggs).
+
+| Column | Type | Key | Description |
+|------|------|-----|-------------|
+| allergen_id | Integer | PK | Unique allergen ID |
+| user_id | Integer | FK → users.user_id | Allergen owner |
+| allergen_name | String |  | Allergen name |
+
+**Constraint:**  
+- UNIQUE (user_id, allergen_name)
+
+---
+
+### unit
+Units used to quantify allergen exposure.
+
+| Column | Type | Key | Description |
+|------|------|-----|-------------|
+| unit_id | Integer | PK | Unit identifier |
+| unit_name | String |  | Unit name (e.g. grams, cups) |
+| unit_conversion | Integer |  | Conversion factor |
+
+---
+
+### allergen_log
+Logged allergen exposure events.
+
+| Column | Type | Key | Description |
+|------|------|-----|-------------|
+| allergen_log_id | Integer | PK | Exposure log ID |
+| user_id | Integer | FK → users.user_id | User |
+| allergen_id | Integer | FK → allergen.allergen_id | Allergen |
+| date_time | DateTime (UTC) |  | Exposure time |
+| quantity | Float |  | Amount consumed |
+| unit_id | Integer | FK → unit.unit_id | Measurement unit |
+
+---
+
+### symptom
+User-defined symptoms (e.g. headache, nausea).
+
+| Column | Type | Key | Description |
+|------|------|-----|-------------|
+| symptom_id | Integer | PK | Symptom ID |
+| user_id | Integer | FK → users.user_id | Symptom owner |
+| symptom_name | String |  | Symptom name |
+| symptom_group | String |  | Optional category |
+
+**Constraint:**  
+- UNIQUE (user_id, symptom_name)
+
+---
+
+### symptom_log
+Logged symptom events.
+
+| Column | Type | Key | Description |
+|------|------|-----|-------------|
+| symptom_log_id | Integer | PK | Symptom log ID |
+| user_id | Integer | FK → users.user_id | User |
+| symptom_id | Integer | FK → symptom.symptom_id | Symptom |
+| date_time | DateTime (UTC) |  | Event time |
+| symptom_intensity | Integer |  | Severity (0–3) |
+
+**Constraint:**  
+- CHECK (symptom_intensity BETWEEN 0 AND 3)
+
+---
+
+## Notes
+
+- All timestamps are stored in UTC
+- Allergens and symptoms are scoped per user
+- Users may log multiple exposures and symptoms over time
 
 ## Future Work
 * Unsupervised pattern discovery
