@@ -1,48 +1,16 @@
-# Food–Body Connection — Frontend
 
-This repository contains the static frontend for the Food–Body Connection application.
-
-The frontend is hosted on GitHub Pages and communicates with a FastAPI backend via authenticated API calls.
-
-## Project overview
-
-Food–Body Connection is a health analytics application that allows users to:
-
-- Log foods consumed, including quantities and timestamps
-- Log symptoms and symptom intensity
-- Store structured health data in a relational database
-- Analyze relationships between allergens and symptoms
-- Generate personalized reports highlighting potential trigger foods
-
-## Architecture
-
-Static Frontend (GitHub Pages)
-↓ HTTPS (fetch, JWT auth)
-FastAPI Backend (AWS)
-↓
-PostgreSQL Database (AWS RDS)
-
-## Backend
-
-The backend API is implemented using:
-
-- FastAPI (Python)
-- SQLAlchemy ORM
-- PostgreSQL (AWS RDS)
-- JWT-based authentication
-
-Backend repository:
-👉 https://github.com/alkohout/food_body_connection
-
-# Allergen & Symptom Tracking and Analysis App
-
-## Overview
+## Food-Body Connection Overview
 
 This project is a full‑stack allergen and symptom tracking application designed to help users identify likely food (or other) allergens associated with adverse symptoms. Users log allergen exposures and symptoms over time, and the system applies statistical analysis and supervised machine‑learning models to estimate which allergens are most strongly associated with symptom onset.
 
 The goal of the project is **decision support**, not diagnosis: to surface patterns that may not be obvious to users, and to present them in an interpretable, user‑friendly way.
 
----
+Essentially, the Food–Body Connection is a health analytics application that allows users to:
+- Log foods consumed, including quantities and timestamps
+- Log symptoms and symptom intensity
+- Store structured health data in a relational database
+- Analyze relationships between allergens and symptoms
+- Generate personalized reports highlighting potential trigger foods
 
 ## Key Features
 
@@ -57,14 +25,12 @@ The goal of the project is **decision support**, not diagnosis: to surface patte
 
 * Exposure–symptom relationships are evaluated using configurable **time windows** (e.g. allergen consumed within 24 hours prior to symptom).
 * Construction of supervised learning datasets (`X`, `y`) by:
-
   * Aligning allergen events with subsequent symptom events
   * Encoding exposure presence/absence (and optionally dose)
 
 ### 3. Statistical & Machine Learning Analysis
 
 * Supervised classification models to estimate:
-
   * Probability an allergen is associated with a symptom
   * Relative importance of allergens
 * Current approaches include:
@@ -83,6 +49,10 @@ The goal of the project is **decision support**, not diagnosis: to surface patte
   - Fast computation enables rapid iteration, model testing, and timely outputs for users.  
 
 - **Use case:** Identify which allergens are significantly associated with symptoms and quantify the strength of those associations.
+* Model evaluation using:
+  * ROC AUC
+  * Symptom recall
+  * Bootstrapping / confidence intervals
 
 #### Fisher Exact Test
 - **Purpose:** Test for **association between categorical variables** when sample sizes are small.  
@@ -91,29 +61,72 @@ The goal of the project is **decision support**, not diagnosis: to surface patte
   - Provides **p-values** for significance of association between an allergen and symptom occurrence.  
   - Works well with **rare events or imbalanced data**.  
 - **Use case:** Confirm associations suggested by logistic regression in **small datasets** or when counts are low.
-
 * Model evaluation using:
-
-  * ROC AUC
-  * Symptom recall
-  * Bootstrapping / confidence intervals
   * p-value
 
-### 4. Interpretability & Visualisation
+#### Ordinal Logistic Regression (Ordered Logit)
 
-* Ranked allergen lists by likelihood or importance
+- **Purpose:** Estimate the **dose–response relationship between allergen exposure volume and symptom severity**.  
+- **Target:** **Ordinal outcome** — peak symptom intensity level (e.g., 0, 1, 2, 3) within a specified post‑exposure time window.
+
+- **Key features:**
+  - Explicitly models **ordered symptom intensity levels**, preserving clinically meaningful rank information that would be lost in binary models.
+  - Estimates a **single monotonic effect** of allergen volume across all symptom thresholds via the **proportional odds assumption**.
+  - Coefficients can be exponentiated to produce **odds ratios**, interpreted as:
+    > the change in odds of experiencing a *higher* symptom intensity level per unit increase in allergen volume (scaled).
+  - Uses **maximum likelihood estimation**, providing:
+    - parameter estimates  
+    - standard errors  
+    - confidence intervals for odds ratios  
+  - Volume standardization improves:
+    - numerical stability  
+    - interpretability of effect sizes  
+    - comparability across allergens with different exposure scales.
+  - Well‑suited for **small to moderate datasets** where symptom intensity is recorded discretely and repeatedly.
+
+- **Use case:**  
+  Quantify whether **larger allergen exposures are associated with more severe symptoms**, and assess the strength and uncertainty of that dose–response relationship.
+
+- **Model evaluation / reporting using:**
+  - **Odds ratio with 95% confidence interval** for exposure volume  
+  - Direction and strength of effect (risk‑increasing vs protective)  
+  - Visual diagnostics via:
+    - violin plots of exposure volume by symptom intensity  
+    - annotated effect size summaries  
+  - Sensitivity analysis across different **post‑exposure lag windows**
+
+### 4. Interpretability & Visualisation
 * Simple visual indicators (green / orange / red) for model confidence or risk level
 * Designed for **non‑technical end users**
 
-### 5. Web Interface & API
+### 5. Architecture
 
-* Backend built with **FastAPI**
+Static Frontend (GitHub Pages)
+↓ HTTPS (fetch, JWT auth)
+FastAPI Backend (AWS)
+↓
+PostgreSQL Database (AWS RDS)
+
+## Backend
+
+The backend API is implemented using:
+
+- FastAPI (Python)
+- SQLAlchemy ORM
+- PostgreSQL (AWS RDS)
+- JWT-based authentication
+
+Backend repository:
+👉 https://github.com/alkohout/food_body_connection
 * REST endpoints for:
 
   * Logging data
   * Triggering analyses
   * Returning metrics and plots
-* Frontend renders plots and summaries for easy interpretation
+
+## Frontend
+The frontend is hosted on GitHub Pages and communicates with a FastAPI backend via authenticated API calls.
+It renders plots and summaries for easy interpretation
 
 ---
 
