@@ -114,7 +114,7 @@ Essentially, the Food–Body Connection is a health analytics application that a
 * Small sample sizes can inflate uncertainty
 * Results should not be used for medical diagnosis
 
-### Architecture
+## Architecture
 
 Static Frontend (GitHub Pages)
 ↓ HTTPS (fetch, JWT auth)
@@ -122,30 +122,23 @@ FastAPI Backend (AWS)
 ↓
 PostgreSQL Database (AWS RDS)
 
-## Backend
-
+### Backend
 The backend API is implemented using:
-
 - FastAPI (Python)
 - SQLAlchemy ORM
 - PostgreSQL (AWS RDS)
 - JWT-based authentication
-
-Backend repository:
-👉 https://github.com/alkohout/food_body_connection
 * REST endpoints for:
   * Logging data
   * Triggering analyses
   * Returning metrics and plots
 
-## Frontend
+### Frontend
 The frontend is hosted on GitHub Pages and communicates with a FastAPI backend via authenticated API calls.
 It renders plots and summaries for easy interpretation
 ---
 
-## Project Structure
-
-```text
+### Project Structure
 app/
 ├── analysis/
 │   ├── get_xy.py                 # Feature/label construction
@@ -161,18 +154,15 @@ app/
 │   └── analyse.py                # Pydantic schemas for analysis
 ├── database.py                   # DB session and engine
 └── main.py                       # FastAPI entry point
-```
-
 ---
 
-# Database Schema Overview
+### Database Schema Overview
 
 The database tracks user-defined allergens and symptoms, along with timestamped
 exposure and symptom events over time.
 
-## Tables
-
-### users
+#### Tables
+##### users
 Application users.
 
 | Column | Type | Key | Description |
@@ -184,7 +174,7 @@ Application users.
 
 ---
 
-### allergen
+##### allergen
 User-defined allergens (e.g. dairy, eggs).
 
 | Column | Type | Key | Description |
@@ -198,7 +188,7 @@ User-defined allergens (e.g. dairy, eggs).
 
 ---
 
-### unit
+##### unit
 Units used to quantify allergen exposure.
 
 | Column | Type | Key | Description |
@@ -209,7 +199,7 @@ Units used to quantify allergen exposure.
 
 ---
 
-### allergen_log
+##### allergen_log
 Logged allergen exposure events.
 
 | Column | Type | Key | Description |
@@ -223,7 +213,7 @@ Logged allergen exposure events.
 
 ---
 
-### symptom
+##### symptom
 User-defined symptoms (e.g. headache, nausea).
 
 | Column | Type | Key | Description |
@@ -238,7 +228,7 @@ User-defined symptoms (e.g. headache, nausea).
 
 ---
 
-### symptom_log
+##### symptom_log
 Logged symptom events.
 
 | Column | Type | Key | Description |
@@ -254,8 +244,7 @@ Logged symptom events.
 
 ---
 
-## Notes
-
+#### Notes
 - All timestamps are stored in UTC
 - Allergens and symptoms are scoped per user
 - Users may log multiple exposures and symptoms over time
