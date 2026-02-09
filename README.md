@@ -162,46 +162,38 @@ The database tracks user-defined allergens and symptoms, along with timestamped
 exposure and symptom events over time.
 
 #### Tables
-##### users
+**users**
 Application users.
-
 | Column | Type | Key | Description |
 |------|------|-----|-------------|
 | user_id | Integer | PK | Unique user identifier |
 | email | String |  | User email (unique) |
 | password_hash | String |  | Hashed password |
 | created_at | DateTime (UTC) |  | Account creation time |
-
 ---
 
-##### allergen
+**allergen**
 User-defined allergens (e.g. dairy, eggs).
-
 | Column | Type | Key | Description |
 |------|------|-----|-------------|
 | allergen_id | Integer | PK | Unique allergen ID |
 | user_id | Integer | FK → users.user_id | Allergen owner |
 | allergen_name | String |  | Allergen name |
-
-**Constraint:**  
+Constraint:  
 - UNIQUE (user_id, allergen_name)
-
 ---
 
-##### unit
+**unit**
 Units used to quantify allergen exposure.
-
 | Column | Type | Key | Description |
 |------|------|-----|-------------|
 | unit_id | Integer | PK | Unit identifier |
 | unit_name | String |  | Unit name (e.g. grams, cups) |
 | unit_conversion | Integer |  | Conversion factor |
-
 ---
 
-##### allergen_log
+**allergen_log**
 Logged allergen exposure events.
-
 | Column | Type | Key | Description |
 |------|------|-----|-------------|
 | allergen_log_id | Integer | PK | Exposure log ID |
@@ -210,12 +202,10 @@ Logged allergen exposure events.
 | date_time | DateTime (UTC) |  | Exposure time |
 | quantity | Float |  | Amount consumed |
 | unit_id | Integer | FK → unit.unit_id | Measurement unit |
-
 ---
 
-##### symptom
+**symptom**
 User-defined symptoms (e.g. headache, nausea).
-
 | Column | Type | Key | Description |
 |------|------|-----|-------------|
 | symptom_id | Integer | PK | Symptom ID |
@@ -223,14 +213,12 @@ User-defined symptoms (e.g. headache, nausea).
 | symptom_name | String |  | Symptom name |
 | symptom_group | String |  | Optional category |
 
-**Constraint:**  
+Constraint:  
 - UNIQUE (user_id, symptom_name)
-
 ---
 
-##### symptom_log
+**symptom_log**
 Logged symptom events.
-
 | Column | Type | Key | Description |
 |------|------|-----|-------------|
 | symptom_log_id | Integer | PK | Symptom log ID |
@@ -238,10 +226,8 @@ Logged symptom events.
 | symptom_id | Integer | FK → symptom.symptom_id | Symptom |
 | date_time | DateTime (UTC) |  | Event time |
 | symptom_intensity | Integer |  | Severity (0–3) |
-
-**Constraint:**  
+Constraint:  
 - CHECK (symptom_intensity BETWEEN 0 AND 3)
-
 ---
 
 #### Notes
