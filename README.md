@@ -11,17 +11,20 @@ Essentially, the Food–Body Connection is a health analytics application that a
 - Store structured health data in a relational database
 - Analyze relationships between allergens and symptoms
 - Generate personalized reports highlighting potential trigger foods
+- Identify *candidate* allergens to investigate further
+- Support elimination diets or tracking strategies
+- Provide insights to discuss with healthcare professionals
 
 ## Key Features
 
-### 1. Logging & Data Collection
+### Logging & Data Collection
 
 * Log **allergen exposure events** (allergens, quantities, units, timestamps).
 * Log **symptom events** (symptom type, severity, timestamps).
 * Data stored in a relational database via SQLAlchemy models.
 * Designed to handle **frequent exposure logging** with relatively **rare symptom events**.
 
-### 2. Time‑Aware Feature Engineering
+### Time‑Aware Feature Engineering
 
 * Exposure–symptom relationships are evaluated using configurable **time windows** (e.g. allergen consumed within 24 hours prior to symptom).
 * Construction of supervised learning datasets (`X`, `y`) by:
@@ -29,11 +32,17 @@ Essentially, the Food–Body Connection is a health analytics application that a
   * Encoding exposure presence/absence (and optionally dose)
 
 ### 3. Statistical & Machine Learning Analysis
+#### Design Principles
+* **Interpretability first** – users must understand outputs
+* **Time‑aware analysis** – symptoms are delayed responses
+* **Incremental learning** – models improve as data grows
+* Designed to work with:
+  * Small datasets
+  * Class imbalance (many exposures, few symptoms)
 
 * Supervised classification models to estimate:
   * Probability an allergen is associated with a symptom
   * Relative importance of allergens
-* Current approaches include:
 
 #### Logistic Regression
 - **Purpose:** Estimate the **association between an allergen and symptom occurrence**.  
@@ -99,6 +108,12 @@ Essentially, the Food–Body Connection is a health analytics application that a
 * Simple visual indicators (green / orange / red) for model confidence or risk level
 * Designed for **non‑technical end users**
 
+## Limitations & Caveats
+* Correlation ≠ causation
+* Confounding factors (stress, sleep, illness) not yet modelled
+* Small sample sizes can inflate uncertainty
+* Results should not be used for medical diagnosis
+
 ### 5. Architecture
 
 Static Frontend (GitHub Pages)
@@ -119,7 +134,6 @@ The backend API is implemented using:
 Backend repository:
 👉 https://github.com/alkohout/food_body_connection
 * REST endpoints for:
-
   * Logging data
   * Triggering analyses
   * Returning metrics and plots
@@ -127,7 +141,6 @@ Backend repository:
 ## Frontend
 The frontend is hosted on GitHub Pages and communicates with a FastAPI backend via authenticated API calls.
 It renders plots and summaries for easy interpretation
-
 ---
 
 ## Project Structure
@@ -152,9 +165,7 @@ app/
 
 ---
 
-## Data Model (Conceptual)
-
-### Core Entities
+## SQL Structure 
 
 * **User** – application user
 * **Allergen** – identifiable allergen (e.g. dairy, eggs, nuts)
@@ -162,45 +173,10 @@ app/
 * **Symptom** – symptom type (e.g. headache, nausea)
 * **SymptomLog** – timestamped symptom events
 * **Unit** - unit used to define quantity in allergen log (e.g. cups, litres )
-
 Relationships are structured to allow many exposures and symptoms per user over time.
 
-
-### Data Limitations
-
-* Designed to work with:
-
-  * Small datasets
-  * Class imbalance (many exposures, few symptoms)
-* Results improve as longitudinal data accumulates
-
-## Design Principles
-
-* **Interpretability first** – users must understand outputs
-* **Time‑aware analysis** – symptoms are delayed responses
-* **Incremental learning** – models improve as data grows
-* **Health‑adjacent, not medical** – no diagnostic claims
-
-## Intended Use
-
-* Identify *candidate* allergens to investigate further
-* Support elimination diets or tracking strategies
-* Provide insights to discuss with healthcare professionals
-
-## Limitations & Caveats
-
-* Correlation ≠ causation
-* Confounding factors (stress, sleep, illness) not yet modelled
-* Small sample sizes can inflate uncertainty
-* Results should not be used for medical diagnosis
-
 ## Future Work
-
 * Unsupervised pattern discovery
 * Improved visual explanations
 * Improved logging tools
-
-## Status
-
-This project is under active development and experimentation, with a focus on robust data modelling, interpretable analytics, and user‑centred design.
 
