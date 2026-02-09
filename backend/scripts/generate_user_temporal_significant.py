@@ -12,6 +12,21 @@ from app.models.table_class import (
 )
 from app.database import SessionLocal
 
+def clear_user_logs(db, user_id):
+    db.query(SymptomLog).filter(
+        SymptomLog.user_id == user_id
+    ).delete(synchronize_session=False)
+
+    db.query(AllergenLog).filter(
+        AllergenLog.user_id == user_id
+    ).delete(synchronize_session=False)
+
+    db.commit()
+
+def scale_quantity_to_0_3(quantity, q_min, q_max):
+    if q_max == q_min:
+        return 0  # or 1.5 as neutral
+    return 3 * (quantity - q_min) / (q_max - q_min)
 
 def generate_significant_allergen_data(
     user_email="significant_stat@example.com",
@@ -40,6 +55,9 @@ def generate_significant_allergen_data(
             db.add(user)
             db.commit()
             db.refresh(user)
+
+        # ✅ CLEAR OLD DATA
+        clear_user_logs(db, user.user_id)
 
         units = db.query(Unit).all()
         allergens = db.query(Allergen).filter(
@@ -120,9 +138,9 @@ def generate_significant_allergen_data(
                 # --------------------------------------------------
                 if allergen.allergen_name == "Peanuts":
                     # Base intensity 0–3
-                    base_intensity = rng.randint(0, 3)
                     # Add small dose effect, but cap at 3
-                    symptom_intensity = min(3, base_intensity + allergen_log.quantity // 2)
+                    quantity = allergen_log.quantity
+                    symptom_intensity = min( 3, round(scale_quantity_to_0_3(quantity, quantity.min(), quantity.max())) )
                 else:
                     # Normal intensity for other allergens
                     symptom_intensity = rng.randint(0, 3)
