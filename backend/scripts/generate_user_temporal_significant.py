@@ -87,6 +87,7 @@ def generate_significant_allergen_data(
         # Generate exposures
         # --------------------------------------------------
       
+        conversions = [1, 1, 1000, 15, 5, 240]
         for day in range(days):
             day_time = start_date + timedelta(days=day)
             n_entries = rng.randint(1, entries_per_day)
