@@ -139,21 +139,43 @@ It renders plots and summaries for easy interpretation
 ---
 
 ### Project Structure
-app/
-├── analysis/
-│   ├── get_xy.py                 # Feature/label construction
-│   ├── supervised_classification.py
-│   └── ...
-├── api/
-|   ├── routes
-├── data/
-│   └── analysis_data.py          # Data loading helpers
-├── models/
-│   └── table_class.py            # SQLAlchemy ORM models
-├── schemas/
-│   └── analyse.py                # Pydantic schemas for analysis
-├── database.py                   # DB session and engine
-└── main.py                       # FastAPI entry point
+backend/
+├── app/
+│ ├── analysis/ # Data analysis, statistics, ML, and time‑series processing
+│ ├── api/
+│ │ └── routes/ # FastAPI route handlers (auth, users, logs, analytics, plots)
+│ ├── core/ # Security, JWT handling, core app logic
+│ ├── data/ # Data access and analysis helpers
+│ ├── models/ # SQLAlchemy models and ML models
+│ ├── schemas/ # Pydantic schemas for request/response validation
+│ ├── utils/ # Shared utilities and preprocessing helpers
+│ ├── config.py # Application configuration
+│ ├── database.py # Database connection and session management
+│ ├── main.py # FastAPI application entry point
+│ └── models.py # Model imports/registry
+│
+├── logs/ # Application and server logs
+│
+├── scripts/ # Database setup and data generation scripts
+│
+├── docs/
+│ ├── assets/ # Images and static documentation assets
+│ ├── js/ # Frontend JavaScript (dashboard, API calls)
+│ └── static/ # Static HTML and CSS files
+│
+├── frontend/ # Frontend-related files and certificates
+│
+├── food_symptom_model.pkl # Trained ML model artifact
+├── train.sh # Model training script
+├── README.md # Project documentation
+└── Capstone_documentation.docx
+
+#### Key Concepts
+- **Backend**: FastAPI application handling authentication, data logging, analytics, and predictions
+- **Analysis**: Statistical analysis, EDA, ML classification, and time‑series modeling
+- **Models**: Database schema definitions and trained ML models
+- **Scripts**: Utilities for database initialization and synthetic data generation
+- **Docs / Frontend**: Dashboard UI, static assets, and project documentation
 ---
 
 ### Database Schema Overview
