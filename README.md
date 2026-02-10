@@ -115,7 +115,6 @@ Essentially, the Food–Body Connection is a health analytics application that a
 * Results should not be used for medical diagnosis
 
 ## Architecture
-
 Static Frontend (GitHub Pages)
 ↓ HTTPS (fetch, JWT auth)
 FastAPI Backend (AWS)
@@ -139,36 +138,12 @@ It renders plots and summaries for easy interpretation
 ---
 
 ### Project Structure
-backend/
 ├── app/
-│ ├── analysis/ # Data analysis, statistics, ML, and time‑series processing
-│ ├── api/
-│ │ └── routes/ # FastAPI route handlers (auth, users, logs, analytics, plots)
-│ ├── core/ # Security, JWT handling, core app logic
-│ ├── data/ # Data access and analysis helpers
-│ ├── models/ # SQLAlchemy models and ML models
-│ ├── schemas/ # Pydantic schemas for request/response validation
-│ ├── utils/ # Shared utilities and preprocessing helpers
-│ ├── config.py # Application configuration
-│ ├── database.py # Database connection and session management
-│ ├── main.py # FastAPI application entry point
-│ └── models.py # Model imports/registry
-│
-├── logs/ # Application and server logs
-│
-├── scripts/ # Database setup and data generation scripts
-│
-├── docs/
-│ ├── assets/ # Images and static documentation assets
-│ ├── js/ # Frontend JavaScript (dashboard, API calls)
-│ └── static/ # Static HTML and CSS files
-│
-├── frontend/ # Frontend-related files and certificates
-│
-├── food_symptom_model.pkl # Trained ML model artifact
-├── train.sh # Model training script
-├── README.md # Project documentation
-└── Capstone_documentation.docx
+│   ├── analysis/          # Data analysis, statistics, ML, and time-series processing│   ├── api/
+│   │   └── routes/        # FastAPI route handlers (auth, users, logs, analytics, plots)
+│   ├── core/              # Security, JWT handling, core app logic│   ├── data/              # Data access and analysis helpers│   ├── models/            # SQLAlchemy models and ML models│   ├── schemas/           # Pydantic schemas for request/response validation│   ├── utils/             # Shared utilities and preprocessing helpers│   ├── config.py          # Application configuration│   ├── database.py        # Database connection and session management│   ├── main.py            # FastAPI application entry point│   └── models.py          # Model imports/registry├── logs/                  # Application and server logs├── scripts/               # Database setup and data generation scripts├── docs/
+│   ├── assets/            # Images and static documentation assets│   ├── js/                # Frontend JavaScript (dashboard, API calls)
+│   └── static/            # Static HTML and CSS files├── frontend/              # Frontend-related files and certificates├── food_symptom_model.pkl # Trained ML model artifact├── train.sh               # Model training script├── README.md              # Project documentation└── Capstone_documentation.docx```
 
 #### Key Concepts
 - **Backend**: FastAPI application handling authentication, data logging, analytics, and predictions
