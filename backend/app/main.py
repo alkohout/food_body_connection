@@ -10,10 +10,8 @@ import app.api.routes.create_symptom as create_symptom
 import app.api.routes.symptom_groups as symptom_groups 
 import app.api.routes.analysis as analysis
 import app.api.routes.intensity_volume as intensity_volume
-import app.api.routes.plot_eda as plot_eda  
 import app.api.routes.temporal_stats as temporal_stats
 import app.api.routes.symptom_group_histogram as symptom_group_histogram
-import app.api.routes.predict as predict
 import app.api.routes.plot_allergen_rank as plot_allergen_rank
 import app.api.routes.plot_time_series as plot_time_series
 import app.api.routes.plot_bar_plots as plot_bar_plots
@@ -47,10 +45,8 @@ app.include_router(units.router)
 app.include_router(entries.router)
 app.include_router(analysis.router)
 app.include_router(intensity_volume.router)
-app.include_router(plot_eda.router)
 app.include_router(temporal_stats.router)
 app.include_router(symptom_group_histogram.router)
-app.include_router(predict.router)
 app.include_router(plot_allergen_rank.router)
 app.include_router(plot_time_series.router)
 app.include_router(plot_bar_plots.router)
