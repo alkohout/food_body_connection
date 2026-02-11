@@ -32,12 +32,26 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
     try:
         allergen_events = get_all_allergen_events_df(db, current_user)
         symptom_events = get_all_symptom_events_df(db, current_user)
+
         if allergen_events.empty or symptom_events.empty:
 
-            summary = (
-                "Not enough data to perform analysis. Please log more allergen and symptom events to see potential patterns."
-            )
-            return summary
+            if return_type == "text":
+                summary = (
+                    "Not enough data to perform analysis. Please log more allergen and symptom events to see potential patterns."
+                )
+                return summary
+            else:
+                # Return a blank image instead of error
+                fig, ax = plt.subplots(figsize=(6,4))
+                ax.text(0.5, 0.5, "No symptom data available",
+                        ha="center", va="center")
+                ax.set_axis_off()
+
+                buf = BytesIO()
+                plt.savefig(buf, format="png", bbox_inches="tight")
+                buf.seek(0)
+                plt.close(fig)
+                return buf
 
         lag_windows = [(0, 6), (6, 24), (24, 48)]
         symptom_counts = symptom_events.groupby("symptom_group").size().reset_index(name="count")
