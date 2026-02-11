@@ -36,15 +36,47 @@ def analysis_stats(
     allergen_df = get_all_allergen_events_df(db, current_user.user_id)
     symptom_df = get_all_symptom_events_df(db, current_user.user_id)
 
-    total_allergen_records = allergen_df["allergen_name"].count()
-    total_symptom_records = symptom_df["symptom_name"].count()
+    # ✅ If no data at all
+    if allergen_df.empty and symptom_df.empty:
+        return {
+            "message": "No data logged yet.",
+            "Total allergens logged": 0,
+            "Total symptoms logged": 0,
+            "Total days tracked": 0,
+            "Average allergens logged per day": 0.0,
+            "Average symptoms logged per day": 0.0,
+        }
+
+    # Safe counts
+    total_allergen_records = allergen_df["allergen_name"].count() if not allergen_df.empty else 0
+    total_symptom_records = symptom_df["symptom_name"].count() if not symptom_df.empty else 0
     total_days = total_allergen_records + total_symptom_records
 
-    avg_allergens_per_day = allergen_df.groupby(allergen_df["date_time"].dt.date)["allergen_name"].count().mean()
-    avg_symptoms_per_day = symptom_df.groupby(symptom_df["date_time"].dt.date)["symptom_name"].count().mean()
+    # Safe averages
+    if not allergen_df.empty:
+        avg_allergens_per_day = (
+            allergen_df
+            .groupby(allergen_df["date_time"].dt.date)["allergen_name"]
+            .count()
+            .mean()
+        )
+    else:
+        avg_allergens_per_day = 0
 
-    logger.info(f" Averge allergens per day: {avg_allergens_per_day}, Average symptoms per day: {avg_symptoms_per_day}")
+    if not symptom_df.empty:
+        avg_symptoms_per_day = (
+            symptom_df
+            .groupby(symptom_df["date_time"].dt.date)["symptom_name"]
+            .count()
+            .mean()
+        )
+    else:
+        avg_symptoms_per_day = 0
 
+    logger.info(
+        f"Average allergens per day: {avg_allergens_per_day}, "
+        f"Average symptoms per day: {avg_symptoms_per_day}"
+    )
 
     return {
         "Total allergens logged": int(total_allergen_records),
