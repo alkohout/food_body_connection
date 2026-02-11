@@ -32,11 +32,29 @@ def analysis_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """
+    Return overall logging statistics for the current user.
 
+    Metrics include:
+    - Total allergens logged
+    - Total symptoms logged
+    - Total unique days tracked
+    - Average allergens logged per day
+    - Average symptoms logged per day
+
+    Returns
+    -------
+    dict
+        Summary statistics for the user's data.
+    """
+
+    # --------------------------------------------------
+    # Load allergen and symptom event data
+    # --------------------------------------------------
     allergen_df = get_all_allergen_events_df(db, current_user.user_id)
     symptom_df = get_all_symptom_events_df(db, current_user.user_id)
 
-    # ✅ If no data at all
+    # If absolutely no data exists
     if allergen_df.empty and symptom_df.empty:
         return {
             "Total allergens logged": 0,
@@ -46,11 +64,15 @@ def analysis_stats(
             "Average symptoms logged per day": 0.0,
         }
 
-    # Safe counts
+    # --------------------------------------------------
+    # Safe total record counts
+    # --------------------------------------------------
     total_allergen_records = len(allergen_df) if not allergen_df.empty else 0
     total_symptom_records = len(symptom_df) if not symptom_df.empty else 0
 
-    # ✅ Safe daily averages
+    # --------------------------------------------------
+    # Helper: compute safe daily average
+    # --------------------------------------------------
     def safe_avg(df, column):
         if df.empty or column not in df.columns:
             return 0.0
@@ -60,7 +82,6 @@ def analysis_stats(
 
         df = df.copy()
         df["date_time"] = pd.to_datetime(df["date_time"], errors="coerce")
-
         df = df.dropna(subset=["date_time"])
 
         if df.empty:
@@ -72,7 +93,9 @@ def analysis_stats(
     avg_allergens_per_day = safe_avg(allergen_df, "allergen_name")
     avg_symptoms_per_day = safe_avg(symptom_df, "symptom_name")
 
-    # ✅ Correct total tracked days
+    # --------------------------------------------------
+    # Compute total unique days tracked
+    # --------------------------------------------------
     def get_days(df):
         if df.empty or "date_time" not in df.columns:
             return set()
@@ -91,36 +114,48 @@ def analysis_stats(
     }
 
 @router.get("/plot-data")
-
 def plot_data(
     allergen: Optional[str] = None,
     symptom: Optional[str] = None,
-    start_date: Optional[str] = None,  # <-- accept string
-    end_date: Optional[str] = None,    # <-- accept string
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Defaults
+    """
+    Return correlated allergen–symptom time series data
+    for plotting on the frontend.
+
+    The endpoint:
+    1. Filters allergen and symptom logs by date range.
+    2. Counts symptoms occurring within 24h after allergen exposure.
+    3. Aggregates counts per day.
+    """
+
+    # --------------------------------------------------
+    # Apply defaults if not provided
+    # --------------------------------------------------
     allergen = allergen or DEFAULT_ALLERGEN
     symptom = symptom or DEFAULT_SYMPTOM
 
-    # Parse start_date
+    # Parse start_date safely
     try:
         start_date = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else date(2025, 1, 1)
     except ValueError:
         start_date = date(2025, 1, 1)
 
-    # Parse end_date
+    # Parse end_date safely
     try:
         end_date = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else date.today()
     except ValueError:
         end_date = date.today()
 
-    # Use defaults if nothing provided
     start_date = start_date or DEFAULT_START_DATE
     end_date = end_date or DEFAULT_END_DATE
 
-    # --- Allergen events ---
+    # --------------------------------------------------
+    # Query allergen events
+    # --------------------------------------------------
     allergen_q = (
         db.query(AllergenLog.date_time)
         .join(Allergen)
@@ -129,7 +164,9 @@ def plot_data(
         .filter(Allergen.allergen_name == allergen)
     )
 
-    # --- Symptom events ---
+    # --------------------------------------------------
+    # Query symptom events
+    # --------------------------------------------------
     symptom_q = (
         db.query(SymptomLog.date_time)
         .join(Symptom)
@@ -138,6 +175,7 @@ def plot_data(
         .filter(Symptom.symptom_name == symptom)
     )
 
+    # Apply date filters
     if start_date:
         allergen_q = allergen_q.filter(AllergenLog.date_time >= start_date)
         symptom_q = symptom_q.filter(SymptomLog.date_time >= start_date)
@@ -149,7 +187,9 @@ def plot_data(
     allergen_times = [t for (t,) in allergen_q.all()]
     symptom_times = [t for (t,) in symptom_q.all()]
 
-    # --- Correlate: symptom within 24h of allergen ---
+    # --------------------------------------------------
+    # Correlate: symptoms within 24h after exposure
+    # --------------------------------------------------
     counts = {}
 
     for a_time in allergen_times:
@@ -163,7 +203,7 @@ def plot_data(
         day = a_time.date()
         counts[day] = counts.get(day, 0) + daily_count
 
-    # If no data, provide a dummy point
+    # Provide fallback if no data
     if not counts:
         counts = {start_date: 0, end_date: 0}
 
@@ -173,7 +213,7 @@ def plot_data(
     return JSONResponse(
         content={
             "dates": dates,
-            "symptoms": {symptom: counts_list},  # if you want to keep symptom-based plotting
+            "symptoms": {symptom: counts_list},
             "allergen_series": counts_list,
             "selected_allergen": allergen
         }
@@ -186,7 +226,19 @@ def analysis_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Default window = all data
+    """
+    Return summary statistics within a given date range.
+
+    Metrics:
+    - Total exposures
+    - Total symptoms
+    - Total distinct tracked days
+    - Average symptoms per tracked day
+    """
+
+    # --------------------------------------------------
+    # Default date range if none provided
+    # --------------------------------------------------
     if not start_date:
         start_date = date(2000, 1, 1)
     if not end_date:
@@ -195,6 +247,9 @@ def analysis_summary(
     start_utc = datetime.combine(start_date, time.min, tzinfo=timezone.utc)
     end_utc = datetime.combine(end_date, time.max, tzinfo=timezone.utc)
 
+    # --------------------------------------------------
+    # Count total exposures
+    # --------------------------------------------------
     total_exposures = db.execute(
         text("""
         SELECT COUNT(*) FROM allergen_log 
@@ -208,6 +263,9 @@ def analysis_summary(
         }
     ).scalar()
 
+    # --------------------------------------------------
+    # Count total symptoms
+    # --------------------------------------------------
     total_symptoms = db.execute(
         text("""
         SELECT COUNT(*) FROM symptom_log 
@@ -221,6 +279,9 @@ def analysis_summary(
         }
     ).scalar()
 
+    # --------------------------------------------------
+    # Count distinct tracked days (based on exposure logs)
+    # --------------------------------------------------
     days_tracked = db.execute(
         text("""
         SELECT COUNT(DISTINCT DATE(date_time))
@@ -235,6 +296,7 @@ def analysis_summary(
         }
     ).scalar()
 
+    # Compute average symptoms per tracked day
     avg_symptoms_per_day = (
         total_symptoms / days_tracked if days_tracked else 0
     )
@@ -245,4 +307,3 @@ def analysis_summary(
         "days_tracked": days_tracked,
         "avg_symptoms_per_day": round(avg_symptoms_per_day, 2)
     }
-
