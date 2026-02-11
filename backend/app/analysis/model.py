@@ -32,6 +32,13 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
     try:
         allergen_events = get_all_allergen_events_df(db, current_user)
         symptom_events = get_all_symptom_events_df(db, current_user)
+        if allergen_events.empty or symptom_events.empty:
+
+            summary = (
+                "Not enough data to perform analysis. Please log more allergen and symptom events to see potential patterns."
+            )
+            return summary
+
         lag_windows = [(0, 6), (6, 24), (24, 48)]
         symptom_counts = symptom_events.groupby("symptom_group").size().reset_index(name="count")
         symptom_counts = symptom_counts.sort_values("count", ascending=False)
