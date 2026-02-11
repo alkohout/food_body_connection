@@ -808,39 +808,56 @@ const fetchAnalysisPlot = async () => {
     });
 
     if (statsRes.ok) {
-
       const stats = await statsRes.json();
       console.log("Stats fetched successfully:", stats);
       
       const totalAllergensEl = getElement("stat-total-allergens");
       if (totalAllergensEl) {
         totalAllergensEl.textContent = stats["Total allergens logged"] || 0;
+        console.log("Updated total allergens:", totalAllergensEl.textContent);
+      } else {
+        console.warn("Element stat-total-allergens not found");
       }
 
       const totalSymptomsEl = getElement("stat-total-symptoms");
       if (totalSymptomsEl) {
         totalSymptomsEl.textContent = stats["Total symptoms logged"] || 0;
+        console.log("Updated total symptoms:", totalSymptomsEl.textContent);
+      } else {
+        console.warn("Element stat-total-symptoms not found");
       }
 
       const totalEntriesEl = getElement("stat-total-entries");
       if (totalEntriesEl) {
         totalEntriesEl.textContent = 
           (stats["Total allergens logged"] || 0) + (stats["Total symptoms logged"] || 0);
+        console.log("Updated total entries:", totalEntriesEl.textContent);
+      } else {
+        console.warn("Element stat-total-entries not found");
       }
 
       const daysEl = getElement("stat-days");
       if (daysEl) {
         daysEl.textContent = stats["Total days tracked"] || 0;
+        console.log("Updated days tracked:", daysEl.textContent);
+      } else {
+        console.warn("Element stat-days not found");
       }
 
       const avgAllergensPerDayEl = getElement("stat-avg-allergens-per-day");
       if (avgAllergensPerDayEl) {
         avgAllergensPerDayEl.textContent = stats["Average allergens logged per day"] || 0;
+        console.log("Updated avg allergens per day:", avgAllergensPerDayEl.textContent);
+      } else {
+        console.warn("Element stat-avg-allergens-per-day not found");
       }
 
       const avgSymptomsPerDayEl = getElement("stat-avg-symptoms-per-day");
       if (avgSymptomsPerDayEl) {
         avgSymptomsPerDayEl.textContent = stats["Average symptoms logged per day"] || 0;
+        console.log("Updated avg symptoms per day:", avgSymptomsPerDayEl.textContent);
+      } else {
+        console.warn("Element stat-avg-symptoms-per-day not found");
       }
 
     } else {
@@ -858,9 +875,12 @@ const fetchAnalysisPlot = async () => {
         const blob = await res.blob();
         histogramPlotImg.src = URL.createObjectURL(blob);
         console.log("Histogram plot fetched successfully");
-      }else {
+      } else {
         console.error("Failed to fetch histogram plot:", res.status, res.statusText);
       }
+    } else {
+      console.warn("Element group_histogram not found");
+    }
 
     // Allergen rank plot
     console.log("Fetching allergen rank plot...");
@@ -876,23 +896,12 @@ const fetchAnalysisPlot = async () => {
       } else {
         console.error("Failed to fetch allergen rank plot:", res.status, res.statusText);
       }
+    } else {
+      console.warn("Element allergenrank-plot not found");
     }
 
-    // Prediction
-    //const predictOut = getElement("predict-out");
-    //if (predictOut) {
-    //  const res = await fetch(`${API_URL}/analysis/predict`, {
-    //    method: "POST",
-    //    headers: {
-    //      Authorization: `Bearer ${localStorage.getItem("access_token")}`
-    //    }
-    //  });
-    //  if (res.ok) {
-    //    predictOut.textContent = await res.text();
-    //  }
-    //}
-
     await getSummaryText();
+    console.log("Summary text fetched");
 
   } catch (err) {
     console.error("Failed to fetch analysis plots:", err);
