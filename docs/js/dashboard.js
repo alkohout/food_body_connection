@@ -860,53 +860,78 @@ const fetchAnalysisPlot = async () => {
         console.warn("Element stat-avg-symptoms-per-day not found");
       }
 
-    } else {
-      console.error("Failed to fetch stats:", statsRes.status, statsRes.statusText);
-    }
-
-    // Histogram plot
-    console.log("Fetching histogram plot...");
-    const histogramPlotImg = getElement("group_histogram");
-    if (histogramPlotImg) {
-      const res = await fetch(`${API_URL}/analysis/symptom_group_histogram`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
-      });
-      if (res.ok) {
-        const blob = await res.blob();
-        histogramPlotImg.src = URL.createObjectURL(blob);
-        console.log("Histogram plot fetched successfully");
+      // Histogram plot
+      console.log("Fetching histogram plot...");
+      const histogramPlotImg = getElement("group_histogram");
+      if (histogramPlotImg) {
+        const res = await fetch(`${API_URL}/analysis/symptom_group_histogram`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+        });
+        if (res.ok) {
+          const blob = await res.blob();
+          histogramPlotImg.src = URL.createObjectURL(blob);
+          console.log("Histogram plot fetched successfully");
+        } else {
+          console.error("Failed to fetch histogram plot:", res.status, res.statusText);
+        }
       } else {
-        console.error("Failed to fetch histogram plot:", res.status, res.statusText);
+        console.warn("Element group_histogram not found");
       }
-    } else {
-      console.warn("Element group_histogram not found");
-    }
 
-    // Allergen rank plot
-    console.log("Fetching allergen rank plot...");
-    const allergenrankPlotImg = getElement("allergenrank-plot");
-    if (allergenrankPlotImg) {
-      const res = await fetch(`${API_URL}/analysis/plot_allergen_rank`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
-      });
-      if (res.ok) {
-        const blob = await res.blob();
-        allergenrankPlotImg.src = URL.createObjectURL(blob);
-        console.log("Allergen rank plot fetched successfully");
+      // Allergen rank plot
+      console.log("Fetching allergen rank plot...");
+      const allergenrankPlotImg = getElement("allergenrank-plot");
+      if (allergenrankPlotImg) {
+        const res = await fetch(`${API_URL}/analysis/plot_allergen_rank`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+        });
+        if (res.ok) {
+          const blob = await res.blob();
+          allergenrankPlotImg.src = URL.createObjectURL(blob);
+          console.log("Allergen rank plot fetched successfully");
+        } else {
+          console.error("Failed to fetch allergen rank plot:", res.status, res.statusText);
+        }
       } else {
-        console.error("Failed to fetch allergen rank plot:", res.status, res.statusText);
+        console.warn("Element allergenrank-plot not found");
       }
-    } else {
-      console.warn("Element allergenrank-plot not found");
+
+      await getSummaryText();
+      console.log("Summary text fetched");
     }
 
-    await getSummaryText();
-    console.log("Summary text fetched");
+    // Handle no-data response
+    if (stats.message) {
+      console.log("No stats data:", stats.message);
+
+      // Zero out all stat fields
+      const fields = [
+        "stat-total-allergens",
+        "stat-total-symptoms",
+        "stat-total-entries",
+        "stat-days",
+        "stat-avg-allergens-per-day",
+        "stat-avg-symptoms-per-day"
+      ];
+
+      fields.forEach(id => {
+        const el = getElement(id);
+        if (el) el.textContent = 0;
+      });
+
+      // Optional: show message somewhere
+      const summaryDiv = getElement("summaryDiv");
+      if (summaryDiv) {
+        summaryDiv.innerText = stats.message;
+      }
+
+      return; // ✅ Stop further processing
+    }
 
   } catch (err) {
-    console.error("Failed to fetch analysis plots:", err);
+      console.error("Failed to fetch analysis plots:", err);
   }
-};
+}
 
 // =========================================================
 // Tabs
