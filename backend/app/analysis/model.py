@@ -27,12 +27,44 @@ logging.basicConfig(level=logging.INFO)
 
 def model_classification(db: 'Session', current_user: int, return_type="buf"):
     """
-    Perform logistic regression, bootstrap ORs, and return plot buffer with 3 subplots (different lag windows).
+    Perform logistic regression classification to analyse the association
+    between allergen exposure and symptom occurrence.
+
+    The function:
+    1. Loads allergen and symptom events
+    2. Tests multiple lag windows
+    3. Performs nested cross-validation
+    4. Selects the best-performing model
+    5. Computes bootstrapped odds ratios (ORs)
+    6. Returns either a plot (PNG buffer) or a text summary
+
+    Parameters
+    ----------
+    db : Session
+        Active database session.
+    current_user : int
+        ID of the user whose data is analysed.
+    return_type : str
+        "buf"  -> return PNG image buffer (default)
+        "text" -> return textual interpretation
+
+    Returns
+    -------
+    BytesIO or str
+        PNG buffer if return_type="buf",
+        otherwise a text summary string.
     """
+
     try:
+        # --------------------------------------------------
+        # Load allergen and symptom event data
+        # --------------------------------------------------
         allergen_events = get_all_allergen_events_df(db, current_user)
         symptom_events = get_all_symptom_events_df(db, current_user)
 
+        # --------------------------------------------------
+        # Handle insufficient data
+        # --------------------------------------------------
         if allergen_events.empty or symptom_events.empty:
 
             if return_type == "text":
@@ -41,7 +73,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
                 )
                 return summary
             else:
-                # Return a blank image instead of error
+                # Return a blank placeholder image instead of raising an error
                 fig, ax = plt.subplots(figsize=(6,4))
                 ax.text(0.5, 0.5, "No symptom data available",
                         ha="center", va="center")
@@ -53,48 +85,78 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
                 plt.close(fig)
                 return buf
 
+        # --------------------------------------------------
+        # Define lag windows to evaluate
+        # --------------------------------------------------
         lag_windows = [(0, 6), (6, 24), (24, 48)]
+
+        # Identify most frequently reported symptom group
         symptom_counts = symptom_events.groupby("symptom_group").size().reset_index(name="count")
         symptom_counts = symptom_counts.sort_values("count", ascending=False)
         top_symptom_group = symptom_counts.iloc[0]["symptom_group"].lower()
 
+        # Base logistic regression model
         base_model = LogisticRegression(solver="liblinear", max_iter=1000)
 
+        # Track best-performing window
         best_auc = 0
         best_recall = 0
-        fs = 14 # figure fontsize
+        fs = 14  # Figure font size
+
+        # --------------------------------------------------
+        # Evaluate each lag window
+        # --------------------------------------------------
         for lag_window in lag_windows:
 
-            # --- Load data ---
+            # Generate feature matrix (X) and target (y)
             X, y = get_xy(db, current_user, allergen_events, symptom_events, lag_window)
 
-            # One-hot encode allergens
+            # One-hot encode categorical allergen names
             X = pd.get_dummies(X["allergen_name"])
+
+            # Convert binary outcome to integer
             y = y['symptom_occurred'].astype(int)
 
-            # Safety check
+            # Ensure both classes exist
             if y.nunique() < 2:
                 raise HTTPException(
                     status_code=400,
                     detail="Not enough class variation to train model."
                 )
+
+            # --------------------------------------------------
+            # Detect class imbalance
+            # --------------------------------------------------
             pos_rate = y.mean()
             use_balanced = pos_rate < 0.25 or pos_rate > 0.75
-            param_grid = {"penalty": ["l1", "l2"], "C": [0.1, 1, 10],"class_weight": ["balanced"] if use_balanced else [None]}
+
+            # Hyperparameter grid for model tuning
+            param_grid = {
+                "penalty": ["l1", "l2"],
+                "C": [0.1, 1, 10],
+                "class_weight": ["balanced"] if use_balanced else [None]
+            }
             
-            # --- Collinearity check: Jaccard similarity for boolean allergens ---
+            # --------------------------------------------------
+            # Collinearity check using Jaccard similarity
+            # --------------------------------------------------
             allergen_cols = X.columns.tolist()
             X_bool = X.astype(bool).to_numpy()
+
+            # Compute pairwise Jaccard similarity between allergen columns
             jaccard_dist = pairwise_distances(X_bool.T, metric="jaccard")
             jaccard_sim = 1 - jaccard_dist
+
             jaccard_df = pd.DataFrame(
                 jaccard_sim,
                 index=allergen_cols,
                 columns=allergen_cols
             )
-            # Remove self-similarity
+
+            # Remove diagonal (self-similarity)
             np.fill_diagonal(jaccard_df.values, 0)
-            # Extract strongly co-occurring pairs
+
+            # Identify strongly co-occurring allergen pairs
             strong_pairs = (
                 jaccard_df
                 .stack()
@@ -107,11 +169,12 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
                 .query("jaccard > 0.7")
             )
 
-            # Deduplicate A–B vs B–A
+            # Remove duplicate mirrored pairs (A–B vs B–A)
             strong_pairs = strong_pairs[
                 strong_pairs["allergen_a"] < strong_pairs["allergen_b"]
             ]
 
+            # Generate collinearity interpretation text
             if len(strong_pairs) > 0:
                 pair_strings = (
                     strong_pairs
@@ -131,17 +194,30 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
                 strong_col_text = "no strong co-occurrence detected"
                 strong_col_colour = "green"
 
-            # --- Nested CV ---
+            # --------------------------------------------------
+            # Nested Cross-Validation
+            # --------------------------------------------------
             outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
             inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
-            # CV for performance metrics
+            # Hyperparameter tuning on inner folds
             grid = GridSearchCV(base_model, param_grid, cv=inner_cv, scoring="roc_auc")
+
+            # Evaluate ROC AUC on outer folds
             auc_scores = cross_val_score(grid, X, y, cv=outer_cv, scoring="roc_auc")
-            recall_scores = cross_val_score(grid, X, y, cv=outer_cv, scoring=make_scorer(recall_score, pos_label=1))
+
+            # Evaluate recall (sensitivity)
+            recall_scores = cross_val_score(
+                grid, X, y,
+                cv=outer_cv,
+                scoring=make_scorer(recall_score, pos_label=1)
+            )
+
             mean_auc, std_auc = auc_scores.mean(), auc_scores.std()
             mean_recall, std_recall = recall_scores.mean(), recall_scores.std()
             samples = len(y)
+
+            # Keep best window based on ROC AUC
             if mean_auc > best_auc:
                 best_auc = mean_auc
                 best_auc_std = std_auc
@@ -150,20 +226,26 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
                 best_window = lag_window
                 best_X = X
                 best_y = y
-                best_samples =  samples
+                best_samples = samples
                 best_use_balanced = "balanced" if use_balanced else None
 
-        # --- Final model for ORs ---
+        # --------------------------------------------------
+        # Train final model on best lag window
+        # --------------------------------------------------
         final_grid = GridSearchCV(
             base_model,
             param_grid,
             cv=5,
             scoring="roc_auc"
         )
+
         final_grid.fit(best_X, best_y)
         final_model = final_grid.best_estimator_
         best_params = final_grid.best_params_
 
+        # --------------------------------------------------
+        # Bootstrap Odds Ratios (ORs)
+        # --------------------------------------------------
         or_results = bootstrap_or_ci(
             model_cls=LogisticRegression,
             X=best_X,
@@ -180,12 +262,13 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             min_occurrences=5
         )
         
-        # Sort by odds ratio and take top 10 allergens
+        # Identify top and bottom 10 allergens by odds ratio
         top_allergens = or_results.sort_values("odds_ratio", ascending=False)["allergen"].head(10).tolist()
         bottom_allergens = or_results.sort_values("odds_ratio", ascending=True)["allergen"].head(10).tolist()
 
-        # --- Plot on the current axis ---
-
+        # --------------------------------------------------
+        # Plot results (top and bottom allergens)
+        # --------------------------------------------------
         fig, (ax_top, ax_bot) = plt.subplots(
             2,
             1,
@@ -193,12 +276,13 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         )
         plt.subplots_adjust(hspace=0.4)
 
-        # top allergens 
+        # ----- Top allergens -----
         plot_df = or_results.copy()
         plot_df = or_results.set_index("allergen").reindex(top_allergens).reset_index()
         plot_df["err_lower"] = plot_df["odds_ratio"] - plot_df["ci_lower"]
         plot_df["err_upper"] = plot_df["ci_upper"] - plot_df["odds_ratio"]
         order = top_allergens 
+
         sns.barplot(
             data=plot_df,
             x="allergen",
@@ -206,11 +290,12 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             order=order,
             ax=ax_top
         )
+
+        # Significant allergens (CI entirely above or below 1)
         sig_top_allergens = plot_df[plot_df["ci_lower"] > 1]
         sig_bot_allergens = plot_df[plot_df["ci_upper"] < 1]
 
-
-        # Get bar centers from seaborn
+        # Add confidence interval error bars
         bar_centers = [bar.get_x() + bar.get_width() / 2 for bar in ax_top.patches]
 
         ax_top.errorbar(
@@ -227,35 +312,56 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             zorder=3
         )
 
+        # Reference line (OR = 1)
         ax_top.axhline(1.0, linestyle="--", color="red", alpha=0.7)
         ax_top.set_ylabel("Odds Ratio", fontsize=fs)
         ax_top.set_xlabel("Allergen", fontsize=14 )
         ax_top.set_title(f"Lag window: {best_window[0]}-{best_window[1]}h", fontsize=14)
         ax_top.tick_params(axis='x', rotation=45)
 
-        # --- Metrics box ---
+        # --------------------------------------------------
+        # Add model performance metrics box
+        # --------------------------------------------------
         from matplotlib.patches import Rectangle
 
-        rect = Rectangle((0.65, 0.65), 0.35, 0.25, transform=ax_top.transAxes, color="white", alpha=0.85, zorder=2)
+        rect = Rectangle((0.65, 0.65), 0.35, 0.25,
+                         transform=ax_top.transAxes,
+                         color="white", alpha=0.85, zorder=2)
         ax_top.add_patch(rect)
 
-        plt.text(0.67, 0.945, "Model Performance:", transform=ax_top.transAxes, fontsize=12, color="black", zorder=4)
+        plt.text(0.67, 0.945, "Model Performance:",
+                 transform=ax_top.transAxes,
+                 fontsize=12, color="black", zorder=4)
 
+        # Traffic-light colour coding
         auc_colour = get_colour(best_auc, "auc")
         recall_colour = get_colour(best_recall, "recall")
         samples_colour = get_colour(best_samples, "samples")
-        metrics = [("ROC AUC", best_auc, best_auc_std, auc_colour),
-                    ("Symptom recall", best_recall, best_recall_std, recall_colour),
-                    ("Samples", best_samples, None, samples_colour)]
+
+        metrics = [
+            ("ROC AUC", best_auc, best_auc_std, auc_colour),
+            ("Symptom recall", best_recall, best_recall_std, recall_colour),
+            ("Samples", best_samples, None, samples_colour)
+        ]
+
         x_text = 0.95
         y_start = 0.91
         y_step = 0.06
+
         for i, (name, val, std, colour) in enumerate(metrics):
             y = y_start - i * y_step
             text = f"{name}: {val:.2f} ± {std:.2f}" if std is not None else f"{name}: {val}"
-            plt.text(x_text, y, text, transform=ax_top.transAxes, fontsize=12,
-                        verticalalignment="top", horizontalalignment="right",
-                        color=colour, zorder=4)
+            plt.text(
+                x_text, y, text,
+                transform=ax_top.transAxes,
+                fontsize=12,
+                verticalalignment="top",
+                horizontalalignment="right",
+                color=colour,
+                zorder=4
+            )
+
+        # Collinearity status
         plt.text(
             x_text,
             y - y_step,
@@ -269,7 +375,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             wrap=True
         )
 
-        # metrics_summary
+        # Summary of metric "traffic lights"
         metric_lights = {
             "ROC AUC": auc_colour,
             "Recall": recall_colour,
@@ -277,12 +383,13 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             "Colinearity": strong_col_colour,
         }
 
-        # bottom allergens 
+        # ----- Bottom allergens -----
         plot_df = or_results.copy()
         plot_df = or_results.set_index("allergen").reindex(bottom_allergens).reset_index()
         plot_df["err_lower"] = plot_df["odds_ratio"] - plot_df["ci_lower"]
         plot_df["err_upper"] = plot_df["ci_upper"] - plot_df["odds_ratio"]
         order = bottom_allergens 
+
         sns.barplot(
             data=plot_df,
             x="allergen",
@@ -291,7 +398,6 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             ax=ax_bot
         )
 
-        # Get bar centers from seaborn
         bar_centers = [bar.get_x() + bar.get_width() / 2 for bar in ax_bot.patches]
 
         ax_bot.errorbar(
@@ -313,6 +419,9 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         ax_bot.set_xlabel("Allergen", fontsize=14 )
         ax_bot.tick_params(axis='x', rotation=45)
 
+        # --------------------------------------------------
+        # Return output
+        # --------------------------------------------------
         if return_type=="buf":
             buf = BytesIO()
             plt.savefig(buf, format="png", bbox_inches="tight")
@@ -322,6 +431,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
 
         elif return_type=="text":
             plt.close(fig)
+
             top_allergens = sig_top_allergens["allergen"].tolist()
             bot_allergens = sig_bot_allergens["allergen"].tolist()
 
