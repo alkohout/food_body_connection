@@ -1056,6 +1056,7 @@ async function init() {
     const allergenIdInput = getElement("allergen-id");
 
     if (allergenSelect) {
+      console.log({ allergenSelect, allergenInput, allergenIdInput });
       allergenSelect.addEventListener("change", () => {
         const selectedOption = allergenSelect.selectedOptions[0];
 
