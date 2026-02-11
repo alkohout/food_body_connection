@@ -802,12 +802,15 @@ const setupAnalysis = () => {
 const fetchAnalysisPlot = async () => {
   try {
     // Stats
+    console.log("Fetching analysis stats...");
     const statsRes = await fetch(`${API_URL}/analysis/stats`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
     });
 
     if (statsRes.ok) {
+
       const stats = await statsRes.json();
+      console.log("Stats fetched successfully:", stats);
       
       const totalAllergensEl = getElement("stat-total-allergens");
       if (totalAllergensEl) {
@@ -840,9 +843,12 @@ const fetchAnalysisPlot = async () => {
         avgSymptomsPerDayEl.textContent = stats["Average symptoms logged per day"] || 0;
       }
 
+    } else {
+      console.error("Failed to fetch stats:", statsRes.status, statsRes.statusText);
     }
 
     // Histogram plot
+    console.log("Fetching histogram plot...");
     const histogramPlotImg = getElement("group_histogram");
     if (histogramPlotImg) {
       const res = await fetch(`${API_URL}/analysis/symptom_group_histogram`, {
@@ -851,10 +857,13 @@ const fetchAnalysisPlot = async () => {
       if (res.ok) {
         const blob = await res.blob();
         histogramPlotImg.src = URL.createObjectURL(blob);
+        console.log("Histogram plot fetched successfully");
+      }else {
+        console.error("Failed to fetch histogram plot:", res.status, res.statusText);
       }
-    }
 
     // Allergen rank plot
+    console.log("Fetching allergen rank plot...");
     const allergenrankPlotImg = getElement("allergenrank-plot");
     if (allergenrankPlotImg) {
       const res = await fetch(`${API_URL}/analysis/plot_allergen_rank`, {
@@ -863,6 +872,9 @@ const fetchAnalysisPlot = async () => {
       if (res.ok) {
         const blob = await res.blob();
         allergenrankPlotImg.src = URL.createObjectURL(blob);
+        console.log("Allergen rank plot fetched successfully");
+      } else {
+        console.error("Failed to fetch allergen rank plot:", res.status, res.statusText);
       }
     }
 
