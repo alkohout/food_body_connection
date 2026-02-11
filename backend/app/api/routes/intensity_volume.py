@@ -31,80 +31,157 @@ def intensity_volume(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """
+    Analyse the relationship between allergen exposure volume
+    and peak symptom intensity within a specified lag window.
+
+    The endpoint:
+    1. Retrieves allergen and symptom events.
+    2. Computes peak symptom intensity within the lag window
+       after each allergen exposure.
+    3. Fits an ordered logistic regression model.
+    4. Computes odds ratio and confidence interval.
+    5. Returns a violin plot with statistical annotation.
+
+    Parameters
+    ----------
+    allergen_name : str
+        Name of allergen to analyse.
+    lag_start : int
+        Start of lag window in hours (default = 0).
+    lag_end : int
+        End of lag window in hours (default = 6).
+    current_user : User
+        Authenticated user.
+    db : Session
+        Database session.
+
+    Returns
+    -------
+    StreamingResponse (image/png)
+        Generated plot showing exposure volume vs symptom intensity.
+    """
 
     try: 
-        # --- Fetch allergen and symptom events ---
-        allergen_df = get_all_allergen_events_df(db, current_user.user_id, allergen_name=allergen_name)
-        symptom_df = get_all_symptom_events_df(db, current_user.user_id)
+        # --------------------------------------------------
+        # Fetch allergen and symptom events
+        # --------------------------------------------------
+        allergen_df = get_all_allergen_events_df(
+            db,
+            current_user.user_id,
+            allergen_name=allergen_name
+        )
+        symptom_df = get_all_symptom_events_df(
+            db,
+            current_user.user_id
+        )
 
+        # If no allergen data, nothing to analyse
         if allergen_df.empty:
             logger.warning("No allergen events found")
-            return None  # or empty plot
+            return None
 
+        # Ensure datetime format
         allergen_df["date_time"] = pd.to_datetime(allergen_df["date_time"], utc=True)
         symptom_df["date_time"] = pd.to_datetime(symptom_df["date_time"], utc=True)
         symptom_df = symptom_df.sort_values("date_time")
 
-        # --- Compute burden score per allergen event ---
+        # --------------------------------------------------
+        # Compute peak symptom intensity per exposure
+        # --------------------------------------------------
         rows = []
+
         for _, allergen in allergen_df.iterrows():
+
+            # Define lag window after exposure
             start = allergen["date_time"] + timedelta(hours=lag_start)
             end = allergen["date_time"] + timedelta(hours=lag_end)
-            window_symptoms = symptom_df[(symptom_df["date_time"] >= start) & (symptom_df["date_time"] <= end)]
+
+            # Filter symptoms within window
+            window_symptoms = symptom_df[
+                (symptom_df["date_time"] >= start) &
+                (symptom_df["date_time"] <= end)
+            ]
+
+            # Peak symptom intensity within window
             peak_intensity = window_symptoms["symptom_intensity"].max()
+
+            # Replace NaN with 0 (no symptoms)
             if pd.isna(peak_intensity):
                 peak_intensity = 0
-            burden_score = peak_intensity
+
             rows.append({
                 "volume": allergen["volume"],
-                "burden_score": burden_score,
+                "burden_score": peak_intensity,
             })
+
         df = pd.DataFrame(rows)
 
         if df.empty:
             logger.warning("No valid rows for plot")
             return None
 
-        # --- Plot scatter + GAM ---
+        # --------------------------------------------------
+        # Prepare data for modelling
+        # --------------------------------------------------
         sns.set(style="whitegrid")
-        fig, ax = plt.subplots(figsize=(12, 10))
-        print("Volume range min/max:", df["volume"].min(), df["volume"].max())
 
-        # --- Prepare data ---
         df["volume"] = df["volume"].astype(float)
-        df["volume_scaled"] = ( df["volume"] - df["volume"].mean()) / df["volume"].std()
-        df["burden_score"] = df["burden_score"].astype(int)  # ordinal levels
 
-        X = df[["volume_scaled"]]  # keep as DataFrame
+        # Standardise exposure volume
+        df["volume_scaled"] = (
+            df["volume"] - df["volume"].mean()
+        ) / df["volume"].std()
+
+        # Convert burden score to ordinal integer
+        df["burden_score"] = df["burden_score"].astype(int)
+
+        X = df[["volume_scaled"]]
         y = df["burden_score"]
 
-        # --- Fit ordered model ---
+        # --------------------------------------------------
+        # Fit ordered logistic regression
+        # --------------------------------------------------
         model = OrderedModel(y, X, distr="logit")
         res = model.fit(method="bfgs", disp=False)
 
-        # --- Odds ratio + CI ---
+        # Extract coefficient for volume
         idx = res.model.exog_names.index("volume_scaled")
         beta = res.params[idx]
         se = res.bse[idx]
 
+        # Convert to odds ratio with 95% CI
         or_value = np.exp(beta)
-        ci_low = np.exp(beta - 1.96*se)
-        ci_high = np.exp(beta + 1.96*se)
+        ci_low = np.exp(beta - 1.96 * se)
+        ci_high = np.exp(beta + 1.96 * se)
 
-        # Plot
+        # --------------------------------------------------
+        # Plot violin plot
+        # --------------------------------------------------
         fig, ax = plt.subplots(figsize=(12, 8))
-        sns.violinplot(x="burden_score", y="volume_scaled", data=df, inner="quartile")
-        plt.xlabel(f"Peak symptom intensity within {lag_start} - {lag_end} hrs after {allergen_name} exposure")
+
+        sns.violinplot(
+            x="burden_score",
+            y="volume_scaled",
+            data=df,
+            inner="quartile"
+        )
+
+        plt.xlabel(
+            f"Peak symptom intensity within {lag_start} - {lag_end} hrs after {allergen_name} exposure"
+        )
         plt.ylabel(f"Volume of {allergen_name} exposure (scaled)")
         plt.title("Effect of Allergen Volume on Peak Symptom Intensity")
-        plt.show()
 
+        # --------------------------------------------------
+        # Add statistical annotation box
+        # --------------------------------------------------
         from matplotlib.patches import Rectangle
 
-        # --- Rectangle background ---
         rect = Rectangle(
             (0.65, 0.75),
-            0.35, 0.25,
+            0.35,
+            0.25,
             transform=ax.transAxes,
             color="white",
             alpha=0.8,
@@ -112,9 +189,14 @@ def intensity_volume(
         )
         ax.add_patch(rect)
 
-        # --- Metrics text ---
+        # Odds ratio metric
         metrics = [
-             ("Odds Ratio (volume)", or_value, or_color(or_value, ci_low, ci_high), f"{or_value:.2f} [{ci_low:.2f}, {ci_high:.2f}]"),
+            (
+                "Odds Ratio (volume)",
+                or_value,
+                or_color(or_value, ci_low, ci_high),
+                f"{or_value:.2f} [{ci_low:.2f}, {ci_high:.2f}]"
+            ),
         ]
 
         y_start = 0.945
@@ -135,7 +217,9 @@ def intensity_volume(
 
         plt.tight_layout()
 
-        # --- Save to PNG ---
+        # --------------------------------------------------
+        # Save plot to PNG buffer
+        # --------------------------------------------------
         buf = BytesIO()
         plt.savefig(buf, format="png", bbox_inches="tight")
         plt.close(fig)

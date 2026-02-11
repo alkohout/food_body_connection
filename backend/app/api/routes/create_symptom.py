@@ -18,9 +18,47 @@ def create_symptom(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
 ):
+    """
+    Create a new symptom for the current user.
+
+    The endpoint:
+    1. Strips whitespace from the symptom name.
+    2. Checks if a symptom with the same name already exists
+       for the user (case-insensitive).
+    3. Creates and saves the new symptom.
+    4. Returns confirmation with symptom details.
+
+    Parameters
+    ----------
+    payload : SymptomCreate
+        Request body containing:
+        - symptom_name : str
+        - symptom_group : str
+    db : Session
+        Database session (FastAPI dependency).
+    current_user : User
+        Authenticated user (FastAPI dependency).
+
+    Returns
+    -------
+    dict
+        {
+            "message": str,
+            "symptom_id": int,
+            "symptom_name": str,
+            "symptom_group": str
+        }
+    """
+
+    # --------------------------------------------------
+    # Clean input (remove leading/trailing whitespace)
+    # --------------------------------------------------
     name = payload.symptom_name.strip()
 
-    # Check if exists
+    # --------------------------------------------------
+    # Check if symptom already exists for this user
+    # (case-insensitive comparison)
+    # --------------------------------------------------
     existing = (
         db.query(Symptom)
         .filter(Symptom.user_id == current_user.user_id)
@@ -31,6 +69,9 @@ def create_symptom(
     if existing:
         raise HTTPException(400, "Symptom already exists for this user")
 
+    # --------------------------------------------------
+    # Create new symptom record
+    # --------------------------------------------------
     new_symptom = Symptom(
         user_id=current_user.user_id,
         symptom_name=name,
@@ -41,6 +82,9 @@ def create_symptom(
     db.commit()
     db.refresh(new_symptom)
 
+    # --------------------------------------------------
+    # Return response
+    # --------------------------------------------------
     return {
         "message": "Symptom created",
         "symptom_id": new_symptom.symptom_id,

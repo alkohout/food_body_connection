@@ -28,19 +28,52 @@ def generate_summary_text(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
     ):
+    """
+    Generate a textual statistical summary based on the user's data.
+
+    The endpoint:
+    1. Runs the logistic regression analysis via `model_classification`.
+    2. Requests the result in text format (not image).
+    3. Returns the summary as plain text.
+    4. Handles and logs errors gracefully.
+
+    Parameters
+    ----------
+    db : Session
+        Database session (FastAPI dependency).
+    current_user : User
+        Authenticated user (FastAPI dependency).
+
+    Returns
+    -------
+    Response (text/plain)
+        Generated summary text explaining model findings.
+    """
 
     try: 
 
+        # --------------------------------------------------
+        # Run classification model and request text output
+        # --------------------------------------------------
         buf = model_classification(
             db,
             current_user.user_id,
             return_type="text"
         )
 
+        # Return as plain text response
         return Response(content=buf, media_type="text/plain")
 
     except Exception as e:
 
+        # --------------------------------------------------
+        # Log full error details for debugging
+        # --------------------------------------------------
         logger.error("Error generating summary: %s", e)
         logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail="Failed to generate summary")
+
+        # Return generic error to client
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate summary"
+        )
