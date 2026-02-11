@@ -453,83 +453,212 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
 
 def get_colour(value, metric):
     """
-    Return traffic light colour based on metric thresholds.
+    Determine a traffic-light colour (green, orange, red)
+    based on predefined performance thresholds.
+
+    Parameters
+    ----------
+    value : float or int
+        The metric value to evaluate.
+    metric : str
+        The type of metric being evaluated.
+        Supported values:
+        - "auc"     : ROC AUC score
+        - "recall"  : Sensitivity / recall score
+        - "samples" : Number of samples used in the model
+
+    Returns
+    -------
+    str
+        "green"  -> good / strong performance
+        "orange" -> moderate performance
+        "red"    -> weak performance
     """
+
+    # --------------------------------------------------
+    # ROC AUC thresholds
+    # Measures overall discrimination ability of model
+    # --------------------------------------------------
     if metric == "auc":
         if value >= 0.75:
-            return "green"
+            return "green"     # Strong discrimination
         elif value >= 0.65:
-            return "orange"
+            return "orange"    # Moderate discrimination
         else:
-            return "red"
+            return "red"       # Poor discrimination
+
+    # --------------------------------------------------
+    # Recall thresholds
+    # Measures ability to correctly detect positive cases
+    # --------------------------------------------------
     elif metric == "recall":
         if value >= 0.70:
-            return "green"
+            return "green"     # Good sensitivity
         elif value >= 0.55:
-            return "orange"
+            return "orange"    # Acceptable sensitivity
         else:
-            return "red"
+            return "red"       # Low sensitivity
+
+    # --------------------------------------------------
+    # Sample size thresholds
+    # Larger sample sizes increase model reliability
+    # --------------------------------------------------
     elif metric == "samples":
         if value >= 200:
-            return "green"
+            return "green"     # Large dataset
         elif value >= 75:
-            return "orange"
+            return "orange"    # Moderate dataset size
         else:
-            return "red"
+            return "red"       # Small dataset (higher uncertainty)
 
 def allergen_list_text(allergens):
+    """
+    Convert a list of allergen names into a human-readable string.
 
+    The function formats the list using natural language rules:
+    - 0 allergens  -> "none"
+    - 1 allergen   -> "allergen"
+    - 2 allergens  -> "allergen1 and allergen2"
+    - 3+ allergens -> "a, b, and c"
+
+    Parameters
+    ----------
+    allergens : list[str]
+        List of allergen names.
+
+    Returns
+    -------
+    str
+        A grammatically formatted string suitable for display
+        in summaries or reports.
+    """
+
+    # Convert all allergen names to lowercase for consistent formatting
     allergens = [a.lower() for a in allergens]
 
+    # No allergens detected
     if len(allergens) == 0:
         return "none"
+
+    # Single allergen
     if len(allergens) == 1:
         return allergens[0]
+
+    # Two allergens → joined with "and"
     if len(allergens) == 2:
         return " and ".join(allergens)
+
+    # Three or more allergens → Oxford comma style formatting
     return ", ".join(allergens[:-1]) + f", and {allergens[-1]}"
 
+
 def worst_light(lights):
-    """Return the worst (most concerning) light present."""
+    """
+    Determine the worst (most concerning) traffic-light colour
+    from a collection of metric evaluations.
+
+    Priority order:
+    red   > orange > green
+
+    Parameters
+    ----------
+    lights : list[str]
+        List of traffic-light values (e.g. ["green", "orange"]).
+
+    Returns
+    -------
+    str
+        The worst colour present in the list.
+    """
+
+    # If any metric is red, overall result is red
     if "red" in lights:
         return "red"
+
+    # If no red but at least one orange → orange
     if "orange" in lights:
         return "orange"
+
+    # If only green values present
     return "green"
 
+
 def metric_summary_text(metric_name, light):
+    """
+    Generate a short descriptive sentence for a specific metric
+    based on its traffic-light classification.
+
+    Parameters
+    ----------
+    metric_name : str
+        Name of the metric (e.g., "ROC AUC").
+    light : str
+        Traffic-light classification ("green", "orange", "red").
+
+    Returns
+    -------
+    str
+        A human-readable interpretation sentence.
+    """
+
+    # Mapping of traffic-light colours to interpretation text
     METRIC_TEXT = {
         "green": "performed well and showed strong discrimination",
         "orange": "showed moderate performance with some uncertainty",
         "red": "performed poorly and showed limited discriminatory ability",
     }
+
+    # Return formatted interpretation sentence
     return f"{metric_name} {METRIC_TEXT[light]}."
+
 
 def overall_reliability_text(metric_lights: dict):
     """
-    metric_lights example:
+    Generate an overall reliability statement based on
+    multiple evaluation metric traffic-light classifications.
+
+    Example input:
     {
         "ROC AUC": "green",
         "Calibration": "orange",
         "Stability": "green",
         "Sample Size": "red"
     }
+
+    The overall judgement is determined by the worst metric.
+
+    Parameters
+    ----------
+    metric_lights : dict
+        Dictionary mapping metric names to traffic-light colours.
+
+    Returns
+    -------
+    str
+        A summary paragraph describing overall model reliability.
     """
+
+    # Extract list of traffic-light values
     lights = list(metric_lights.values())
+
+    # Determine the worst-performing metric colour
     worst = worst_light(lights)
 
+    # If all metrics are green
     if worst == "green":
         return (
             "Overall, the logistic regression model performed well across all evaluation metrics. "
             "The results are considered reliable and suitable for identifying potential patterns. "
         )
 
+    # If at least one metric is orange (but none red)
     if worst == "orange":
         return (
             "Overall, the logistic regression model showed mixed performance across evaluation metrics. "
             "The results should be interpreted with some caution, particularly for borderline findings. "
         )
 
+    # If at least one metric is red
     return (
         "Overall, the logistic regression model showed weak performance on at least one key metric. "
         "The results are considered unreliable and should be interpreted with caution, "
