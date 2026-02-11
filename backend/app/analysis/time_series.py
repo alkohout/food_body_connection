@@ -15,7 +15,6 @@ from io import BytesIO
 logger = logging.getLogger("app/analysis/time_series.py")
 logging.basicConfig(level=logging.INFO)
 
-
 def time_series(
     db: "Session",
     current_user: int,
@@ -23,46 +22,70 @@ def time_series(
     rolling_days: int = 3,
 ):
     """
-    Improved stacked time series plot:
-    - Top: symptom burden (raw + rolling mean)
-    - Bottom: allergen exposure volume (bars)
+    Generate a stacked time series plot showing:
+
+    Top panel:
+        - Daily symptom burden (raw values)
+        - Rolling mean (smoothed trend)
+
+    Bottom panel:
+        - Daily allergen exposure volume (bar chart)
+
+    Parameters
+    ----------
+    db : Session
+        Active database session.
+    current_user : int
+        ID of the user whose data is analysed.
+    allergen_name : str
+        Name of allergen to visualise.
+    rolling_days : int, optional
+        Window size (in days) for rolling average smoothing.
+        Default = 3.
+
+    Returns
+    -------
+    BytesIO
+        PNG image buffer containing the generated time series plot.
     """
 
     try:
         # --------------------------------------------------
-        # Load data
+        # Load allergen and symptom data
         # --------------------------------------------------
         allergen_events = get_all_allergen_events_df(db, current_user, allergen_name)
         symptom_events = get_all_symptom_events_df(db, current_user)
 
+        # Ensure symptom data exists
         if symptom_events.empty:
             raise ValueError("No symptom data available")
 
-        # Floor to days
+        # Convert timestamps to daily resolution
         symptom_events["days"] = symptom_events["date_time"].dt.floor("D")
         allergen_events["days"] = allergen_events["date_time"].dt.floor("D")
 
         # --------------------------------------------------
-        # Aggregate symptoms per day
+        # Aggregate symptom data per day
         # --------------------------------------------------
         daily_symptoms = (
             symptom_events
             .groupby("days")
             .agg(
-                burden=("symptom_intensity", "sum"),
-                symptom_count=("symptom_id", "count"),
-                mean_severity=("symptom_intensity", "mean"),
+                burden=("symptom_intensity", "sum"),        # total daily intensity
+                symptom_count=("symptom_id", "count"),      # number of symptoms logged
+                mean_severity=("symptom_intensity", "mean") # average intensity
             )
             .reset_index()
         )
 
-        # Ensure continuous date range
+        # Create continuous daily date range
         full_days = pd.date_range(
             start=daily_symptoms["days"].min(),
             end=daily_symptoms["days"].max(),
             freq="D",
         )
 
+        # Reindex to ensure missing days appear with zero values
         daily_symptoms = (
             daily_symptoms
             .set_index("days")
@@ -71,7 +94,9 @@ def time_series(
             .reset_index()
         )
 
-        # Rolling mean for burden
+        # --------------------------------------------------
+        # Rolling mean smoothing for symptom burden
+        # --------------------------------------------------
         daily_symptoms["burden_smooth"] = (
             daily_symptoms["burden"]
             .rolling(rolling_days, min_periods=1)
@@ -85,26 +110,28 @@ def time_series(
             daily_exposure = (
                 allergen_events
                 .groupby("days")
-                .agg(volume=("volume", "sum"))
+                .agg(volume=("volume", "sum"))  # total daily exposure volume
                 .reset_index()
             )
         else:
+            # Empty dataframe if no exposures logged
             daily_exposure = pd.DataFrame(columns=["days", "volume"])
 
         # --------------------------------------------------
-        # Plot (stacked panels)
+        # Create stacked subplot layout
         # --------------------------------------------------
         fig, (ax_symptom, ax_exposure) = plt.subplots(
             2,
             1,
             figsize=(12, 7),
             sharex=True,
-            gridspec_kw={"height_ratios": [3, 1]},
+            gridspec_kw={"height_ratios": [3, 1]},  # top panel larger
         )
 
         # ------------------------------
-        # Symptom burden (top)
+        # Top panel: Symptom burden
         # ------------------------------
+        # Raw daily burden
         ax_symptom.plot(
             daily_symptoms["days"],
             daily_symptoms["burden"],
@@ -114,6 +141,7 @@ def time_series(
             label="Daily burden",
         )
 
+        # Smoothed rolling average
         ax_symptom.plot(
             daily_symptoms["days"],
             daily_symptoms["burden_smooth"],
@@ -126,13 +154,13 @@ def time_series(
         ax_symptom.legend(frameon=False)
         ax_symptom.grid(alpha=0.2)
 
-        # Optional severity bands (subtle)
+        # Optional visual severity bands
         ax_symptom.axhspan(0, 3, color="green", alpha=0.05)
         ax_symptom.axhspan(3, 6, color="orange", alpha=0.05)
         ax_symptom.axhspan(6, 10, color="red", alpha=0.05)
 
         # ------------------------------
-        # Allergen exposure (bottom)
+        # Bottom panel: Allergen exposure
         # ------------------------------
         if not daily_exposure.empty:
             ax_exposure.bar(
@@ -147,9 +175,9 @@ def time_series(
         ax_exposure.set_xlabel("Date")
         ax_exposure.grid(alpha=0.2)
 
-        # ------------------------------
-        # Final layout
-        # ------------------------------
+        # --------------------------------------------------
+        # Final layout adjustments
+        # --------------------------------------------------
         fig.suptitle(
             f"Symptom burden and {allergen_name} exposure",
             fontsize=14,
@@ -160,12 +188,13 @@ def time_series(
         plt.tight_layout()
 
         # --------------------------------------------------
-        # Output buffer
+        # Save plot to PNG buffer
         # --------------------------------------------------
         buf = BytesIO()
         plt.savefig(buf, format="png", dpi=150, bbox_inches="tight")
         plt.close(fig)
         buf.seek(0)
+
         return buf
 
     except Exception as e:
