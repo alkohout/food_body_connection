@@ -590,7 +590,9 @@ const setupAutocomplete = (inputEl, idEl, suggestionsEl, type) => {
         suggestionsEl.innerHTML = "";
         suggestionsEl.classList.remove("visible");
       } else {
-        addBtnWrapper.style.display = "none";
+        if (addBtnWrapper) {
+            addBtnWrapper.style.display = "none";
+        }
       }
     }
 
