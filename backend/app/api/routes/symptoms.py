@@ -19,32 +19,6 @@ def search_symptoms(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Search the current user's symptoms by name (optional query string).
-
-    The endpoint:
-    1. Builds a base query for symptoms belonging to the authenticated user.
-    2. If `q` is provided, applies a case-insensitive partial match filter on `symptom_name`.
-    3. Returns up to 10 matches when searching; otherwise returns all symptoms.
-    4. Logs SQL and basic debug info.
-
-    Parameters
-    ----------
-    q : str, optional
-        Search term used to filter symptoms by name (case-insensitive, partial match).
-        If omitted/None, no search filter is applied.
-    db : Session
-        Database session (FastAPI dependency).
-    current_user : User
-        Authenticated user (FastAPI dependency).
-
-    Returns
-    -------
-    list[dict]
-        A list of symptoms as JSON objects with:
-        - symptom_id
-        - symptom_name
-    """
 
     query = (
         db.query(Symptom)
@@ -75,7 +49,6 @@ def search_symptoms(
         for a in results
     ]
 
-
 @router.get("/recent")
 def get_recent_logs(
         limit: int = Query(5, ge=1, le=50, description="Max number of recent logs to return"),
@@ -83,30 +56,8 @@ def get_recent_logs(
         current_user: User = Depends(get_current_user),
     ):
         """
-        Return the most recent symptoms logged by the current user.
-
-        The endpoint:
-        1. Queries the most recent SymptomLog rows for the authenticated user (descending date_time).
-        2. Joins Symptom to include symptom metadata (name/id).
-        3. Deduplicates symptoms while preserving recency order.
-        4. Returns up to `limit` unique symptoms.
-
-        Parameters
-        ----------
-        limit : int
-            Max number of recent (unique) symptoms to return.
-            Constrained to 1..50 (default 5).
-        db : Session
-            Database session (FastAPI dependency).
-        current_user : User
-            Authenticated user (FastAPI dependency).
-
-        Returns
-        -------
-        list[dict]
-            A list of recent unique symptoms as JSON objects with:
-            - symptom_id
-            - symptom_name
+        Return the most recent logs for the current user, ordered by date_timeDESC.
+        Default limit: 5 (up to max 50).
         """
 
         logger.info("=== GET /logs/recent CALLED ===")
