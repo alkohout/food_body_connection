@@ -23,56 +23,23 @@ logging.basicConfig(level=logging.INFO)
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
+@router.get("/plot_allergen_rank")
 def plot_allergen_rank(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
     ):
-    """
-    Generate and return the allergen ranking plot based on
-    logistic regression analysis.
-
-    The function:
-    1. Calls `model_classification` to perform the analysis.
-    2. Receives a PNG image buffer (default return type).
-    3. Returns the plot as a streaming image response.
-    4. Logs and handles errors gracefully.
-
-    Parameters
-    ----------
-    db : Session
-        Database session (FastAPI dependency).
-    current_user : User
-        Authenticated user (FastAPI dependency).
-
-    Returns
-    -------
-    StreamingResponse (image/png)
-        PNG image containing allergen odds ratio ranking plot.
-    """
 
     try: 
 
-        # --------------------------------------------------
-        # Run classification model (default return = image buffer)
-        # --------------------------------------------------
         buf = model_classification(
             db,
             current_user.user_id
         )
 
-        # Return generated image as streaming PNG response
         return StreamingResponse(buf, media_type="image/png")
 
     except Exception as e:
 
-        # --------------------------------------------------
-        # Log error details for debugging
-        # --------------------------------------------------
         logger.error("Error generating plot: %s", e)
         logger.error(traceback.format_exc())
-
-        # Return generic error to client
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to generate plot"
-        )
+        raise HTTPException(status_code=500, detail="Failed to generate plot")
