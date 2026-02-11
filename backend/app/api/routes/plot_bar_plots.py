@@ -32,9 +32,41 @@ def plot_bar_plots(
         lag_end: int = 6,
         symptom_group: str = 'Gastrointestinal',
     ):
+    """
+    Generate a bar plot (PNG) showing statistics for a given allergen and symptom group.
+
+    The endpoint:
+    1. Calls `plot_stats` to generate the plot from the user's data.
+    2. Passes allergen, lag window, and symptom group filters into the plotting function.
+    3. Returns the plot as a streamed PNG image response.
+    4. Handles and logs errors gracefully.
+
+    Parameters
+    ----------
+    db : Session
+        Database session (FastAPI dependency).
+    current_user : User
+        Authenticated user (FastAPI dependency).
+    allergen_name : str
+        Allergen to plot (default "Dairy").
+    lag_start : int
+        Start of the lag window (default 0).
+    lag_end : int
+        End of the lag window (default 6).
+    symptom_group : str
+        Symptom group filter (default "Gastrointestinal").
+
+    Returns
+    -------
+    StreamingResponse (image/png)
+        Generated bar plot image streamed as PNG.
+    """
 
     try: 
 
+        # --------------------------------------------------
+        # Generate plot buffer (PNG) from user statistics
+        # --------------------------------------------------
         buf = plot_stats(
             db,
             current_user.user_id,
@@ -44,10 +76,16 @@ def plot_bar_plots(
             symptom_group
         )
 
+        # Return as streamed PNG image response
         return StreamingResponse(buf, media_type="image/png")
 
     except Exception as e:
 
+        # --------------------------------------------------
+        # Log full error details for debugging
+        # --------------------------------------------------
         logger.error("Error generating plot: %s", e)
         logger.error(traceback.format_exc())
+
+        # Return generic error to client
         raise HTTPException(status_code=500, detail="Failed to generate plot")
