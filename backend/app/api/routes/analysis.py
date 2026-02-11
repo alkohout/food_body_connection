@@ -39,7 +39,6 @@ def analysis_stats(
     # ✅ If no data at all
     if allergen_df.empty and symptom_df.empty:
         return {
-            "message": "No data logged yet.",
             "Total allergens logged": 0,
             "Total symptoms logged": 0,
             "Total days tracked": 0,
@@ -48,42 +47,47 @@ def analysis_stats(
         }
 
     # Safe counts
-    total_allergen_records = allergen_df["allergen_name"].count() if not allergen_df.empty else 0
-    total_symptom_records = symptom_df["symptom_name"].count() if not symptom_df.empty else 0
-    total_days = total_allergen_records + total_symptom_records
+    total_allergen_records = len(allergen_df) if not allergen_df.empty else 0
+    total_symptom_records = len(symptom_df) if not symptom_df.empty else 0
 
-    # Safe averages
-    if not allergen_df.empty:
-        avg_allergens_per_day = (
-            allergen_df
-            .groupby(allergen_df["date_time"].dt.date)["allergen_name"]
-            .count()
-            .mean()
-        )
-    else:
-        avg_allergens_per_day = 0
+    # ✅ Safe daily averages
+    def safe_avg(df, column):
+        if df.empty or column not in df.columns:
+            return 0.0
 
-    if not symptom_df.empty:
-        avg_symptoms_per_day = (
-            symptom_df
-            .groupby(symptom_df["date_time"].dt.date)["symptom_name"]
-            .count()
-            .mean()
-        )
-    else:
-        avg_symptoms_per_day = 0
+        if "date_time" not in df.columns:
+            return 0.0
 
-    logger.info(
-        f"Average allergens per day: {avg_allergens_per_day}, "
-        f"Average symptoms per day: {avg_symptoms_per_day}"
-    )
+        df = df.copy()
+        df["date_time"] = pd.to_datetime(df["date_time"], errors="coerce")
+
+        df = df.dropna(subset=["date_time"])
+
+        if df.empty:
+            return 0.0
+
+        daily = df.groupby(df["date_time"].dt.date)[column].count()
+        return float(round(daily.mean(), 2)) if not daily.empty else 0.0
+
+    avg_allergens_per_day = safe_avg(allergen_df, "allergen_name")
+    avg_symptoms_per_day = safe_avg(symptom_df, "symptom_name")
+
+    # ✅ Correct total tracked days
+    def get_days(df):
+        if df.empty or "date_time" not in df.columns:
+            return set()
+        df = df.copy()
+        df["date_time"] = pd.to_datetime(df["date_time"], errors="coerce")
+        return set(df["date_time"].dropna().dt.date)
+
+    total_days = len(get_days(allergen_df) | get_days(symptom_df))
 
     return {
         "Total allergens logged": int(total_allergen_records),
         "Total symptoms logged": int(total_symptom_records),
         "Total days tracked": int(total_days),
-        "Average allergens logged per day": float(round(avg_allergens_per_day or 0, 2)),
-        "Average symptoms logged per day": float(round(avg_symptoms_per_day or 0, 2)),
+        "Average allergens logged per day": avg_allergens_per_day,
+        "Average symptoms logged per day": avg_symptoms_per_day,
     }
 
 @router.get("/plot-data")
