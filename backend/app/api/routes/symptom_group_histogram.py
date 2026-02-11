@@ -37,7 +37,19 @@ def symptom_group_histogram(
         symptom_events = get_all_symptom_events_df(db, current_user.user_id)
 
         if symptom_events.empty:
-            raise HTTPException(status_code=400, detail="Not enough data to plot")
+           if symptom_events.empty:
+                # Return a blank image instead of error
+                fig, ax = plt.subplots(figsize=(6,4))
+                ax.text(0.5, 0.5, "No symptom data available",
+                        ha="center", va="center")
+                ax.set_axis_off()
+
+                buf = BytesIO()
+                plt.savefig(buf, format="png", bbox_inches="tight")
+                plt.close(fig)
+                buf.seek(0)
+
+                return StreamingResponse(buf, media_type="image/png") 
 
         logger.info("Generating symptom group histogram for user_id=%d", current_user.user_id)
 

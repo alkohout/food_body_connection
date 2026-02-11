@@ -816,35 +816,6 @@ const fetchAnalysisPlot = async () => {
       const stats = await statsRes.json();
       console.log("Stats fetched successfully:", stats);
 
-      // Handle no-data response
-      if (stats.message) {
-        console.log("No stats data:", stats.message);
-
-        // Zero out all stat fields
-        const fields = [
-          "stat-total-allergens",
-          "stat-total-symptoms",
-          "stat-total-entries",
-          "stat-days",
-          "stat-avg-allergens-per-day",
-          "stat-avg-symptoms-per-day"
-        ];
-
-        fields.forEach(id => {
-          const el = getElement(id);
-          if (el) el.textContent = 0;
-        });
-
-        // Optional: show message somewhere
-        const summaryDiv = getElement("summaryDiv");
-        if (summaryDiv) {
-          summaryDiv.innerText = stats.message;
-        }
-
-        return; // ✅ Stop further processing
-      }
-
-      // else continue with normal stats update
       const totalAllergensEl = getElement("stat-total-allergens");
       if (totalAllergensEl) {
         totalAllergensEl.textContent = stats["Total allergens logged"] || 0;
