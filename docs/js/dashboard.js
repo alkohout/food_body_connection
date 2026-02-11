@@ -802,67 +802,67 @@ const setupAnalysis = () => {
 const fetchAnalysisPlot = async () => {
   try {
     // Stats
-    console.log("Fetching analysis stats...");
-    const statsRes = await fetch(`${API_URL}/analysis/stats`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
-    });
+    //console.log("Fetching analysis stats...");
+    //const statsRes = await fetch(`${API_URL}/analysis/stats`, {
+    //  headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    //});
 
-    if (statsRes.ok) {
-      const stats = await statsRes.json();
-      console.log("Stats fetched successfully:", stats);
+    //if (statsRes.ok) {
+    //  const stats = await statsRes.json();
+    //  console.log("Stats fetched successfully:", stats);
       
-      const totalAllergensEl = getElement("stat-total-allergens");
-      if (totalAllergensEl) {
-        totalAllergensEl.textContent = stats["Total allergens logged"] || 0;
-        console.log("Updated total allergens:", totalAllergensEl.textContent);
-      } else {
-        console.warn("Element stat-total-allergens not found");
-      }
+    //  const totalAllergensEl = getElement("stat-total-allergens");
+    //  if (totalAllergensEl) {
+    //    totalAllergensEl.textContent = stats["Total allergens logged"] || 0;
+    //    console.log("Updated total allergens:", totalAllergensEl.textContent);
+    //  } else {
+    //    console.warn("Element stat-total-allergens not found");
+    //  }
 
-      const totalSymptomsEl = getElement("stat-total-symptoms");
-      if (totalSymptomsEl) {
-        totalSymptomsEl.textContent = stats["Total symptoms logged"] || 0;
-        console.log("Updated total symptoms:", totalSymptomsEl.textContent);
-      } else {
-        console.warn("Element stat-total-symptoms not found");
-      }
+    //  const totalSymptomsEl = getElement("stat-total-symptoms");
+    //  if (totalSymptomsEl) {
+    //    totalSymptomsEl.textContent = stats["Total symptoms logged"] || 0;
+    //    console.log("Updated total symptoms:", totalSymptomsEl.textContent);
+    //  } else {
+    //    console.warn("Element stat-total-symptoms not found");
+    //  }
+//
+//      const totalEntriesEl = getElement("stat-total-entries");
+//      if (totalEntriesEl) {
+//        totalEntriesEl.textContent = 
+//          (stats["Total allergens logged"] || 0) + (stats["Total symptoms logged"] || 0);
+//        console.log("Updated total entries:", totalEntriesEl.textContent);
+//      } else {
+//        console.warn("Element stat-total-entries not found");
+//      }
 
-      const totalEntriesEl = getElement("stat-total-entries");
-      if (totalEntriesEl) {
-        totalEntriesEl.textContent = 
-          (stats["Total allergens logged"] || 0) + (stats["Total symptoms logged"] || 0);
-        console.log("Updated total entries:", totalEntriesEl.textContent);
-      } else {
-        console.warn("Element stat-total-entries not found");
-      }
+//      const daysEl = getElement("stat-days");
+//      if (daysEl) {
+//        daysEl.textContent = stats["Total days tracked"] || 0;
+//        console.log("Updated days tracked:", daysEl.textContent);
+//      } else {
+//        console.warn("Element stat-days not found");
+//      }
 
-      const daysEl = getElement("stat-days");
-      if (daysEl) {
-        daysEl.textContent = stats["Total days tracked"] || 0;
-        console.log("Updated days tracked:", daysEl.textContent);
-      } else {
-        console.warn("Element stat-days not found");
-      }
+//      const avgAllergensPerDayEl = getElement("stat-avg-allergens-per-day");
+//      if (avgAllergensPerDayEl) {
+//        avgAllergensPerDayEl.textContent = stats["Average allergens logged per day"] || 0;
+//        console.log("Updated avg allergens per day:", avgAllergensPerDayEl.textContent);
+//      } else {
+//        console.warn("Element stat-avg-allergens-per-day not found");
+//      }
 
-      const avgAllergensPerDayEl = getElement("stat-avg-allergens-per-day");
-      if (avgAllergensPerDayEl) {
-        avgAllergensPerDayEl.textContent = stats["Average allergens logged per day"] || 0;
-        console.log("Updated avg allergens per day:", avgAllergensPerDayEl.textContent);
-      } else {
-        console.warn("Element stat-avg-allergens-per-day not found");
-      }
+//      const avgSymptomsPerDayEl = getElement("stat-avg-symptoms-per-day");
+//      if (avgSymptomsPerDayEl) {
+//        avgSymptomsPerDayEl.textContent = stats["Average symptoms logged per day"] || 0;
+//        console.log("Updated avg symptoms per day:", avgSymptomsPerDayEl.textContent);
+//      } else {
+//        console.warn("Element stat-avg-symptoms-per-day not found");
+//      }
 
-      const avgSymptomsPerDayEl = getElement("stat-avg-symptoms-per-day");
-      if (avgSymptomsPerDayEl) {
-        avgSymptomsPerDayEl.textContent = stats["Average symptoms logged per day"] || 0;
-        console.log("Updated avg symptoms per day:", avgSymptomsPerDayEl.textContent);
-      } else {
-        console.warn("Element stat-avg-symptoms-per-day not found");
-      }
-
-    } else {
-      console.error("Failed to fetch stats:", statsRes.status, statsRes.statusText);
-    }
+//    } else {
+//      console.error("Failed to fetch stats:", statsRes.status, statsRes.statusText);
+//    }
 
     // Histogram plot
     console.log("Fetching histogram plot...");
