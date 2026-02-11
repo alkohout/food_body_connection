@@ -28,18 +28,48 @@ def plot_allergen_rank(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
     ):
+    """
+    Generate an allergen ranking plot (PNG) based on the user's classification model results.
+
+    The endpoint:
+    1. Runs the classification analysis via `model_classification`.
+    2. Requests the result in image format (default behavior of `model_classification`).
+    3. Returns the generated plot as a streamed PNG image response.
+    4. Handles and logs errors gracefully.
+
+    Parameters
+    ----------
+    db : Session
+        Database session (FastAPI dependency).
+    current_user : User
+        Authenticated user (FastAPI dependency).
+
+    Returns
+    -------
+    StreamingResponse (image/png)
+        Generated allergen ranking plot streamed as PNG.
+    """
 
     try: 
 
+        # --------------------------------------------------
+        # Run classification model and generate plot output
+        # --------------------------------------------------
         buf = model_classification(
             db,
             current_user.user_id
         )
 
+        # Return as streamed PNG image response
         return StreamingResponse(buf, media_type="image/png")
 
     except Exception as e:
 
+        # --------------------------------------------------
+        # Log full error details for debugging
+        # --------------------------------------------------
         logger.error("Error generating plot: %s", e)
         logger.error(traceback.format_exc())
+
+        # Return generic error to client
         raise HTTPException(status_code=500, detail="Failed to generate plot")
