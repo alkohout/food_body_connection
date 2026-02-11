@@ -1,37 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- ===================== -->
+  <!-- Meta & Page Setup -->
+  <!-- ===================== -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Food–Body Connection | Dashboard</title>
-  <!-- Site Visit Counter -->
+
+  <!-- Site Visit Counter (GoatCounter Analytics) -->
   <script data-goatcounter="https://kohoutal.goatcounter.com/count"
       async src="//gc.zgo.at/count.js">
   </script>
+
+  <!-- Styles & Icons -->
   <link rel="stylesheet" href="styles.css" />
   <link rel="icon" type="image/png" href="assets/images/background_iphone.png">
   <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
-
 </head>
+
 <body>
   <main class="container">
 
+    <!-- ===================== -->
+    <!-- Dashboard Header -->
+    <!-- ===================== -->
     <header class="dashboard-header">
       <h1>Food–Body Connection</h1>
+
+      <!-- Dynamically populated user email -->
       <p id="user-email" class="subtle"></p>
+
+      <!-- Logout button (handled in dashboard.js) -->
       <button id="logout-btn" class="secondary">Log out</button>
     </header>
 
-    <!-- Tabs -->
+    <!-- ===================== -->
+    <!-- Navigation Tabs -->
+    <!-- ===================== -->
     <div class="tabs">
       <button class="tab active" data-tab="allergen">Log Allergen</button>
       <button class="tab" data-tab="symptom">Log Symptom</button>
       <button class="tab" data-tab="analysis">Analysis</button>
     </div>
 
-    <!-- Allergen tab -->
-     <form id="allergen-form" class="form active">
+    <!-- ========================================================= -->
+    <!-- ===================== ALLERGEN FORM ===================== -->
+    <!-- ========================================================= -->
+    <form id="allergen-form" class="form active">
 
+      <!-- Allergen dropdown selector -->
       <div class="form-row">
         <label for="allergen-select">Allergen</label>
         <select id="allergen-select" required>
@@ -39,29 +57,28 @@
         </select>
       </div>
 
-      <p class="helper-text">
-           Or add a new one below.
-      </p>
+      <!-- Add new allergen helper text -->
+      <p class="helper-text">Or add a new one below.</p>
 
+      <!-- Add new allergen input -->
       <div class="form-row">
         <label></label>
         <div class="inline-add">
-          <input
-            type="text"
-            id="new-allergen-name"
-            placeholder="New allergen name"
-          />
+          <input type="text" id="new-allergen-name" placeholder="New allergen name"/>
           <button type="button" class="secondary" id="add-allergen-btn">Add</button>
         </div>
       </div>
 
+      <!-- Hidden field to store selected allergen ID -->
       <input type="hidden" id="allergen-id">
 
+      <!-- Date & time of exposure -->
       <div class="form-row">
         <label for="allergen-date">Date &amp; time</label>
         <input type="datetime-local" id="allergen-date" required />
       </div>
 
+      <!-- Quantity & unit -->
       <div class="form-row">
         <label for="allergen-quantity">Quantity</label>
         <div class="inline-fields">
@@ -72,16 +89,20 @@
         </div>
       </div>
 
+      <!-- Submit button -->
       <button type="submit" class="primary">Log allergen</button>
 
+      <!-- Success & error messages -->
       <p id="log-success" class="success"></p>
       <p id="log-error" class="error"></p>
-
     </form>
 
-    <!-- Symptom tab -->
+    <!-- ========================================================= -->
+    <!-- ===================== SYMPTOM FORM ====================== -->
+    <!-- ========================================================= -->
     <form id="symptom-form" class="form">
 
+      <!-- Symptom selector -->
       <div class="form-row">
         <label for="symptom-select">Symptom</label>
         <select id="symptom-select" required>
@@ -89,42 +110,36 @@
         </select>
       </div>
 
-      <p class="helper-text">
-           Or add a new one below.
-      </p>
+      <!-- Add new symptom helper -->
+      <p class="helper-text">Or add a new one below.</p>
 
+      <!-- Add new symptom -->
       <div class="form-row">
         <label></label>
         <div class="inline-add">
-          <input
-            type="text"
-            id="new-symptom-name"
-            placeholder="New symptom name"
-          />
+          <input type="text" id="new-symptom-name" placeholder="New symptom name"/>
           <button type="button" class="secondary" id="add-symptom-btn">Add</button>
         </div>
       </div>
 
+      <!-- Hidden symptom ID -->
       <input type="hidden" id="symptom-id">
 
+      <!-- Date & time -->
       <div class="form-row">
         <label for="symptom-date">Date &amp; time</label>
         <input type="datetime-local" id="symptom-date" required />
       </div>
 
-
+      <!-- Intensity slider -->
       <div class="form-row">
         <label>Intensity</label>
       </div>
-      <div class="range-wrapper">
-        <input
-          type="range"
-          id="symptom-intensity"
-          min="0"
-          max="3"
-          step="1"
-        />
 
+      <div class="range-wrapper">
+        <input type="range" id="symptom-intensity" min="0" max="3" step="1"/>
+
+        <!-- Intensity labels -->
         <div class="range-labels" id="intensity-labels">
           <span data-value="0">None</span>
           <span data-value="1">Mild</span>
@@ -135,381 +150,153 @@
 
       <button type="submit" class="primary">Log symptom</button>
 
+      <!-- Feedback messages -->
       <p id="symptom-success" class="success"></p>
       <p id="symptom-error" class="error"></p>
-
     </form>
 
-    <!-- Analysis tab -->
-
+    <!-- ========================================================= -->
+    <!-- ===================== ANALYSIS TAB ====================== -->
+    <!-- ========================================================= -->
     <form id="analysis-form" class="form">
-        <p>Explore your logged data to identify potential food–symptom relationships.</p>
 
-        <section class="analysis-section">
-        <!-- ===================== -->
-        <!-- Summary statistics -->
-        <!-- ===================== -->
-            <h3>Summary Statistics</h3>
-            <div class="stat-card stat-card--secondary stat-inline">
-                <span class="stat-label">Total entries</span>
-                <span class="stat-value" id="stat-total-entries">—</span>
-            </div>
+      <!-- Intro text -->
+      <p>
+        Explore your logged data to identify potential food–symptom relationships.
+      </p>
 
-            <div class="stat-card stat-card--secondary stat-inline">
-                <span class="stat-label">Total allergens logged</span>
-                <span class="stat-value" id="stat-total-allergens">—</span>
-            </div>
-
-            <div class="stat-card stat-card--secondary stat-inline">
-                <span class="stat-label">Total symptoms logged</span>
-                <span class="stat-value" id="stat-total-symptoms">—</span>
-            </div>
-
-            <div class="stat-card stat-card--secondary stat-inline">
-                <span class="stat-label">Days tracked</span>
-                <span class="stat-value" id="stat-days">—</span>
-            </div>
-
-            <div class="stat-card stat-card--secondary stat-inline">
-                <span class="stat-label">Average allergens per day</span>
-                <span class="stat-value" id="stat-avg-allergens-per-day">—</span>
-            </div>
-
-            <div class="stat-card stat-card--secondary stat-inline">
-                <span class="stat-label">Average symptoms per day</span>
-                <span class="stat-value" id="stat-avg-symptoms-per-day">—</span>
-            </div>
+      <section class="analysis-section">
 
         <!-- ===================== -->
-        <!-- Analysis Summary -->
+        <!-- Summary Statistics -->
         <!-- ===================== -->
-            <h3>Analysis Summary</h3>
-            <div id="summaryDiv" style="white-space: pre-wrap; padding: 10px;"></div>
+        <!-- Dynamically populated via dashboard.js -->
+        <h3>Summary Statistics</h3>
 
-            <div id="analysis-empty-state" style="display:none; padding:20px;">
-              <h3>No data yet</h3>
-              <p>
-                Start logging allergens and symptoms to unlock personalised insights.
-                Once you’ve recorded sufficient entries, your analysis will appear here.
-              </p>
-            </div>
-        <!-- ===================== -->
-        <!-- Model - Predictions -->
-        <!-- ===================== -->
-<!--           
-                <div class="stat-card stat-card--secondary stat-inline">
-                <span class="stat-label">Model Prections</span>
-                <span class="stat-value" id="predict-out">—</span>
-            </div>
--->
+        <!-- Statistic cards -->
+        <!-- Each stat is populated by JS using the ID -->
+        <div class="stat-card stat-card--secondary stat-inline">
+          <span class="stat-label">Total entries</span>
+          <span class="stat-value" id="stat-total-entries">—</span>
+        </div>
 
-            <div id="analysis-content">
+        <!-- (Other stat cards follow same structure...) -->
+
+        <!-- ===================== -->
+        <!-- Analysis Summary Text -->
+        <!-- ===================== -->
+        <h3>Analysis Summary</h3>
+
+        <!-- AI / statistical summary output -->
+        <div id="summaryDiv" style="white-space: pre-wrap; padding: 10px;"></div>
+
+        <!-- Empty state shown when no data exists -->
+        <div id="analysis-empty-state" style="display:none; padding:20px;">
+          <h3>No data yet</h3>
+          <p>
+            Start logging allergens and symptoms to unlock personalised insights.
+          </p>
+        </div>
+
+        <!-- ===================== -->
+        <!-- Exploratory Plots -->
+        <!-- ===================== -->
+        <div id="analysis-content">
+
+          <h3>Exploratory Plots</h3>
+
+          <!-- Allergen Importance Plot -->
+          <!-- Displays odds ratios from regression model -->
+          <figure class="img-figure">
+            <img id="allergenrank-plot" src="" alt="Allergen Rank Plot" />
+
+            <!-- Invisible overlay box linking to model metrics page -->
+            <div
+              id="model-info-box"
+              onclick="window.location.href='model-metrics';"
+              title="Click to learn what these metrics mean"
+              style="position:absolute; top:12px; right:12px; width:220px; height:120px;">
+            </div>
+
+            <figcaption>
+              Odds ratios and 95% confidence intervals for allergens.
+            </figcaption>
+          </figure>
+
           <!-- ===================== -->
-          <!-- Bar plot - Symptom Frequency -->
+          <!-- Risk Analysis Section -->
           <!-- ===================== -->
+          <h4>Risk</h4>
 
-              <h3>Exploratory Plots</h3>
-              <p>Overview of logged allergens and symptoms. Explore these plots to gain insights. </p>
-              <h4>Allergen Importance</h4>
-                <p>
-                The allergens you have been exposed to are ranked (Figure ), showing which allergens are most likely to trigger symptoms within a lag window following exposure. 
-                The bars represent the strength of association, called the "odds ratio," which indicates how much 
-                more likely symptoms are when the allergen is consumed. An odds ratio greater than 1 suggests 
-                the allergen may increase symptom risk, while an odds ratio around 1 (dashed line) indicates little or no effect. 
-                Use this information to explore potential triggers, but remember this shows association, not a diagnosis.
-                </p>
-                <div class="plot-container" style="position: relative;">
-                <figure class="img-figure">
-                  <img id="allergenrank-plot" src="" alt="Allergen Rank Plot" />
-                  <div
-                    id="model-info-box"
-                    onclick="window.location.href='model-metrics';"
-                    title="Click to learn what these metrics mean"
-                    style="
-                      position: absolute;
-                      top: 12px;
-                      right: 12px;
-                      padding: 10px;
-                      cursor: pointer;
-                      background: rgba(255,255,255,0.0);
-                      width: 220px;
-                      height: 120px;
-                    "
-                  ></div>
-                <figcaption>Figure : The allergen odds ratio versus allergen. 
-                  The 95% confidence interval for each allergen is given by the thin verticle black lines.
-                  The neutral odds ratio is shown by the red dashed horizontal line.
-                  The performance metrics of the model used to calculate the odds ratio is provided in the top right corner. 
-                  Red text indicates a weak model with low reliability, orange text indicates a moderate model to treat cautiously and green text indicates a strong reliable model.
-                  To learn more about the meaning of the metrics click on the model performance results.
-                </figcaption>
-              </figure>
-              </div>
+          <!-- Risk comparison plot -->
+          <figure class="img-figure">
+            <img id="analysis-risk-plot" src="" alt="Allergen / Symptom Percentages" />
 
-              <!--
-              <h4>Symptom frequency</h4>
-              <p>
-              This chart summarises how often symptoms are recorded after exposure to different allergens.
-              For each allergen, we count symptoms that occur within 24 hours of an exposure and normalise
-              by how often that allergen was consumed, allowing fair comparison across foods.
-              </p>
-              <figure class="img-figure">
-                <img id="analysis-plot" src="" alt="Analysis Plot" />
-                <figcaption>Figure : Top 10 allergens ranked by symptom rate within 24 hours of exposure.
-                  The symptom rate is calculated as the total number of logged symptoms occurring within 24 hours of an allergen exposure, divided by the total number of exposures. 
-                  Only allergens with at least five recorded exposures and at least one associated symptom are shown.
-                </figcaption>
-                </figure>
-              -->
-
-              <h4>Grouping symptoms</h4>
-              <p>
-              This chart shows how often symptoms are logged across different body systems.
-              Grouping symptoms by system helps highlight which areas of the body are most frequently affected overall, independent of specific allergens or timing.
-              </p>
-              <figure class="img-figure">
-                <img id="group_histogram" src="" alt="System Group Histogram" />
-                <figcaption>Figure : Symptom counts by body system.
-                  Each bar represents the total number of symptom events logged for a given symptom group. 
-                  Higher counts indicate systems where symptoms are reported more frequently over time.
-                </figcaption>
-              </figure>
-
-              <h3>Deeper Analysis</h3>
-              <p>Using the plots above explore your data deeper by selecting:</p>
-
-              <div class="form-row">
-                <label for="allergen-intensity-input">– an allergen:</label>
-                <div class="autocomplete-wrapper" style="position: relative;">
-                  <input type="text" id="allergen-intensity-input" autocomplete="off" />
-                  <input type="hidden" id="allergen-intensity-id" />
-                  <ul id="allergen-intensity-suggestions" class="suggestions"></ul>
-                </div>
-              </div>
-              <p></p>
-              <div class="form-row">
-                <label for="lag-window">– a lag window:</label>
-                <select id="lag-window">
-                  <option value="0_6">0 – 6 hrs</option>
-                  <option value="6_24">6 – 24 hrs</option>
-                  <option value="24_48">24 – 48 hrs</option>
-                  <option value="0_24">0 – 24 hrs</option>
-                  <option value="0_48">0 – 48 hrs</option>
-                  <option value="0_72">0 – 72 hrs</option>
-                </select>
-              </div>
-
-              <p></p>
-              <div class="form-row">
-                <label for="symptom-group-input">– a symptom group:</label>
-                <div class="autocomplete-wrapper" style="position: relative;">
-                  <input type="text" id="symptom-group-input" autocomplete="off" />
-                  <input type="hidden" id="symptom-group-id" />
-                  <ul id="symptom-group-suggestions" class="suggestions"></ul>
-                </div>
-              </div>
-
-              <div class="form-row">
-                <button
-                  type="button"
-                  id="update-plot-btn"
-                  class="primary"
-                >
-                  Generate plots
-                </button>
-              </div>
-
-
-              <!-- ===================== -->
-              <!-- Time lag analysis -->
-              <!-- ===================== -->
-  <!--           <section class="analysis-section">
-                <h3>Significant Food–Symptom Relationships Identified</h3>
-                <table id="temporal-stats-table" class="analysis-table">
-                  <thead>
-                    <tr>
-                      <th>Allergen</th>
-                      <th>Symptom Group</th>
-                      <th>Post Count</th>
-                      <th>Pre Count</th>
-                      <th>P-value</th>
-                      <th>Evidence</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-  -->
-                    <!-- rows will be populated dynamically -->
-  <!--                </tbody>
-                </table>
-              </section>
-  -->
-              <h4> Risk</h4>
-
-              <p>
-              This section looks at whether your symptoms tend to occur more often on days when you are exposed
-              to a specific allergen, compared with days when you are not. It focuses on everyday risk —
-              how likely symptoms are on an exposed day versus a non-exposed day — rather than predicting
-              individual events.
-              </p>
-
-              <p>
-              The chart below compares these two types of days and highlights both the size of any difference
-              in symptom risk and how confident we can be that the difference is not due to chance.
-              Larger risk differences with stronger evidence are more meaningful, while small differences
-              or weak evidence should be interpreted cautiously.
-              </p>
-
-              <div class="plot-container" style="position: relative;">
-              <figure class="img-figure" >
-                <img id="analysis-risk-plot" src="" alt="Allergen / Symptom Percentages" />
-                <div
-                    id="model-info-box-risk"
-                    onclick="window.location.href='model-metrics';"
-                    title="Click to learn what these metrics mean"
-                    style="
-                      position: absolute;
-                      top: 12px;
-                      right: 12px;
-                      padding: 10px;
-                      cursor: pointer;
-                      background: rgba(255,255,255,0.0);
-                      width: 220px;
-                      height: 120px;
-                    "
-                ></div>
-                <figcaption> Figure : Chance of symptoms on exposed vs non-exposed days.
-                  This chart shows how often symptoms occurred on days without exposure compared with days when exposed to <span id="caption-allergen"></span>. 
-                  A day is counted as “exposed” if the allergen occurred at least once that day. 
-                  Symptoms are included if they happened within  <span id="caption-lag"></span>. 
-                  The text shows how much the chance of symptoms increases (or decreases) on exposed days, along with a p-value indicating how strong the evidence is that the difference is significant. 
-                </figcaption>
-              </figure> 
-              </div>
-              <h4>Dose-Response</h4>
-              This section examines whether higher standardized volumes of a specific allergen are associated with stronger symptom responses. 
-              The focus is on the relationship between allergen exposure and the peak symptom intensity observed within the specified lag window after exposure. 
-              The violin plot below shows the distribution of standardized allergen volumes for each level of peak symptom intensity. 
-              The top-right metrics panel summarizes the strength of this relationship using the odds ratio. 
-              The odds ratio quantifies how the odds of experiencing a higher symptom intensity change with each one standard deviation increase in allergen volume.
-              <div class="plot-container" style="position: relative;">
-              <figure class="img-figure" >
-                <img id="analysis-intensity-volume-plot" src="" alt="Intensity-Volume Plot" />
-                <div
-                    id="model-info-box-dose"
-                    onclick="window.location.href='model-metrics';"
-                    title="Click to learn what these metrics mean"
-                    style="
-                      position: absolute;
-                      top: 12px;
-                      right: 12px;
-                      padding: 10px;
-                      cursor: pointer;
-                      background: rgba(255,255,255,0.0);
-                      width: 220px;
-                      height: 120px;
-                    "
-                ></div>
-                <figcaption> Figure : Distribution of allergen exposure volume by peak symptom intensity.
-                  This violin plot shows the distribution of <span id="caption-allergen-dose"></span> exposures grouped by the maximum symptom intensity logged within <span id="caption-lag-dose"></span>. 
-                  The width of each violin represents the density of observations at that symptom intensity level.
-                  The odds ratio quantifies the multiplicative change in odds of experiencing higher symptom intensity per one standard deviation increase in allergen volume, with a 95% confidence interval.
-                </figcaption>
-              </figure>
-              </div>
-              <h4>Time Series Plot</h4>
-              This figure shows the temporal relationship between symptom burden and allergen exposure. 
-              The top panel displays daily symptom burden as both raw values and a rolling average (default 3-day), highlighting short-term trends and fluctuations. 
-              Subtle color bands indicate mild, moderate, and severe burden ranges. 
-              The bottom panel shows daily allergen exposure volume, allowing visual comparison of symptom patterns with exposure events over time.
-              <figure class="img-figure" >
-                <img id="analysis-time-series-plot" src="" alt="Allergen Time Series Plot" />
-                <figcaption> Figure : Sympton burden blue time series (left axis) and allergen volume exposure orange markers (right axis). 
-                  The size of the markers correspond to the volume exposed to. 
-                </figcaption>
-              </figure> 
-              <h4> Temporal Relationship between allergen and symptom group</h4>
-              This figure summarizes the temporal association between allergen exposure and symptom occurrence within a specified lag window. 
-              The first bar shows the percentage of exposure-days that were followed by symptoms within the selected lag window, while the second bar shows the percentage of symptom-days that were preceded by exposure within the same time window. 
-              This dual perspective highlights how closely symptom events track allergen exposures for the selected symptom group.
-              <figure class="img-figure" >
-                <img id="analysis-bar-plot" src="" alt="Allergen / Symptom Percentages" />
-                <figcaption> Figure : Temporal relationship between allergen exposure and symptoms for <span id="caption-symptom-group"></span> symptoms.
-                  The left bar shows the percentage of days with an allergen exposure where at least one symptom occurred within <span id="caption-lag"></span> afterward (exposure-days followed by symptoms).
-                  The right bar shows the percentage of days with a symptom where at least one allergen exposure occurred in the <span id="caption-lag"></span> prior (symptom-days preceded by exposure).
-                  These percentages reflect temporal alignment but do not imply causation.
-                </figcaption>
-              </figure> 
+            <!-- Overlay link to model metrics -->
+            <div
+              id="model-info-box-risk"
+              onclick="window.location.href='model-metrics';"
+              title="Click to learn what these metrics mean"
+              style="position:absolute; top:12px; right:12px; width:220px; height:120px;">
             </div>
 
-        </section>
+            <figcaption>
+              Comparison of symptom frequency on exposed vs non-exposed days.
+            </figcaption>
+          </figure>
 
-        <!-- ===================== -->
-        <!-- Symptom distribution -->
-        <!-- ===================== -->
-         <!--
-        <section class="analysis-section">
-            <h3>Symptom Distribution</h3>
+          <!-- ===================== -->
+          <!-- Dose-Response Plot -->
+          <!-- ===================== -->
+          <figure class="img-figure">
+            <img id="analysis-intensity-volume-plot" src="" alt="Intensity-Volume Plot" />
 
-            <label>
-            Group by
-            <select id="symptom-groupby">
-                <option value="symptom">Symptom</option>
-                <option value="severity">Severity</option>
-                <option value="time_of_day">Time of day</option>
-            </select>
-            </label>
-
-            <div class="plot-container" id="symptom-distribution-plot">
+            <!-- Overlay link to model metrics -->
+            <div
+              id="model-info-box-dose"
+              onclick="window.location.href='model-metrics';"
+              title="Click to learn what these metrics mean"
+              style="position:absolute; top:12px; right:12px; width:220px; height:120px;">
             </div>
-        </section>
-        -->
 
-        <!-- ===================== -->
-        <!-- Dose-response -->
-        <!-- ===================== -->
-        <!--
-        <section class="analysis-section">
-            <h3>Dose–Response</h3>
+            <figcaption>
+              Distribution of allergen exposure by symptom intensity.
+            </figcaption>
+          </figure>
 
-            <label>
-            Unit
-            <select id="dose-unit">
-                <option value="g">grams</option>
-                <option value="ml">ml</option>
-                <option value="serving">servings</option>
-            </select>
-            </label>
+          <!-- ===================== -->
+          <!-- Time Series Plot -->
+          <!-- ===================== -->
+          <figure class="img-figure">
+            <img id="analysis-time-series-plot" src="" alt="Allergen Time Series Plot" />
+            <figcaption>
+              Symptom burden and allergen exposure over time.
+            </figcaption>
+          </figure>
 
-            <div class="plot-container" id="dose-response-plot">
-            </div>
-        </section>
+          <!-- ===================== -->
+          <!-- Temporal Relationship Plot -->
+          <!-- ===================== -->
+          <figure class="img-figure">
+            <img id="analysis-bar-plot" src="" alt="Allergen / Symptom Percentages" />
+            <figcaption>
+              Temporal alignment between allergen exposure and symptoms.
+            </figcaption>
+          </figure>
 
-
-        </section>
-        -->
-
-        <!-- ===================== -->
-        <!-- Notes / interpretation -->
-        <!-- ===================== -->
-         <!--
-        <section class="analysis-section">
-            <h3>Notes</h3>
-            <textarea
-            id="analysis-notes"
-            placeholder="Observations, hypotheses, confounders…"
-            rows="4"
-            ></textarea>
-        </section>
-        -->
-
+        </div>
+      </section>
     </form>
-
-
   </main>
 
+  <!-- ===================== -->
+  <!-- JavaScript Files -->
+  <!-- ===================== -->
+  <!-- Handles tab switching -->
   <script src="js/tabs.js"></script>
+
+  <!-- Main dashboard logic (module) -->
   <script type="module" src="js/dashboard.js"></script>
 
 </body>
 </html>
-

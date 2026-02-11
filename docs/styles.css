@@ -2,20 +2,24 @@
    Base / Reset
    ========================= */
 
+/* Ensure full-height layout and remove default spacing */
 html, body {
   height: 100%;
   margin: 0;
 }
 
+/* Global body styling: font, text color, and layered background */
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #1f3a5f;
   background:
+    /* Light overlay for better text readability */
     linear-gradient(rgba(255,255,255,0.15), rgba(255,255,255,0.15)),
+    /* Desktop background image */
     url("assets/images/background.png") center / cover no-repeat fixed;
 }
 
-/* Mobile background */
+/* Mobile-specific background (simpler, non-fixed for performance) */
 @media (max-width: 768px) {
   body {
     background: url("assets/images/foodbody_background_mobile.jpg") center / cover no-repeat;
@@ -27,13 +31,14 @@ body {
    Layout
    ========================= */
 
+/* Main centered content container (card style) */
 .container {
   max-width: 640px;
-  margin: 4rem auto;
-  padding: 5rem 2.5rem;
-  background: rgba(255, 251, 252, 0.9);
-  border-radius: 12px;
-  box-shadow: 0 20px 40px rgba(229, 231, 235, 0.6);
+  margin: 4rem auto;              /* Center horizontally with top spacing */
+  padding: 5rem 2.5rem;           /* Inner spacing */
+  background: rgba(255, 251, 252, 0.9); /* Semi-transparent background */
+  border-radius: 12px;            /* Rounded corners */
+  box-shadow: 0 20px 40px rgba(229, 231, 235, 0.6); /* Soft shadow */
 }
 
 
@@ -41,35 +46,41 @@ body {
    Typography
    ========================= */
 
+/* Main page heading */
 h1 {
   font-size: 2.2rem;
   margin-bottom: 0.5rem;
 }
 
+/* Subtitle or tagline text */
 .tagline {
   font-size: 1.1rem;
   color: #93c5fd;
   margin-bottom: 1.5rem;
 }
 
+/* Neutral status message (e.g., loading state) */
 .status {
   margin-top: 1.5rem;
   font-style: italic;
   color: #9ca3af;
 }
 
+/* Success message styling */
 .success {
   color: #1a7f37;
   font-weight: 600;
   margin-top: 1rem;
 }
 
+/* Error message styling */
 .error {
   color: #b42318;
   font-weight: 600;
   margin-top: 1rem;
 }
 
+/* Small helper or hint text */
 .helper-text {
   font-size: 0.85rem;
   color: #64748b;
@@ -80,22 +91,25 @@ h1 {
    Tabs
    ========================= */
 
+/* Tab container with bottom divider */
 .tabs {
   display: flex;
   margin-bottom: 1.5rem;
   border-bottom: 1px solid #ddd;
 }
 
+/* Individual tab button */
 .tab {
-  flex: 1;
+  flex: 1;                        /* Equal width tabs */
   padding: 0.75rem;
   background: none;
   border: none;
   font-size: 1rem;
   cursor: pointer;
-  border-bottom: 3px solid transparent;
+  border-bottom: 3px solid transparent; /* For active indicator */
 }
 
+/* Active tab styling */
 .tab.active {
   font-weight: 600;
   border-bottom-color: #4f46e5;
@@ -106,6 +120,7 @@ h1 {
    Buttons
    ========================= */
 
+/* Base button styling */
 button {
   font-family: inherit;
   font-weight: 600;
@@ -113,26 +128,31 @@ button {
   cursor: pointer;
 }
 
+/* Primary action button */
 .primary {
   background: #2563eb;
   color: #fff;
   border: none;
 }
 
+/* Primary hover state */
 .primary:hover {
   background: #1d4ed8;
 }
 
+/* Secondary action button */
 .secondary {
   background: #e5e7eb;
   color: #1f2937;
   border: 1px solid #cbd5e1;
 }
 
+/* Secondary hover state */
 .secondary:hover {
   background: #d1d5db;
 }
 
+/* Full-width primary button (typically form submit) */
 button.primary {
   width: 100%;
   margin-top: 0.75rem;
@@ -143,31 +163,33 @@ button.primary {
    Forms – unified system
    ========================= */
 
+/* Hidden by default (toggled via .active class) */
 .form {
   display: none;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.75rem; /* Vertical spacing between rows */
 }
 
+/* Visible form */
 .form.active {
   display: flex;
 }
 
-/* One row = label + control */
+/* Form row layout: label + input grid */
 .form-row {
   display: grid;
-  grid-template-columns: 130px 1fr;
+  grid-template-columns: 130px 1fr; /* Fixed label width */
   align-items: center;
   gap: 0.75rem;
 }
 
-/* Labels */
+/* Label styling */
 .form-row label {
   font-size: 0.9rem;
   white-space: nowrap;
 }
 
-/* Inputs & selects */
+/* Text inputs and dropdowns */
 input,
 select {
   height: 2.4rem;
@@ -178,7 +200,7 @@ select {
   box-sizing: border-box;
 }
 
-/* Focus */
+/* Focus state for accessibility feedback */
 input:focus,
 select:focus {
   outline: none;
@@ -186,7 +208,7 @@ select:focus {
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
-/* Inline groups (quantity + unit, add allergen) */
+/* Inline field grouping (e.g., quantity + unit) */
 .inline-fields,
 .inline-add {
   display: inline-flex;
@@ -194,7 +216,7 @@ select:focus {
   gap: 0.5rem;
 }
 
-/* Field sizing */
+/* Specific field width constraints */
 #allergen-quantity,
 #allergen-unit {
   width: 80px;
@@ -204,11 +226,12 @@ select:focus {
   width: 200px;
 }
 
+/* Narrow width for inline text input */
 .inline-add input[type="text"] {
   width: 20ch;
 }
 
-/* Helper text alignment */
+/* Align helper text under input column */
 .form-row + .helper-text {
   margin-left: 130px;
 }
@@ -218,14 +241,16 @@ select:focus {
    Autocomplete
    ========================= */
 
+/* Wrapper enables absolute positioning of suggestions */
 .autocomplete-wrapper {
   position: relative;
 }
 
+/* Dropdown suggestion list */
 .suggestions {
   display: none;
   position: absolute;
-  top: 100%;
+  top: 100%;      /* Directly below input */
   left: 0;
   right: 0;
   z-index: 1000;
@@ -237,15 +262,18 @@ select:focus {
   max-width: 300px;
 }
 
+/* Visible state */
 .suggestions.visible {
   display: block;
 }
 
+/* Individual suggestion item */
 .suggestions li {
   padding: 6px;
   cursor: pointer;
 }
 
+/* Hover effect for suggestions */
 .suggestions li:hover {
   background: #eee;
 }
@@ -255,7 +283,7 @@ select:focus {
    Stats / Analysis
    ========================= */
 
-
+/* Inline statistic row */
 .stat-inline {
   display: flex;
   align-items: center;
@@ -265,21 +293,24 @@ select:focus {
   opacity: 0.9;
 }
 
+/* Fixed-width stat label */
 .stat-label {
-  flex: 0 0 200px; 
-  width: 200px; /* Increased width to make it longer, adjust as needed */
+  flex: 0 0 200px;
+  width: 200px;
   font-size: 0.85rem;
   color: #666;
 }
 
+/* Right-aligned numeric stat value */
 .stat-value {
-  flex: 0 0 80px; 
+  flex: 0 0 80px;
   font-size: 0.85rem;
   font-weight: 500;
-  text-align: right;        /* right-align the digits */
-  font-variant-numeric: tabular-nums;
+  text-align: right;
+  font-variant-numeric: tabular-nums; /* Align digits evenly */
 }
 
+/* Color indicators */
 .green { color: #2e7d32; }
 .orange { color: #ef6c00; }
 .red { color: #c62828; }
@@ -289,16 +320,19 @@ select:focus {
    Figures / Images
    ========================= */
 
+/* Wrapper for images with captions */
 .img-figure {
   display: inline-block;
 }
 
+/* Responsive image behavior */
 .img-figure img {
   display: block;
   max-width: 100%;
   height: auto;
 }
 
+/* Small caption text */
 .img-figure figcaption {
   font-size: 0.6em;
   color: #666;
@@ -310,6 +344,7 @@ select:focus {
    Responsive
    ========================= */
 
+/* Stack labels and inputs vertically on small screens */
 @media (max-width: 600px) {
   .form-row {
     grid-template-columns: 1fr;
@@ -320,21 +355,25 @@ select:focus {
   }
 }
 
+/* Range slider wrapper */
 .range-wrapper {
   width: 100%;
   position: relative;
 }
 
+/* Full-width range input */
 .range-wrapper input[type="range"] {
   width: 100%;
 }
 
+/* Container for custom range labels */
 .range-labels {
   position: relative;
   height: 1.5em;
   margin-top: 6px;
 }
 
+/* Individual positioned range label */
 .range-labels span {
   position: absolute;
   transform: translateX(-50%);
@@ -343,11 +382,17 @@ select:focus {
 }
 
 
+/* =========================
+   Project Card / Footnote
+   ========================= */
+
+/* Card with reserved space for absolute footnote */
 .project-card {
   position: relative;
-  padding-bottom: 2.5rem; /* room for footnote */
+  padding-bottom: 2.5rem;
 }
 
+/* Bottom-right small attribution text */
 .project-footnote {
   position: absolute;
   bottom: 0.75rem;
@@ -358,12 +403,14 @@ select:focus {
   white-space: nowrap;
 }
 
+/* Footnote link styling */
 .project-footnote a {
   color: inherit;
   text-decoration: underline;
   text-decoration-thickness: 1px;
 }
 
+/* Hover effect for footnote link */
 .project-footnote a:hover {
   color: #444;
 }

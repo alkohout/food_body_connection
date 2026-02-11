@@ -23,7 +23,6 @@ logging.basicConfig(level=logging.INFO)
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
-@router.get("/plot_bar_plots")
 def plot_bar_plots(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
@@ -32,9 +31,44 @@ def plot_bar_plots(
         lag_end: int = 6,
         symptom_group: str = 'Gastrointestinal',
     ):
+    """
+    Generate and return a bar plot summarising the relationship
+    between allergen exposure and symptoms within a specified lag window.
+
+    The function:
+    1. Calls `plot_stats` to compute exposure–symptom statistics.
+    2. Generates a bar chart showing:
+        - % exposure-days followed by symptoms
+        - % symptom-days preceded by exposure
+    3. Returns the plot as a PNG streaming response.
+    4. Logs and handles errors gracefully.
+
+    Parameters
+    ----------
+    db : Session
+        Database session (FastAPI dependency).
+    current_user : User
+        Authenticated user (FastAPI dependency).
+    allergen_name : str
+        Name of allergen to analyse (default = 'Dairy').
+    lag_start : int
+        Start of lag window in hours (default = 0).
+    lag_end : int
+        End of lag window in hours (default = 6).
+    symptom_group : str
+        Symptom category to analyse (default = 'Gastrointestinal').
+
+    Returns
+    -------
+    StreamingResponse (image/png)
+        PNG image containing the generated bar plot.
+    """
 
     try: 
 
+        # --------------------------------------------------
+        # Generate plot buffer using statistical helper
+        # --------------------------------------------------
         buf = plot_stats(
             db,
             current_user.user_id,
@@ -44,10 +78,19 @@ def plot_bar_plots(
             symptom_group
         )
 
+        # Return PNG image as streaming response
         return StreamingResponse(buf, media_type="image/png")
 
     except Exception as e:
 
+        # --------------------------------------------------
+        # Log full error details for debugging
+        # --------------------------------------------------
         logger.error("Error generating plot: %s", e)
         logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail="Failed to generate plot")
+
+        # Return generic server error to client
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate plot"
+        )

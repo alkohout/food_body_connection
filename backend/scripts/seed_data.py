@@ -10,14 +10,38 @@ from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Unit
 from app.core.security import hash_password
 from app.database import SessionLocal
 
-
 def create_user(db, email):
+    """
+    Create a new user if one does not already exist.
+
+    Parameters
+    ----------
+    db : Session
+        Active SQLAlchemy database session.
+
+    email : str
+        Email address of the user to create.
+
+    Returns
+    -------
+    User
+        The existing or newly created User object.
+    """
+
+    # Check if user already exists
     user = db.query(User).filter(User.email == email).first()
+
+    # If user does not exist, create a new one
     if not user:
-        user = User(email=email, password_hash=hash_password("password123"))
+        user = User(
+            email=email,
+            password_hash=hash_password("password123")  # Default password
+        )
         db.add(user)
         db.commit()
         db.refresh(user)
+
+    # Return existing or newly created user
     return user
 
 
