@@ -816,22 +816,6 @@ const fetchAnalysisPlot = async () => {
       const stats = await statsRes.json();
       console.log("Stats fetched successfully:", stats);
 
-      const totalEntries =
-        stats["Total allergens logged"] +
-        stats["Total symptoms logged"];
-
-      const emptyState = getElement("analysis-empty-state");
-      const content = getElement("analysis-content");
-
-      if (totalEntries === 0) {
-        if (emptyState) emptyState.style.display = "block";
-        if (content) content.style.display = "none";
-        return;
-      } else {
-        if (emptyState) emptyState.style.display = "none";
-        if (content) content.style.display = "block";
-      }
-
       const totalAllergensEl = getElement("stat-total-allergens");
       if (totalAllergensEl) {
         totalAllergensEl.textContent = stats["Total allergens logged"] || 0;
@@ -879,6 +863,18 @@ const fetchAnalysisPlot = async () => {
         console.log("Updated avg symptoms per day:", avgSymptomsPerDayEl.textContent);
       } else {
         console.warn("Element stat-avg-symptoms-per-day not found");
+      }
+
+      const emptyState = getElement("analysis-empty-state");
+      const content = getElement("analysis-content");
+
+      if ((totalAllergensEl.textContent === "0") || (totalSymptomsEl.textContent === "0")) {
+        if (emptyState) emptyState.style.display = "block";
+        if (content) content.style.display = "none";
+        return;
+      } else {
+        if (emptyState) emptyState.style.display = "none";
+        if (content) content.style.display = "block";
       }
 
       // Histogram plot
