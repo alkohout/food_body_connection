@@ -16,46 +16,73 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 @router.post("/register", response_model=UserOut)
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    # Check email
+    """
+    Register a new user.
+
+    The endpoint:
+    1. Validates that the email is not already registered.
+    2. Creates a new user with hashed password.
+    3. Clones seed symptoms and allergens from a predefined template user.
+    4. Returns the newly created user.
+
+    Parameters
+    ----------
+    user : UserCreate
+        Incoming user registration data (email + password).
+    db : Session
+        Database session (FastAPI dependency).
+
+    Returns
+    -------
+    UserOut
+        Newly created user object.
+    """
+
+    # --------------------------------------------------
+    # Check if email is already registered
+    # --------------------------------------------------
     existing = db.query(User).filter(User.email == user.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    # 1. Create the user
+    # --------------------------------------------------
+    # Create the user
+    # --------------------------------------------------
     new_user = User(
         email=user.email,
-        password_hash=hash_password(user.password),
+        password_hash=hash_password(user.password),  # Securely hash password
     )
+
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
 
-    # ----------------------------------------------------
-    # 2. Clone seed symptoms & allergens to the new user
-    # ----------------------------------------------------
+    # --------------------------------------------------
+    # Clone seed symptoms & allergens to the new user
+    # --------------------------------------------------
 
-    # Determine which user is the "seed template" user
-    # You can change this ID depending on your seed_data.py setup
-    SEED_USER_EMAIL = "seed@data.com"   # recommended seed template
+    # Define the template ("seed") user
+    SEED_USER_EMAIL = "seed@data.com"
     seed_user = db.query(User).filter(User.email == SEED_USER_EMAIL).first()
 
+    # Ensure seed data exists
     if not seed_user:
         raise HTTPException(
             status_code=500,
             detail="Seed user not found; run seed_data.py first"
         )
 
-    # Fetch all symptoms for seed user
+    # Fetch seed symptoms
     seed_symptoms = db.query(Symptom).filter(
         Symptom.user_id == seed_user.user_id
     ).all()
 
-    # Fetch all allergens for seed user
+    # Fetch seed allergens
     seed_allergens = db.query(Allergen).filter(
         Allergen.user_id == seed_user.user_id
     ).all()
 
-    # Clone symptoms
+    # Clone symptoms for new user
     for s in seed_symptoms:
         db.add(Symptom(
             symptom_name=s.symptom_name,
@@ -63,7 +90,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
             user_id=new_user.user_id
         ))
 
-    # Clone allergens
+    # Clone allergens for new user
     for a in seed_allergens:
         db.add(Allergen(
             allergen_name=a.allergen_name,
@@ -74,37 +101,112 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
     return new_user
 
-
 @router.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    """
+    Authenticate a user and return a JWT access token.
+
+    The endpoint:
+    1. Validates email and password.
+    2. Generates a JWT access token.
+    3. Returns token in OAuth2-compatible format.
+
+    Parameters
+    ----------
+    form_data : OAuth2PasswordRequestForm
+        OAuth2 login form (username=email, password).
+    db : Session
+        Database session.
+
+    Returns
+    -------
+    dict
+        {
+            "access_token": str,
+            "token_type": "bearer"
+        }
+    """
+
+    # Fetch user by email (username field)
     user = db.query(User).filter(User.email == form_data.username).first()
+
+    # Validate credentials
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    access_token = create_access_token(data={"sub": str(user.user_id), "email": user.email})
-    return {"access_token": access_token, "token_type": "bearer"}
+    # Create JWT access token
+    access_token = create_access_token(
+        data={
+            "sub": str(user.user_id),
+            "email": user.email
+        }
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
+    """
+    Validate JWT token and return authenticated user.
+
+    The function:
+    1. Decodes JWT.
+    2. Extracts user ID from token payload.
+    3. Fetches user from database.
+    4. Raises 401 if invalid.
+
+    Parameters
+    ----------
+    token : str
+        JWT token from Authorization header.
+    db : Session
+        Database session.
+
+    Returns
+    -------
+    User
+        Authenticated user object.
+    """
+
     try:
+        # Decode JWT token
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
+
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token")
+
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+    # Retrieve user from database
     user = db.query(User).filter(User.user_id == int(user_id)).first()
+
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 
     return user
 
-# Example protected route
 @router.get("/me", response_model=UserOut)
 def read_users_me(current_user: User = Depends(get_current_user)):
+    """
+    Return the currently authenticated user's details.
+
+    This is a protected route that requires a valid JWT.
+
+    Returns
+    -------
+    UserOut
+        Current user's public information.
+    """
     return current_user
 
 
