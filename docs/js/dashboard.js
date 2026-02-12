@@ -1052,21 +1052,22 @@ async function init() {
     // Sync allergen select → inputs
     // -----------------------------------------
     const allergenSelect = getElement("allergen-select");
+    const allergenInput = getElement("allergen-input");
     const allergenIdInput = getElement("allergen-id");
-    console.log({ allergenSelect, allergenIdInput });
 
+    console.log({ allergenSelect, allergenInput, allergenIdInput });
     if (allergenSelect) {
       allergenSelect.addEventListener("change", () => {
         const selectedOption = allergenSelect.selectedOptions[0];
 
         if (!selectedOption || !allergenSelect.value) {
-          if (allergenIdInput) allergenIdInput.value = "";
+          allergenInput.value = "";
+          allergenIdInput.value = "";
           return;
         }
 
-        console.log("Selected allergen:", allergenSelect.value, selectedOption.textContent);
-
-        if (allergenIdInput) allergenIdInput.value = allergenSelect.value;
+        allergenIdInput.value = allergenSelect.value;
+        allergenInput.value = selectedOption.textContent;
       });
     }
     // -----------------------------------------
