@@ -16,7 +16,7 @@ from sklearn.metrics import make_scorer, recall_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, GridSearchCV, cross_val_score
 from sklearn.metrics import pairwise_distances
-from matplotlib.ticker import LogLocator, LogFormatter
+from matplotlib.ticker import LogLocator, ScalarFormatter
 
 
 import numpy as np
@@ -413,10 +413,6 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             ax=ax_bot
         )
         ax_bot.set_yscale("log")
-        formatter = LogFormatter(base=10, labelOnlyBase=False)
-        ax_top.yaxis.set_major_formatter(formatter)
-        ax_bot.yaxis.set_major_formatter(formatter)
-
 
         bar_centers = [bar.get_x() + bar.get_width() / 2 for bar in ax_bot.patches]
 
@@ -441,8 +437,13 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
 
         for ax in [ax_top, ax_bot]:
             ax.set_yscale("log")
-            ax.yaxis.set_major_locator(LogLocator(base=10))
-            ax.yaxis.set_major_formatter(LogFormatter(base=10))
+            ax.yaxis.set_major_locator(LogLocator(base=10, subs=range(1, 10), numticks=50))
+            formatter = ScalarFormatter()
+            formatter.set_scientific(False)  # Disable scientific notation
+            formatter.set_useOffset(False)
+            ax.yaxis.set_major_formatter(formatter)
+            ax.yaxis.set_minor_formatter(ScalarFormatter())
+
         # --------------------------------------------------
         # Return output
         # --------------------------------------------------
