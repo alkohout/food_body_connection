@@ -465,7 +465,7 @@ async function addNewSymptom(name) {
     }
 
     // Fill the text input and ID hidden input
-    const input = getElement("symptom-input");
+    const input = getElement("symptom-select");
     const idInput = getElement("symptom-id");
     if (input) input.value = data.symptom_name;
     if (idInput) idInput.value = data.symptom_id;
@@ -1087,7 +1087,7 @@ async function init() {
     // Set up autocomplete (after data is loaded)
     console.log("Setting up autocomplete...");
     setupAutocomplete(
-      getElement("symptom-input"),
+      getElement("symptom-select"),
       getElement("symptom-id"),
       getElement("symptom-suggestions"),
       "symptom"
