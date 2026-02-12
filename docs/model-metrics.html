@@ -1,128 +1,176 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Meta -->
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Page Title -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Food–Body Connection | Dashboard</title>
-
-  <!-- Styles -->
   <link rel="stylesheet" href="styles.css" />
-
-  <!-- Icons -->
   <link rel="icon" type="image/png" href="assets/images/background.png">
   <link rel="apple-touch-icon" href="/food_body_connection/assets/images/background_iphone.png">
-</head>
 
+</head>
 <body>
   <main class="container">
 
-    <!-- ================= HEADER ================= -->
     <header class="dashboard-header">
       <h1>Model Metrics Guide</h1>
       <p id="user-email" class="subtle"></p>
       <button id="logout-btn" class="secondary">Log out</button>
     </header>
 
-    <!-- ================= INTRO ================= -->
-    <section>
-      <h1>Understanding Model Performance</h1>
+  <h1>Understanding Model Performance</h1>
 
-      <p>
-        This guide explains how to interpret the performance of the allergen ranking model.
-        The model analyses your logged allergen and symptom data to highlight potential patterns.
-        It is a tool for guidance, not a medical diagnosis.
-      </p>
-    </section>
+  <p>
+    This guide explains how to interpret the performance of the allergen ranking model. 
+    The model analyses your logged allergen and symptom data to highlight potential patterns. 
+    It is a tool for guidance, not a medical diagnosis.
+  </p>
 
-    <hr />
+  <hr />
 
-    <!-- ================= CORE METRICS ================= -->
-    <section>
-      <h2>Metrics and Interpretation</h2>
+  <h2>Metrics and Interpretation</h2>
 
-      <ul>
-        <!-- ROC AUC -->
-        <li>
-          <span class="metric-title">ROC AUC</span>:
-          Measures the model's ability to distinguish likely from unlikely allergens.
-          <div class="metric-description">
-            <span class="indicator green">●</span> ≥ 0.75: Good – strong separation<br>
-            <span class="indicator orange">●</span> 0.65 – 0.74: Moderate – some useful signal<br>
-            <span class="indicator red">●</span> &lt; 0.65: Weak – limited reliability
-          </div>
-        </li>
+  <ul>
+    <li>
+      <span class="metric-title">ROC AUC</span>: measures the model's ability to distinguish likely from unlikely allergens.
+      <div class="metric-description">
+        <span class="indicator green">●</span> ≥ 0.75: Good – strong separation<br>
+        <span class="indicator orange">●</span> 0.65 – 0.74: Moderate – some useful signal<br>
+        <span class="indicator red">●</span> < 0.65: Weak – limited reliability
+      </div>
+    </li>
 
-        <!-- Symptom Recall -->
-        <li>
-          <span class="metric-title">Symptom Recall</span>:
-          The proportion of symptom-linked allergens the model correctly identifies.
-          <div class="metric-description">
-            <span class="indicator green">●</span> ≥ 0.70: Good – most triggers captured<br>
-            <span class="indicator orange">●</span> 0.55 – 0.69: Moderate – some triggers may be missed<br>
-            <span class="indicator red">●</span> &lt; 0.55: Low – use results with caution
-          </div>
-        </li>
+    <p></p>
+    <li>
+      <span class="metric-title">Symptom Recall</span>: the proportion of symptom-linked allergens the model correctly identifies.
+      <div class="metric-description">
+        <span class="indicator green">●</span> ≥ 0.70: Good – most triggers captured<br>
+        <span class="indicator orange">●</span> 0.55 – 0.69: Moderate – some triggers may be missed<br>
+        <span class="indicator red">●</span> < 0.55: Low – use results with caution
+      </div>
+    </li>
 
-        <!-- Sample Size -->
-        <li>
-          <span class="metric-title">Sample Size</span>:
-          The number of logged allergen–symptom events used by the model.
-          <div class="metric-description">
-            <span class="indicator green">●</span> ≥ 200: Good – reliable patterns<br>
-            <span class="indicator orange">●</span> 75 – 199: Moderate – patterns emerging<br>
-            <span class="indicator red">●</span> &lt; 75: Low – preliminary, results may be unstable
-          </div>
-        </li>
+    <p></p>
+    <li>
+      <span class="metric-title">Sample Size</span>: the number of logged allergen–symptom events used by the model.
+      <div class="metric-description">
+        <span class="indicator green">●</span> ≥ 200: Good – reliable patterns<br>
+        <span class="indicator orange">●</span> 75 – 199: Moderate – patterns emerging<br>
+        <span class="indicator red">●</span> < 75: Low – preliminary, results may be unstable
+      </div>
+    </li>
+    <p></p>
+    <li>
+      <span class="metric-title">Allergen Co-occurrence</span>: some allergens are often logged together. 
+      High co-occurrence may indicate that multiple allergens are consumed simultaneously, making it harder to isolate individual effects.
+      <div class="metric-description">
+        <span class="indicator green">●</span> no co-occurrence: Good – reliable odds ratios<br>
+        <span class="indicator red">●</span> co-occurrence present: Caution when interpreting odds ratios<br>
+      </div>
+    </li>
+  </ul>
+  <hr />
+  <hr />
 
-        <!-- Co-occurrence -->
-        <li>
-          <span class="metric-title">Allergen Co-occurrence</span>:
-          Some allergens are often logged together. High co-occurrence may indicate that
-          multiple allergens are consumed simultaneously, making it harder to isolate individual effects.
-          <div class="metric-description">
-            <span class="indicator green">●</span> No co-occurrence: Good – reliable odds ratios<br>
-            <span class="indicator red">●</span> Co-occurrence present: Caution when interpreting odds ratios
-          </div>
-        </li>
-      </ul>
-    </section>
+  <h2>Dose–Response Odds Ratio</h2>
 
-    <hr />
+  <p>
+  The odds ratio (OR) and its 95% confidence interval is estimated using an <strong> Ordinal Logisitc Regression Model</strong>, which determines how the probability of being in a higher symptom intensity category changes with allergen volume.
+  OR > 1: Higher allergen volume is associated with greater odds of more intense symptoms.
+OR = 1: Allergen volume has no association with symptom intensity.
+OR < 1: Higher allergen volume is associated with lower odds of more intense symptoms (protective effect or inverse relationship).
+The 95% confidence interval (CI) indicates the precision of the estimate:
+If the CI does not include 1, the association is considered statistically significant.
+If the CI includes 1, the association may be due to chance.
+  </p>
 
-    <!-- ================= DOSE RESPONSE ================= -->
-    <section>
-      <h2>Dose–Response Odds Ratio</h2>
+  <ul>
+    <li>
+      <span class="metric-title">Odds Ratio</span>: quantifies how the odds of experiencing a higher symptom intensity change with each unit increase in allergen volume. 
+      <div class="metric-description">
+        <span class="indicator green">●</span> Confidence interval minimum is > 1 : Higher allergen volume is associated with greater odds of more intense symptoms<br>
+        <span class="indicator green">●</span> Confidence interval maximum is < 1 : Higher allergen volume is associated with greater odds of less intense symptoms<br>
+        <span class="indicator orange">●</span> Confidence interval includes 1 but is mostly higher or lower : Higher allergen volume is moderately associated with more or less intense symptoms<br>
+        <span class="indicator red">●</span> Confidence includes 1 : Higher allergen volume is not associated with greater odds of more or less intense symptoms.
+      </div>
+    </li>
 
-      <p>
-        The odds ratio (OR) and its 95% confidence interval are estimated using an
-        <strong>Ordinal Logistic Regression Model</strong>, which determines how the
-        probability of being in a higher symptom intensity category changes with allergen volume.
-      </p>
+  <hr />
 
-      <p>
-        <strong>OR &gt; 1:</strong> Higher allergen volume is associated with greater odds of more intense symptoms.<br>
-        <strong>OR = 1:</strong> No association with symptom intensity.<br>
-        <strong>OR &lt; 1:</strong> Higher allergen volume is associated with lower odds of more intense symptoms.
-      </p>
+  <h2>Risk & Statistical Evidence</h2>
 
-      <p>
-        The 95% confidence interval (CI) indicates precision:
-        <br>
-        If the CI does not include 1, the association is statistically significant.
-        <br>
-        If the CI includes 1, the association may be due to chance.
-      </p>
+  <p>
+  These metrics describe how symptom risk differs between days with and without exposure
+  to a specific allergen, and how confident we are that the difference is not due to chance.
+  </p>
 
-      <ul>
-        <li>
-          <span class="metric-title">Odds Ratio</span>:
-          Quantifies how the odds of experiencing higher symptom intensity change
-          with each unit increase in allergen volume.
-          <div class="metric-description">
-            <span class="indicator green">●</span> CI minimum &gt; 1: Associated with greater odds of more intense symptoms<br>
-            <span class="indicator green">●</span> CI maximum &lt; 1: Associated with lower symptom intensity<br>
-            <span class="indicator orange">●</span> CI includes 1 but mostly above/below: Moderate association<br>
-            <span class="indicator red">●</span> CI clearly includes <span class="ml-2" /><span class="inline-block w-3 h-3 rounded-full bg-neutral-a12 align-middle mb-[0.1rem]" />
+  <ul>
+    <li>
+      <span class="metric-title">Absolute Risk Increase</span>: the change in the chance of having symptoms on exposure days compared with non-exposure days.
+      <div class="metric-description">
+        A positive value means symptoms were more common on exposure days.<br />
+        A negative value means symptoms were less common on exposure days.<br /><br />
+
+        <span class="indicator green">●</span> ≥ +10%: Meaningful increase in symptom risk<br>
+        <span class="indicator orange">●</span> +3% to +9%: Small to moderate increase<br>
+        <span class="indicator red">●</span> < +3%: Little or no difference
+      </div>
+    </li>
+
+    <p></p>
+
+    <li>
+      <span class="metric-title">p-value</span>: shows how likely it is that the observed difference between exposed and non-exposed days could have occurred by chance.
+      <div class="metric-description">
+        Smaller p-values indicate stronger evidence of a real association.<br /><br />
+
+        <span class="indicator green">●</span> &lt; 0.01: Strong evidence — unlikely to be due to chance<br>
+        <span class="indicator orange">●</span> 0.01 – 0.05: Moderate evidence — possible real effect<br>
+        <span class="indicator red">●</span> &gt; 0.05: Weak evidence — difference may be random
+      </div>
+    </li>
+  </ul>
+
+  <p>
+  The p-value is calculated using the Fisher exact statistical test which compares the number of symptom days
+  on exposed versus non-exposed days. This test is commonly used when comparing 2 categorical variables. It does <em>not</em> measure how large or important the effect is —
+  only how confident we are that the difference is real.
+  </p>
+
+  <p>
+  The most useful results combine a <strong>meaningful risk increase</strong> with a
+  <strong>low p-value</strong>. A low p-value with a very small risk change, or a large risk change with weak
+  statistical evidence, should both be interpreted cautiously.
+  </p>
+
+  <h2>Traffic Light Summary</h2>
+  <p>
+    <span class="indicator green">●</span> Strong / reliable<br>
+    <span class="indicator orange">●</span> Moderate / interpret cautiously<br>
+    <span class="indicator red">●</span> Weak / limited confidence
+  </p>
+
+  <hr />
+
+  <p>
+    <em>Note:</em> Variability (±) in metrics indicates model performance across different subsets of your data. More data and consistent logging improve reliability.
+  </p>
+  <hr />
+
+<h2>Understanding Confidence Intervals</h2>
+<p>
+Many metrics, like <strong>ROC AUC</strong> and <strong>Symptom Recall</strong>, are reported with a ± value (e.g., 0.78 ± 0.04). This represents a <strong>confidence interval</strong>, which shows how much the metric varies across different subsets of your data.
+</p>
+
+<ul>
+  <li><strong>Narrow intervals (small ± value)</strong>: The model’s performance is consistent — results are more reliable.</li>
+  <li><strong>Wide intervals (large ± value)</strong>: The model’s performance varies more depending on which data is used — interpret with caution.</li>
+  <li>In your plots, the <strong>error bars</strong> on allergen odds ratios show a similar concept: longer bars indicate greater uncertainty in how strongly a particular allergen is associated with symptoms.</li>
+</ul>
+
+<p>
+In practice, confidence intervals help you understand not just the average performance, but also the <em>certainty</em> of that performance. Metrics with green traffic-light colors and narrow intervals are the most trustworthy, while metrics with orange/red colors or wide intervals should be interpreted cautiously.
+</p>
+
+</body>
+</html>
