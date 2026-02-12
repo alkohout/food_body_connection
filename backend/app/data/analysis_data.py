@@ -537,36 +537,7 @@ def get_unit(
     else:
         return None
 
-def get_allergen(
-    db: Session,
-    user_id: int,
-    allergen_id=None,
-    allergen_name=None
-):
-    """
-    Retrieve an Allergen for a specific user by ID or name.
-
-    Parameters
-    ----------
-    db : Session
-        Database session.
-    user_id : int
-        ID of the user who owns the allergen.
-    allergen_id : int, optional
-        ID of the allergen to retrieve.
-    allergen_name : str, optional
-        Name of the allergen to retrieve.
-
-    Returns
-    -------
-    Allergen or None
-        Matching Allergen ORM object if found.
-        Returns None if no match or no identifier provided.
-    """
-
-    # --------------------------------------------------
-    # Retrieve allergen by name (priority if provided)
-    # --------------------------------------------------
+def get_allergen(db: Session, user_id: int, allergen_id=None, allergen_name=None):
     if allergen_name:
         query = (
             db.query(Allergen)
@@ -574,10 +545,6 @@ def get_allergen(
             .filter(Allergen.allergen_name == allergen_name)
         )
         return query.first()
-
-    # --------------------------------------------------
-    # Retrieve allergen by ID
-    # --------------------------------------------------
     elif allergen_id:
         query = (
             db.query(Allergen)
@@ -585,43 +552,10 @@ def get_allergen(
             .filter(Allergen.allergen_id == allergen_id)
         )
         return query.first()
-
-    # --------------------------------------------------
-    # No identifier provided
-    # --------------------------------------------------
     else:
         return None
 
-def get_symptom(
-    db: Session,
-    user_id: int,
-    symptom_id=None,
-    symptom_name=None
-):
-    """
-    Retrieve a Symptom for a specific user by ID or name.
-
-    Parameters
-    ----------
-    db : Session
-        Database session.
-    user_id : int
-        ID of the user who owns the symptom.
-    symptom_id : int, optional
-        ID of the symptom to retrieve.
-    symptom_name : str, optional
-        Name of the symptom to retrieve.
-
-    Returns
-    -------
-    Symptom or None
-        Matching Symptom ORM object if found.
-        Returns None if no match or no identifier provided.
-    """
-
-    # --------------------------------------------------
-    # Retrieve symptom by name (priority if provided)
-    # --------------------------------------------------
+def get_symptom(db: Session, user_id: int, symptom_id=None, symptom_name=None):
     if symptom_name:
         query = (
             db.query(Symptom)
@@ -629,10 +563,6 @@ def get_symptom(
             .filter(Symptom.symptom_name == symptom_name)
         )
         return query.first()
-
-    # --------------------------------------------------
-    # Retrieve symptom by ID
-    # --------------------------------------------------
     elif symptom_id:
         query = (
             db.query(Symptom)
@@ -640,41 +570,10 @@ def get_symptom(
             .filter(Symptom.symptom_id == symptom_id)
         )
         return query.first()
-
-    # --------------------------------------------------
-    # No identifier provided
-    # --------------------------------------------------
     else:
         return None
 
-def get_allergen_name_str(
-    db: Session,
-    user_id: int,
-    allergen_id=None
-):
-    """
-    Retrieve the allergen name as a string for a given allergen ID.
-
-    Parameters
-    ----------
-    db : Session
-        Database session.
-    user_id : int
-        ID of the user who owns the allergen.
-    allergen_id : int, optional
-        ID of the allergen.
-
-    Returns
-    -------
-    str or None
-        Allergen name if found.
-        Returns None if allergen_id is not provided
-        or no matching allergen exists.
-    """
-
-    # --------------------------------------------------
-    # Retrieve allergen by ID
-    # --------------------------------------------------
+def get_allergen_name_str(db: Session, user_id: int, allergen_id=None):
     if allergen_id:
         obj = (
             db.query(Allergen)
@@ -685,8 +584,4 @@ def get_allergen_name_str(
     else:
         return None
 
-    # --------------------------------------------------
-    # Return allergen name if object exists
-    # --------------------------------------------------
     return obj.allergen_name if obj else None
-
