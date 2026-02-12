@@ -137,9 +137,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             if y.nunique() < 2:
                 return return_blank(return_type)
 
-            # --------------------------------------------------
             # Detect class imbalance
-            # --------------------------------------------------
             pos_rate = y.mean()
             use_balanced = pos_rate < 0.25 or pos_rate > 0.75
 
@@ -241,13 +239,14 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
                 best_y = y
                 best_samples = samples
                 best_use_balanced = "balanced" if use_balanced else None
+                best_param_grid = param_grid # ensures captures imbalance
 
         # --------------------------------------------------
         # Train final model on best lag window
         # --------------------------------------------------
         final_grid = GridSearchCV(
             base_model,
-            param_grid,
+            best_param_grid,
             cv=5,
             scoring="roc_auc"
         )
@@ -296,41 +295,52 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         plot_df["err_upper"] = plot_df["ci_upper"] - plot_df["odds_ratio"]
         order = top_allergens 
 
-        sns.barplot(
-            data=plot_df,
-            x="allergen",
-            y="odds_ratio",
-            order=order,
-            ax=ax_top
+        #sns.barplot(
+        #    data=plot_df,
+        #    x="allergen",
+        #    y="odds_ratio",
+        #    order=order,
+        #    ax=ax_top
+        #)
+        ax_top.set_xscale("log")
+        ax_top.errorbar(
+            x=plot_df["odds_ratio"],
+            y=range(len(plot_df)),
+            xerr=[
+                plot_df["odds_ratio"] - plot_df["ci_lower"],
+                plot_df["ci_upper"] - plot_df["odds_ratio"]
+            ],
+            fmt="o",
         )
+        ax_top.axvline(1.0, linestyle="--", color="red")
 
         # Significant allergens (CI entirely above or below 1)
         sig_top_allergens = plot_df[plot_df["ci_lower"] > 1]
         sig_bot_allergens = plot_df[plot_df["ci_upper"] < 1]
-
+#
         # Add confidence interval error bars
-        bar_centers = [bar.get_x() + bar.get_width() / 2 for bar in ax_top.patches]
+#        bar_centers = [bar.get_x() + bar.get_width() / 2 for bar in ax_top.patches]
 
-        ax_top.errorbar(
-            x=bar_centers,
-            y=plot_df["odds_ratio"],
-            yerr=[
-                plot_df["odds_ratio"] - plot_df["ci_lower"],
-                plot_df["ci_upper"] - plot_df["odds_ratio"]
-            ],
-            fmt="none",
-            ecolor="black",
-            elinewidth=1.5,
-            capsize=4,
-            zorder=3
-        )
+#        ax_top.errorbar(
+#            x=bar_centers,
+#            y=plot_df["odds_ratio"],
+#            yerr=[
+#                plot_df["odds_ratio"] - plot_df["ci_lower"],
+#                plot_df["ci_upper"] - plot_df["odds_ratio"]
+#            ],
+#            fmt="none",
+#            ecolor="black",
+#            elinewidth=1.5,
+#            capsize=4,
+#            zorder=3
+##        )
 
         # Reference line (OR = 1)
-        ax_top.axhline(1.0, linestyle="--", color="red", alpha=0.7)
-        ax_top.set_ylabel("Odds Ratio", fontsize=fs)
-        ax_top.set_xlabel("Allergen", fontsize=14 )
-        ax_top.set_title(f"Lag window: {best_window[0]}-{best_window[1]}h", fontsize=14)
-        ax_top.tick_params(axis='x', rotation=45)
+#        ax_top.axhline(1.0, linestyle="--", color="red", alpha=0.7)
+#        ax_top.set_ylabel("Odds Ratio", fontsize=fs)
+#        ax_top.set_xlabel("Allergen", fontsize=14 )
+#        ax_top.set_title(f"Lag window: {best_window[0]}-{best_window[1]}h", fontsize=14)
+#        ax_top.tick_params(axis='x', rotation=45)
 
         # --------------------------------------------------
         # Add model performance metrics box
