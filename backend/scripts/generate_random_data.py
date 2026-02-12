@@ -10,6 +10,37 @@ sys.path.insert(0, project_root)
 from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Unit, Symptom
 from app.database import SessionLocal
 
+def clear_user_logs(db, user_id):
+    """
+    Delete all allergen and symptom logs for a specific user.
+
+    Parameters
+    ----------
+    db : Session
+        Active SQLAlchemy database session.
+
+    user_id : int
+        ID of the user whose logs should be deleted.
+
+    Returns
+    -------
+    None
+        Deletes records from the database and commits the transaction.
+    """
+
+    # Delete all symptom logs for the given user
+    db.query(SymptomLog).filter(
+        SymptomLog.user_id == user_id
+    ).delete(synchronize_session=False)
+
+    # Delete all allergen logs for the given user
+    db.query(AllergenLog).filter(
+        AllergenLog.user_id == user_id
+    ).delete(synchronize_session=False)
+
+    # Commit changes to persist deletions
+    db.commit()
+
 def generate_random_allergen_data(
     user_email="random_user@example.com",
     days=90,
@@ -62,7 +93,11 @@ def generate_random_allergen_data(
             db.commit()
             db.refresh(user)
 
-        # Get allergens and symptoms for THIS user only
+        # ✅ CLEAR OLD DATA
+        clear_user_logs(db, user.user_id)
+
+        # Fetch related objects
+        units = db.query(Unit).all()
         all_allergens = db.query(Allergen).filter(
             Allergen.user_id == user.user_id
         ).all()
@@ -70,6 +105,7 @@ def generate_random_allergen_data(
         symptoms = db.query(Symptom).filter(
             Symptom.user_id == user.user_id
         ).all()
+
 
         # Units are likely global (no user_id), so leave as-is
         units = db.query(Unit).all()
