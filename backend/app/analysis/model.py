@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.schemas.analyse import X,y
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
 from app.analysis.get_xy import get_xy
-from app.analysis.supervised_classification import bootstrap_or_ci
+from projects.capstone.backend.app.analysis.supervised_classification import bootstrap_or_ci
 from io import BytesIO
 import pandas as pd
 import matplotlib
@@ -24,6 +24,39 @@ import pandas as pd
 
 logger = logging.getLogger("app/analysis/model.py")
 logging.basicConfig(level=logging.INFO)
+
+def return_blank(return_type="buf"):
+    """
+    Generate a blank PNG image buffer or text with a message indicating no data is available.
+
+    This function is used as a fallback when there is insufficient data to perform analysis,
+    allowing the application to return a user-friendly image instead of an error.
+
+    Returns
+    -------
+    BytesIO or str
+        A PNG image buffer or string containing a message about the lack of data.
+    
+    """
+    if return_type == "text":
+        summary = (
+            "Not enough data to perform analysis. Please log more allergen and symptom events to see potential patterns."
+        )
+        return summary
+    else:
+        # Return a blank placeholder image instead of raising an error
+        fig, ax = plt.subplots(figsize=(6,4))
+        ax.text(0.5, 0.5, "No symptom data available",
+                ha="center", va="center")
+        ax.set_axis_off()
+
+        buf = BytesIO()
+        plt.savefig(buf, format="png", bbox_inches="tight")
+        buf.seek(0)
+        plt.close(fig)
+        return buf
+
+
 
 def model_classification(db: 'Session', current_user: int, return_type="buf"):
     """
@@ -66,31 +99,14 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         # Handle insufficient data
         # --------------------------------------------------
         if allergen_events.empty or symptom_events.empty:
-
-            if return_type == "text":
-                summary = (
-                    "Not enough data to perform analysis. Please log more allergen and symptom events to see potential patterns."
-                )
-                return summary
-            else:
-                # Return a blank placeholder image instead of raising an error
-                fig, ax = plt.subplots(figsize=(6,4))
-                ax.text(0.5, 0.5, "No symptom data available",
-                        ha="center", va="center")
-                ax.set_axis_off()
-
-                buf = BytesIO()
-                plt.savefig(buf, format="png", bbox_inches="tight")
-                buf.seek(0)
-                plt.close(fig)
-                return buf
+            return return_blank(return_type)
 
         # --------------------------------------------------
         # Define lag windows to evaluate
         # --------------------------------------------------
         lag_windows = [(0, 6), (6, 24), (24, 48)]
 
-        # Identify most frequently reported symptom group
+        # Identify most frequently reported symptom group for summary text
         symptom_counts = symptom_events.groupby("symptom_group").size().reset_index(name="count")
         symptom_counts = symptom_counts.sort_values("count", ascending=False)
         top_symptom_group = symptom_counts.iloc[0]["symptom_group"].lower()
@@ -119,10 +135,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
 
             # Ensure both classes exist
             if y.nunique() < 2:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Not enough class variation to train model."
-                )
+                return return_blank(return_type)
 
             # --------------------------------------------------
             # Detect class imbalance
