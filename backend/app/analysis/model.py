@@ -332,10 +332,6 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         ax_top.set_title(f"Lag window: {best_window[0]}-{best_window[1]}h", fontsize=14)
         ax_top.tick_params(axis='x', rotation=45)
         ax_top.set_yscale("log")
-        formatter = ScalarFormatter()
-        formatter.set_scientific(False)
-        formatter.set_useOffset(False)
-        ax_top.yaxis.set_major_formatter(formatter)
 
         # --------------------------------------------------
         # Add model performance metrics box
@@ -420,6 +416,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         formatter.set_scientific(False)
         formatter.set_useOffset(False)
         ax_bot.yaxis.set_major_formatter(formatter)
+        ax_top.yaxis.set_major_formatter(formatter)
 
         bar_centers = [bar.get_x() + bar.get_width() / 2 for bar in ax_bot.patches]
 
