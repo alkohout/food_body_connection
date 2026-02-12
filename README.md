@@ -140,25 +140,27 @@ The backend API is implemented using:
 
 ### Project Structure
 ```
-├── app/
-│   ├── analysis/             # Data analysis, statistics, ML, and time-series processing
-│   ├── api/
-│   │   └── routes/           # FastAPI route handlers (auth, users, logs, analytics, plots)
-│   ├── core/                 # Security, JWT handling, core app logic
-│   ├── data/                 # Data access and analysis helpers
-│   ├── models/               # SQLAlchemy models and ML models
-│   ├── schemas/              # Pydantic schemas for request/response validation
-│   ├── utils/                # Shared utilities and preprocessing helpers
-│   ├── config.py             # Application configuration
-│   ├── database.py           # Database connection and session management
-│   ├── main.py               # FastAPI application entry point
-│   └── models.py             # Model imports/registry
-├── logs/                     # Application and server logs
-├── scripts/                  # Database setup and data generation scripts
+├── backend/
+│   ├── app/
+│   │   ├── analysis/         # Data analysis, statistics, ML, and time-series processing
+│   │   ├── api/
+│   │   │    └── routes/      # FastAPI route handlers (auth, users, logs, analytics, plots)
+│   │   ├── core/             # Security, JWT handling, core app logic
+│   │   ├── data/             # Data access and analysis helpers
+│   │   ├── models/           # SQLAlchemy models 
+│   │   ├── schemas/          # Pydantic schemas for request/response validation
+│   │   ├── database.py       # Database connection and session management
+│   │   ├── main.py           # FastAPI application entry point
+│   ├── logs/                 # Application and server logs
+│   ├── scripts/              # Database setup and data generation scripts
 ├── docs/
 │   ├── assets/               # Images and static documentation assets
 │   ├── js/                   # Frontend JavaScript (dashboard, API calls)
-│   └── static/               # Static HTML and CSS files
+│   ├── static/               # Static image
+│   ├── dashboard.html         
+│   ├── index.html
+│   ├── main.html
+│   ├── styles.css
 ├── frontend/                 # Frontend-related files and certificates
 ├── README.md                 # Project documentation
 ```
