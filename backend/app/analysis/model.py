@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.schemas.analyse import X,y
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
 from app.analysis.get_xy import get_xy
-from projects.capstone.backend.app.analysis.supervised_classification import bootstrap_or_ci
+from app.analysis.supervised_classification import bootstrap_or_ci
 from io import BytesIO
 import pandas as pd
 import matplotlib
