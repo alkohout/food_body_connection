@@ -17,6 +17,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, GridSearchCV, cross_val_score
 from sklearn.metrics import pairwise_distances
 from matplotlib.ticker import FuncFormatter, ScalarFormatter
+from matplotlib.ticker import LogFormatter
+
 
 import numpy as np
 import traceback 
@@ -412,7 +414,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             ax=ax_bot
         )
         ax_bot.set_yscale("log")
-        formatter = FuncFormatter(lambda y, _: f"{y:g}")
+        formatter = LogFormatter(base=10, labelOnlyBase=False)
         ax_top.yaxis.set_major_formatter(formatter)
         ax_bot.yaxis.set_major_formatter(formatter)
 
