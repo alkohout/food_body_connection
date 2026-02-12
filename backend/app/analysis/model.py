@@ -16,6 +16,7 @@ from sklearn.metrics import make_scorer, recall_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, GridSearchCV, cross_val_score
 from sklearn.metrics import pairwise_distances
+from matplotlib.ticker import ScalarFormatter
 
 import numpy as np
 import traceback 
@@ -303,6 +304,10 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             ax=ax_top
         )
         ax_top.set_yscale("log")
+        formatter = ScalarFormatter()
+        formatter.set_scientific(False)
+        formatter.set_useOffset(False)
+        ax_top.yaxis.set_major_formatter(formatter)
 
         # Significant allergens (CI entirely above or below 1)
         sig_top_allergens = plot_df[plot_df["ci_lower"] > 1]
@@ -411,6 +416,10 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             ax=ax_bot
         )
         ax_bot.set_yscale("log")
+        formatter = ScalarFormatter()
+        formatter.set_scientific(False)
+        formatter.set_useOffset(False)
+        ax_bot.yaxis.set_major_formatter(formatter)
 
         bar_centers = [bar.get_x() + bar.get_width() / 2 for bar in ax_bot.patches]
 
