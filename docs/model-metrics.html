@@ -28,7 +28,7 @@
 
   <hr />
 
-  <h2>Metrics and Interpretation</h2>
+  <h2>Allergen Importance Metrics and Interpretation</h2>
 
   <ul>
     <li>
@@ -70,28 +70,30 @@
     </li>
   </ul>
   <hr />
-  <hr />
 
   <h2>Dose–Response Odds Ratio</h2>
 
   <p>
   The odds ratio (OR) and its 95% confidence interval is estimated using an <strong> Ordinal Logisitc Regression Model</strong>, which determines how the probability of being in a higher symptom intensity category changes with allergen volume.
-  OR > 1: Higher allergen volume is associated with greater odds of more intense symptoms.
-OR = 1: Allergen volume has no association with symptom intensity.
-OR < 1: Higher allergen volume is associated with lower odds of more intense symptoms (protective effect or inverse relationship).
-The 95% confidence interval (CI) indicates the precision of the estimate:
-If the CI does not include 1, the association is considered statistically significant.
-If the CI includes 1, the association may be due to chance.
+  </p>
+  <p>
+  OR > 1: Higher allergen volume is associated with greater odds of more intense symptoms.<br>
+  OR = 1: Allergen volume has no association with symptom intensity.<br>
+  OR < 1: Higher allergen volume is associated with lower odds of more intense symptoms (protective effect or inverse relationship).
+  </p>
+  <p>
+  The 95% confidence interval (CI) indicates the precision of the estimate:
+  If the CI does not include 1, the association is considered statistically significant.
+  If the CI includes 1, the association may be due to chance.
   </p>
 
   <ul>
     <li>
-      <span class="metric-title">Odds Ratio</span>: quantifies how the odds of experiencing a higher symptom intensity change with each unit increase in allergen volume. 
       <div class="metric-description">
-        <span class="indicator green">●</span> Confidence interval minimum is > 1 : Higher allergen volume is associated with greater odds of more intense symptoms<br>
-        <span class="indicator green">●</span> Confidence interval maximum is < 1 : Higher allergen volume is associated with greater odds of less intense symptoms<br>
-        <span class="indicator orange">●</span> Confidence interval includes 1 but is mostly higher or lower : Higher allergen volume is moderately associated with more or less intense symptoms<br>
-        <span class="indicator red">●</span> Confidence includes 1 : Higher allergen volume is not associated with greater odds of more or less intense symptoms.
+        <span class="indicator green">●</span> Confidence interval minimum is > 1 <br>
+        <span class="indicator green">●</span> Confidence interval maximum is < 1 <br>
+        <span class="indicator orange">●</span> Confidence interval includes 1 but is mostly higher or lower <br>
+        <span class="indicator red">●</span> Confidence includes 1  
       </div>
     </li>
 
@@ -103,14 +105,22 @@ If the CI includes 1, the association may be due to chance.
   These metrics describe how symptom risk differs between days with and without exposure
   to a specific allergen, and how confident we are that the difference is not due to chance.
   </p>
+  <p>
+  The p-value is calculated using the Fisher exact statistical test which compares the number of symptom days on exposed versus non-exposed days. 
+  This test is commonly used when comparing 2 categorical variables. 
+  It does <em>not</em> measure how large or important the effect is only how confident we are that the difference is real.
+  </p>
+  <p>
+  The most useful results combine a <strong>meaningful risk increase</strong> with a
+  <strong>low p-value</strong>. A low p-value with a very small risk change, or a large risk change with weak
+  statistical evidence, should both be interpreted cautiously.
+  </p>
 
   <ul>
     <li>
-      <span class="metric-title">Absolute Risk Increase</span>: the change in the chance of having symptoms on exposure days compared with non-exposure days.
       <div class="metric-description">
         A positive value means symptoms were more common on exposure days.<br />
         A negative value means symptoms were less common on exposure days.<br /><br />
-
         <span class="indicator green">●</span> ≥ +10%: Meaningful increase in symptom risk<br>
         <span class="indicator orange">●</span> +3% to +9%: Small to moderate increase<br>
         <span class="indicator red">●</span> < +3%: Little or no difference
@@ -131,18 +141,7 @@ If the CI includes 1, the association may be due to chance.
     </li>
   </ul>
 
-  <p>
-  The p-value is calculated using the Fisher exact statistical test which compares the number of symptom days
-  on exposed versus non-exposed days. This test is commonly used when comparing 2 categorical variables. It does <em>not</em> measure how large or important the effect is —
-  only how confident we are that the difference is real.
-  </p>
-
-  <p>
-  The most useful results combine a <strong>meaningful risk increase</strong> with a
-  <strong>low p-value</strong>. A low p-value with a very small risk change, or a large risk change with weak
-  statistical evidence, should both be interpreted cautiously.
-  </p>
-
+  <hr />
   <h2>Traffic Light Summary</h2>
   <p>
     <span class="indicator green">●</span> Strong / reliable<br>
@@ -152,25 +151,22 @@ If the CI includes 1, the association may be due to chance.
 
   <hr />
 
+
+  <h2>Understanding Confidence Intervals</h2>
   <p>
-    <em>Note:</em> Variability (±) in metrics indicates model performance across different subsets of your data. More data and consistent logging improve reliability.
+  Many metrics, like <strong>ROC AUC</strong> and <strong>Symptom Recall</strong>, are reported with a ± value (e.g., 0.78 ± 0.04). This represents a <strong>confidence interval</strong>, which shows how much the metric varies across different subsets of your data.
   </p>
+
+  <ul>
+    <li><strong>Narrow intervals (small ± value)</strong>: The model’s performance is consistent — results are more reliable.</li>
+    <li><strong>Wide intervals (large ± value)</strong>: The model’s performance varies more depending on which data is used — interpret with caution.</li>
+    <li>In your plots, the <strong>error bars</strong> on allergen odds ratios show a similar concept: longer bars indicate greater uncertainty in how strongly a particular allergen is associated with symptoms.</li>
+  </ul>
+
+  <p>
+  In practice, confidence intervals help you understand not just the average performance, but also the <em>certainty</em> of that performance. Metrics with green traffic-light colors and narrow intervals are the most trustworthy, while metrics with orange/red colors or wide intervals should be interpreted cautiously.
+  </p>
+
   <hr />
-
-<h2>Understanding Confidence Intervals</h2>
-<p>
-Many metrics, like <strong>ROC AUC</strong> and <strong>Symptom Recall</strong>, are reported with a ± value (e.g., 0.78 ± 0.04). This represents a <strong>confidence interval</strong>, which shows how much the metric varies across different subsets of your data.
-</p>
-
-<ul>
-  <li><strong>Narrow intervals (small ± value)</strong>: The model’s performance is consistent — results are more reliable.</li>
-  <li><strong>Wide intervals (large ± value)</strong>: The model’s performance varies more depending on which data is used — interpret with caution.</li>
-  <li>In your plots, the <strong>error bars</strong> on allergen odds ratios show a similar concept: longer bars indicate greater uncertainty in how strongly a particular allergen is associated with symptoms.</li>
-</ul>
-
-<p>
-In practice, confidence intervals help you understand not just the average performance, but also the <em>certainty</em> of that performance. Metrics with green traffic-light colors and narrow intervals are the most trustworthy, while metrics with orange/red colors or wide intervals should be interpreted cautiously.
-</p>
-
 </body>
 </html>
