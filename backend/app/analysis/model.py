@@ -437,7 +437,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
 
         for ax in [ax_top, ax_bot]:
             ax.set_yscale("log")
-            ax.yaxis.set_major_locator(LogLocator(base=10, subs=range(1, 10), numticks=50))
+            ax.yaxis.set_major_locator(LogLocator(base=10, subs=range(1, 10), numticks=10))
             formatter = ScalarFormatter()
             formatter.set_scientific(False)  # Disable scientific notation
             formatter.set_useOffset(False)
