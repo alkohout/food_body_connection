@@ -16,8 +16,7 @@ from sklearn.metrics import make_scorer, recall_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, GridSearchCV, cross_val_score
 from sklearn.metrics import pairwise_distances
-from matplotlib.ticker import FuncFormatter, ScalarFormatter
-from matplotlib.ticker import LogFormatter
+from matplotlib.ticker import LogLocator, LogFormatter
 
 
 import numpy as np
@@ -440,7 +439,6 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         ax_bot.set_xlabel("Allergen", fontsize=14 )
         ax_bot.tick_params(axis='x', rotation=45)
 
-        from matplotlib.ticker import LogLocator, LogFormatter
         for ax in [ax_top, ax_bot]:
             ax.set_yscale("log")
             ax.yaxis.set_major_locator(LogLocator(base=10))
