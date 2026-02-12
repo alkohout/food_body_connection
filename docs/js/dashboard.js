@@ -1070,7 +1070,6 @@ async function init() {
     // Sync allergen select → inputs
     // -----------------------------------------
     const symptomSelect = getElement("symptom-select");
-    const symptomInput = getElement("symptom-input");
     const symptomIdInput = getElement("symptom-id");
 
     if (symptomSelect) {
@@ -1078,13 +1077,11 @@ async function init() {
         const selectedOption = symptomSelect.selectedOptions[0];
 
         if (!selectedOption || !symptomSelect.value) {
-          symptomInput.value = "";
           symptomIdInput.value = "";
           return;
         }
 
         symptomIdInput.value = symptomSelect.value;
-        symptomInput.value = selectedOption.textContent;
       });
     }
 
