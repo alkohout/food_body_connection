@@ -2,13 +2,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- ===================== -->
+  <!-- Meta & Page Setup -->
+  <!-- ===================== -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Food–Body Connection | Login</title>
-  <!-- Site Visit Counter -->
+
+  <!-- Site Visit Counter (GoatCounter Analytics) -->
   <script data-goatcounter="https://kohoutal.goatcounter.com/count"
       async src="//gc.zgo.at/count.js">
   </script>
+
+  <!-- Styles & Icons -->
   <link rel="stylesheet" href="styles.css" />
   <link rel="icon" type="image/png" href="assets/images/background_iphone.png">
   <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
@@ -16,69 +22,109 @@
 
 <body>
   <main class="container">
+
+    <!-- ===================== -->
+    <!-- Project Card Wrapper -->
+    <!-- ===================== -->
     <div class="project-card">
 
-    <h1>Food–Body Connection</h1>
-    <p class="tagline">Log foods. Track symptoms. Discover patterns.</p>
+      <!-- Application Title -->
+      <h1>Food–Body Connection</h1>
 
-    <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab active" data-tab="login">Log in</button>
-      <button class="tab" data-tab="register">Register</button>
-    </div>
+      <!-- Short product description -->
+      <p class="tagline">
+        Log foods. Track symptoms. Discover patterns.
+      </p>
 
-    <!-- Login -->
-    <form id="login-form" class="form active">
-      <label>
-        Email
-        <input type="email" id="login_email" required />
-      </label>
+      <!-- ===================== -->
+      <!-- Authentication Tabs -->
+      <!-- ===================== -->
+      <!-- Controlled by js/tabs.js -->
+      <div class="tabs">
+        <button class="tab active" data-tab="login">Log in</button>
+        <button class="tab" data-tab="register">Register</button>
+      </div>
 
-      <label>
-        Password
-        <input type="password" id="login_password" required />
-      </label>
+      <!-- ========================================================= -->
+      <!-- ======================= LOGIN FORM ====================== -->
+      <!-- ========================================================= -->
+      <!-- Handles existing user authentication (js/main.js) -->
+      <form id="login-form" class="form active">
 
-      <button type="submit" class="primary">Log in</button>
-    </form>
+        <!-- Email input -->
+        <label>
+          Email
+          <input type="email" id="login_email" required />
+        </label>
 
-    <!-- Register -->
-    <form id="register-form" class="form">
-      <label>
-        Email
-        <input type="email" id="registration_email" required />
-      </label>
+        <!-- Password input -->
+        <label>
+          Password
+          <input type="password" id="login_password" required />
+        </label>
 
-      <label>
-        Password
-        <input type="password" id="registration_password" required />
-      </label>
+        <!-- Submit button -->
+        <button type="submit" class="primary">Log in</button>
+      </form>
 
-      <button type="submit" class="primary">Create account</button>
-    </form>
+      <!-- ========================================================= -->
+      <!-- ===================== REGISTRATION FORM ================= -->
+      <!-- ========================================================= -->
+      <!-- Handles new account creation (js/main.js) -->
+      <form id="register-form" class="form">
 
-    <p id="login-success" class="success"></p>
-    <p id="login-error" class="error"></p>
-    <p id="registration-success" class="success"></p>
-    <p id="registration-error" class="error"></p>
+        <!-- Email input -->
+        <label>
+          Email
+          <input type="email" id="registration_email" required />
+        </label>
 
+        <!-- Password input -->
+        <label>
+          Password
+          <input type="password" id="registration_password" required />
+        </label>
 
+        <!-- Submit button -->
+        <button type="submit" class="primary">Create account</button>
+      </form>
 
+      <!-- ===================== -->
+      <!-- Status Messages -->
+      <!-- ===================== -->
+      <!-- Populated dynamically by main.js -->
+      <p id="login-success" class="success"></p>
+      <p id="login-error" class="error"></p>
+      <p id="registration-success" class="success"></p>
+      <p id="registration-error" class="error"></p>
 
-      <!-- footnote -->
+      <!-- ===================== -->
+      <!-- Footer Links -->
+      <!-- ===================== -->
       <div class="project-footnote">
+        <!-- Developer / project page -->
         <a href="https://alkohout.github.io/projects/food_body_connection/">
           Dev
         </a>
         ·
+        <!-- API documentation -->
         <a href="https://foodbodyconnection.54.253.73.35.nip.io/docs" target="_blank">
           API
         </a>
       </div>
+
     </div>
   </main>
-ķ
+
+  <!-- ===================== -->
+  <!-- JavaScript Files -->
+  <!-- ===================== -->
+
+  <!-- Main authentication logic -->
   <script type="module" src="js/main.js"></script>
+
+  <!-- Tab switching functionality -->
   <script src="js/tabs.js"></script>
+
 </body>
 </html>
