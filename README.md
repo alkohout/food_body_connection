@@ -133,8 +133,9 @@ The backend API is implemented using:
   * Returning metrics and plots
 
 ### Frontend
-The frontend is hosted on GitHub Pages and communicates with a FastAPI backend via authenticated API calls.
-It renders plots and summaries for easy interpretation
+ - The frontend is hosted on GitHub Pages and communicates with a FastAPI backend via authenticated API calls.
+ - It renders plots and summaries for easy interpretation
+
 ---
 
 ### Project Structure
@@ -160,14 +161,6 @@ It renders plots and summaries for easy interpretation
 │   └── static/               # Static HTML and CSS files
 ├── frontend/                 # Frontend-related files and certificates
 ├── README.md                 # Project documentation
-└── Capstone_documentation.docx```
-
-Key improvements made:
-1. **Consistent 2-space indentation** for all levels2. **Proper tree structure** using `├─` and `└─` with correct hierarchy3. **Aligned comments** starting at column 50 for readability4. **Correct spacing** around tree connectors5. **Full Markdown support** that renders perfectly in GitHub/GitLab6. **Fixed all path alignments** (files/directories properly connected)
-7. **Removed artifacts** that caused rendering issues
-The structure now:
-- Maintains clear parent/child relationships- Preserves all original comments and organization- Renders correctly in any Markdown viewer- Uses standard directory tree conventions- Has consistent spacing throughout
-Copy/paste this directly into your README.md file - it will render perfectly with the hierarchy intact.
 ```
 
 #### Key Concepts
@@ -184,8 +177,7 @@ The database tracks user-defined allergens and symptoms, along with timestamped
 exposure and symptom events over time.
 
 #### Tables
-**users**
-Application users.
+**users - Application users. **
 | Column | Type | Key | Description |
 |------|------|-----|-------------|
 | user_id | Integer | PK | Unique user identifier |
@@ -194,19 +186,18 @@ Application users.
 | created_at | DateTime (UTC) |  | Account creation time |
 ---
 
-**allergen**
-User-defined allergens (e.g. dairy, eggs).
+**allergen User - defined allergens (e.g. dairy, eggs). **
 | Column | Type | Key | Description |
 |------|------|-----|-------------|
 | allergen_id | Integer | PK | Unique allergen ID |
 | user_id | Integer | FK → users.user_id | Allergen owner |
 | allergen_name | String |  | Allergen name |
+
 Constraint:  
 - UNIQUE (user_id, allergen_name)
 ---
 
-**unit**
-Units used to quantify allergen exposure.
+**unit - Units used to quantify allergen exposure.**
 | Column | Type | Key | Description |
 |------|------|-----|-------------|
 | unit_id | Integer | PK | Unit identifier |
@@ -214,8 +205,7 @@ Units used to quantify allergen exposure.
 | unit_conversion | Integer |  | Conversion factor |
 ---
 
-**allergen_log**
-Logged allergen exposure events.
+**allergen_log - Logged allergen exposure events.**
 | Column | Type | Key | Description |
 |------|------|-----|-------------|
 | allergen_log_id | Integer | PK | Exposure log ID |
@@ -226,8 +216,7 @@ Logged allergen exposure events.
 | unit_id | Integer | FK → unit.unit_id | Measurement unit |
 ---
 
-**symptom**
-User-defined symptoms (e.g. headache, nausea).
+**symptom - User-defined symptoms (e.g. headache, nausea).**
 | Column | Type | Key | Description |
 |------|------|-----|-------------|
 | symptom_id | Integer | PK | Symptom ID |
@@ -239,8 +228,7 @@ Constraint:
 - UNIQUE (user_id, symptom_name)
 ---
 
-**symptom_log**
-Logged symptom events.
+**symptom_log - Logged symptom events.**
 | Column | Type | Key | Description |
 |------|------|-----|-------------|
 | symptom_log_id | Integer | PK | Symptom log ID |
@@ -248,6 +236,7 @@ Logged symptom events.
 | symptom_id | Integer | FK → symptom.symptom_id | Symptom |
 | date_time | DateTime (UTC) |  | Event time |
 | symptom_intensity | Integer |  | Severity (0–3) |
+
 Constraint:  
 - CHECK (symptom_intensity BETWEEN 0 AND 3)
 ---
@@ -258,7 +247,19 @@ Constraint:
 - Users may log multiple exposures and symptoms over time
 
 ## Future Work
-* Unsupervised pattern discovery
-* Improved visual explanations
-* Improved logging tools
+### Planned Analysis Enhancements
+- Identify and analyze recurring patterns in symptom occurrence
+- Enable analysis across user‑selected date ranges
+- Support logging of multiple allergens and symptoms within a single event
+- Data Management Improvements
+
+### Introduce a dedicated Food table with automatic allergen assignment
+- Add an editable data view allowing users to modify or delete logged entries
+- Provide access to raw data for greater transparency and control
+
+### Reporting & Sharing
+- Enable optional email delivery of generated reports
+
+### Architecture & Scalability
+- Migrate to an alternative system architecture to support long‑term growth and scalability
 
