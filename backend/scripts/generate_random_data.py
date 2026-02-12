@@ -62,10 +62,17 @@ def generate_random_allergen_data(
             db.commit()
             db.refresh(user)
 
-        # Get allergens, units, and symptoms from database
-        all_allergens = db.query(Allergen).all()
+        # Get allergens and symptoms for THIS user only
+        all_allergens = db.query(Allergen).filter(
+            Allergen.user_id == user.user_id
+        ).all()
+
+        symptoms = db.query(Symptom).filter(
+            Symptom.user_id == user.user_id
+        ).all()
+
+        # Units are likely global (no user_id), so leave as-is
         units = db.query(Unit).all()
-        symptoms = db.query(Symptom).all()
 
         # Filter common symptoms for more realistic logging
         common_symptoms = [s for s in symptoms if s.symptom_name.lower() in [
