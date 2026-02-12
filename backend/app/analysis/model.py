@@ -303,11 +303,6 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             order=order,
             ax=ax_top
         )
-        ax_top.set_yscale("log")
-        formatter = ScalarFormatter()
-        formatter.set_scientific(False)
-        formatter.set_useOffset(False)
-        ax_top.yaxis.set_major_formatter(formatter)
 
         # Significant allergens (CI entirely above or below 1)
         sig_top_allergens = plot_df[plot_df["ci_lower"] > 1]
@@ -336,6 +331,11 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         ax_top.set_xlabel("Allergen", fontsize=14 )
         ax_top.set_title(f"Lag window: {best_window[0]}-{best_window[1]}h", fontsize=14)
         ax_top.tick_params(axis='x', rotation=45)
+        ax_top.set_yscale("log")
+        formatter = ScalarFormatter()
+        formatter.set_scientific(False)
+        formatter.set_useOffset(False)
+        ax_top.yaxis.set_major_formatter(formatter)
 
         # --------------------------------------------------
         # Add model performance metrics box
