@@ -455,8 +455,10 @@ async function addNewSymptom(name) {
     const data = await res.json();
     console.log("Created symptom:", data);
 
-    // Refresh dropdown with new list
-    await fetchSymptoms();
+    // ✅ FULL refresh (same pattern as allergens)
+    const symptoms = await fetchSymptoms();
+    const recentSymptoms = await fetchRecentSymptoms(5);
+    populateSymptomSelect(symptoms, recentSymptoms);
 
     // AUTO‑SELECT the newly added symptom
     const select = getElement("symptom-select");
