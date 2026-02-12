@@ -21,16 +21,19 @@
   <h1>Understanding Model Performance</h1>
 
   <p>
-    This guide explains how to interpret the performance of the allergen ranking model. 
-    The model analyses your logged allergen and symptom data to highlight potential patterns. 
-    It is a tool for guidance, not a medical diagnosis.
+    This guide explains how to interpret the performance of the various models used on this site. 
+    Each of the models (Allergen Ranking, Dose–Response, Risk ) have specific metrics that indicate how well it is performing and how much confidence to place in its results.
+    Their details are described below, along with a traffic-light color system to help you quickly assess the reliability of the results.
+    Note that this guide is a tool for guidance, not a medical diagnosis.
   </p>
 
   <hr />
 
-  <h2>Allergen Importance Metrics and Interpretation</h2>
+  <h2>Allergen Ranking Model</h2>
   <p>
-  Logistic regression analysis is used to examine the relationship between logged allergen exposures and symptom occurrence and returns the odds ratios, which indicate how much more likely symptoms are when exposed to the allergen.
+  The Allergen Ranking model analyses your logged allergen and symptom data to highlight potential patterns. 
+  A logistic regression model is used to examine the relationship between logged allergen exposures and symptom occurrence.
+  This model returns an odds ratio, which indicates how much more likely symptoms are when exposed to the allergen.
   The metrics below help you understand how well the model is performing and how much confidence to place in its results. 
   </p>
 
@@ -75,7 +78,7 @@
   </ul>
   <hr />
 
-  <h2>Dose–Response Odds Ratio</h2>
+  <h2>Dose–Response Model</h2>
 
   <p>
   The odds ratio (OR) and its 95% confidence interval is estimated using an <strong> Ordinal Logisitc Regression Model</strong>, which determines how the probability of being in a higher symptom intensity category changes with allergen volume.
