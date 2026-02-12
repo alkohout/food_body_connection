@@ -418,6 +418,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         ax_top.yaxis.set_major_formatter(formatter)
         ax_bot.yaxis.set_major_formatter(formatter)
 
+
         bar_centers = [bar.get_x() + bar.get_width() / 2 for bar in ax_bot.patches]
 
         ax_bot.errorbar(
@@ -439,6 +440,11 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         ax_bot.set_xlabel("Allergen", fontsize=14 )
         ax_bot.tick_params(axis='x', rotation=45)
 
+        from matplotlib.ticker import LogLocator, LogFormatter
+        for ax in [ax_top, ax_bot]:
+            ax.set_yscale("log")
+            ax.yaxis.set_major_locator(LogLocator(base=10))
+            ax.yaxis.set_major_formatter(LogFormatter(base=10))
         # --------------------------------------------------
         # Return output
         # --------------------------------------------------
