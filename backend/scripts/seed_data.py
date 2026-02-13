@@ -124,7 +124,13 @@ def main():
     conversions = [1, 1, 1000, 15, 5, 240]
 
     for name, conv in zip(units, conversions):
-        db.add(Unit(unit_name=name, unit_conversion=conv))
+        existing_unit = db.query(Unit).filter(Unit.unit_name == name).first()
+
+        if not existing_unit:
+            db.add(Unit(
+                unit_name=name,
+                unit_conversion=conv
+            ))
 
     db.commit()
 
