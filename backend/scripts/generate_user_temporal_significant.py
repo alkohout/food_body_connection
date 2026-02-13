@@ -43,6 +43,35 @@ def clear_user_logs(db, user_id):
     # Commit changes to persist deletions
     db.commit()
 
+def clear_user_tables(db, user_id):
+    """
+    Delete all allergen and symptom logs for a specific user.
+
+    Parameters
+    ----------
+    db : Session
+        Active SQLAlchemy database session.
+
+    user_id : int
+        ID of the user whose logs should be deleted.
+
+    Returns
+    -------
+    None
+        Deletes records from the database and commits the transaction.
+    """
+
+    db.query(Symptom).filter(
+        Symptom.user_id == user_id
+    ).delete(synchronize_session=False) 
+
+    db.query(Allergen).filter(
+        Allergen.user_id == user_id
+    ).delete(synchronize_session=False)
+
+    # Commit changes to persist deletions
+    db.commit()
+
 
 def scale_quantity_to_0_3(quantity, q_min, q_max):
     """
@@ -135,6 +164,7 @@ def generate_significant_allergen_data(
 
         # ✅ CLEAR OLD DATA
         clear_user_logs(db, user.user_id)
+        clear_user_tables(db, user.user_id)
 
         # Fetch related objects
         units = db.query(Unit).all()
