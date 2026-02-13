@@ -211,10 +211,10 @@ def generate_significant_allergen_data(
                 # Decide allergen type (significant vs neutral)
                 if rng.random() < 0.4:
                     allergen = rng.choice(significant_objs)
-                    symptom_prob = 0.65  # Strong causal probability
+                    symptom_prob = 0.7  # Strong causal probability
                 else:
                     allergen = rng.choice(neutral_objs)
-                    symptom_prob = 0.05  # Weak/no causal probability
+                    symptom_prob = 0.02  # Weak/no causal probability
 
                 # Generate dose volume
                 target_volume = rng.uniform(0, 1000)
