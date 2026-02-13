@@ -40,6 +40,14 @@ def clear_user_logs(db, user_id):
         AllergenLog.user_id == user_id
     ).delete(synchronize_session=False)
 
+    db.query(Symptom).filter(
+        Symptom.user_id == user_id
+    ).delete(synchronize_session=False) 
+
+    db.query(Allergen).filter(
+        Allergen.user_id == user_id
+    ).delete(synchronize_session=False)
+
     # Commit changes to persist deletions
     db.commit()
 

@@ -97,21 +97,23 @@ def main():
     # ---------------------------------------------------
     for user in users:
 
-        # Seed Symptoms
-        for group_name, symptoms in SYMPTOM_GROUPS.items():
-            for s in symptoms:
-                db.add(Symptom(
-                    symptom_name=s,
-                    symptom_group=group_name,
+        # Seed Symptoms only if user has none
+        if not db.query(Symptom).filter(Symptom.user_id == user.user_id).first():
+            for group_name, symptoms in SYMPTOM_GROUPS.items():
+                for s in symptoms:
+                    db.add(Symptom(
+                        symptom_name=s,
+                        symptom_group=group_name,
+                        user_id=user.user_id
+                    ))
+
+        # Seed Allergens only if user has none
+        if not db.query(Allergen).filter(Allergen.user_id == user.user_id).first():
+            for a in ALLERGENS:
+                db.add(Allergen(
+                    allergen_name=a,
                     user_id=user.user_id
                 ))
-
-        # Seed Allergens
-        for a in ALLERGENS:
-            db.add(Allergen(
-                allergen_name=a,
-                user_id=user.user_id
-            ))
 
     db.commit()
 
