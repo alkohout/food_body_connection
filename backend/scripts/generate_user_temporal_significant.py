@@ -164,7 +164,6 @@ def generate_significant_allergen_data(
 
         # ✅ CLEAR OLD DATA
         clear_user_logs(db, user.user_id)
-        clear_user_tables(db, user.user_id)
 
         # Fetch related objects
         units = db.query(Unit).all()
