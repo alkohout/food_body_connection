@@ -119,13 +119,13 @@ Static Frontend (GitHub Pages)
 ↓ HTTPS (fetch, JWT auth)
 FastAPI Backend (AWS)
 ↓
-PostgreSQL Database (AWS RDS)
+PostgreSQL Database (NEON)
 
 ### Backend
 The backend API is implemented using:
 - FastAPI (Python)
 - SQLAlchemy ORM
-- PostgreSQL (AWS RDS)
+- PostgreSQL (NEON)
 - JWT-based authentication
 * REST endpoints for:
   * Logging data
