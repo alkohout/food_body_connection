@@ -895,7 +895,7 @@ const fetchAnalysisPlot = async () => {
         Object.entries(stats).forEach(([key, value]) => {
           if (!standardKeys.includes(key)) {
             const statDiv = document.createElement("div");
-            statDiv.className = "stat-item";
+            statDiv.className = "stat-card stat-card--secondary stat-inline";
             statDiv.innerHTML = `
               <span class="stat-label">${key}</span>
               <span class="stat-value">${value}</span>
