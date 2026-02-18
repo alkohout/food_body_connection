@@ -108,7 +108,7 @@ def analysis_stats(
     if (current_user.user_id == 4) : # Special case for myself to count triptan usage
 
         # Calculate cutoff date (28 days ago from today)
-        cutoff_date = pd.Timestamp.now() - pd.Timedelta(days=28)
+        cutoff_date = pd.Timestamp.utcnow() - pd.Timedelta(days=28)
 
         # Filter and count
         count = ((allergen_df['allergen_name'] == 'Triptan') & (allergen_df['date_time'] >= cutoff_date)).sum()
