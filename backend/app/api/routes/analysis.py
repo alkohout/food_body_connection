@@ -119,7 +119,7 @@ def analysis_stats(
             "Total days tracked": int(total_days),
             "Average allergens logged per day": avg_allergens_per_day,
             "Average symptoms logged per day": avg_symptoms_per_day,
-            "Triptan usage in past month": count, 
+            "Triptan usage in past month": int(count), 
         }
 
     return {
