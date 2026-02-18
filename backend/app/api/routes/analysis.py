@@ -105,18 +105,13 @@ def analysis_stats(
 
     total_days = len(get_days(allergen_df) | get_days(symptom_df))
 
-    if (current_user.user_id == 4) :
+    if (current_user.user_id == 4) : # Special case for myself to count triptan usage
 
-        from sqlalchemy import func
-        from datetime import datetime, timedelta
+        # Calculate cutoff date (28 days ago from today)
+        cutoff_date = pd.Timestamp.now() - pd.Timedelta(days=28)
 
-        twenty_eight_days_ago = datetime.utcnow() - timedelta(days=28)
-
-        triptan_count = db.query(func.count(Allergen.id)).filter(
-            Allergen.user_id == current_user.user_id,
-            Allergen.allergen_name == "Triptans",
-            Allergen.date_time >= twenty_eight_days_ago
-        ).scalar()
+        # Filter and count
+        count = ((allergen_df['allergen_name'] == 'Triptan') & (allergen_df['date_time'] >= cutoff_date)).sum()
 
         return {
             "Total allergens logged": int(total_allergen_records),
@@ -124,7 +119,7 @@ def analysis_stats(
             "Total days tracked": int(total_days),
             "Average allergens logged per day": avg_allergens_per_day,
             "Average symptoms logged per day": avg_symptoms_per_day,
-            "Triptan usage in past month": triptan_count, 
+            "Triptan usage in past month": count, 
         }
 
     return {
