@@ -879,6 +879,32 @@ const fetchAnalysisPlot = async () => {
         if (content) content.style.display = "block";
       }
 
+      // Handle optional / extra stats dynamically
+      const extraStatsContainer = getElement("extra-stats");
+      if (extraStatsContainer) {
+        extraStatsContainer.innerHTML = ""; // clear previous
+
+        const standardKeys = [
+          "Total allergens logged",
+          "Total symptoms logged",
+          "Total days tracked",
+          "Average allergens logged per day",
+          "Average symptoms logged per day"
+        ];
+
+        Object.entries(stats).forEach(([key, value]) => {
+          if (!standardKeys.includes(key)) {
+            const statDiv = document.createElement("div");
+            statDiv.className = "stat-item";
+            statDiv.innerHTML = `
+              <span class="stat-label">${key}</span>
+              <span class="stat-value">${value}</span>
+            `;
+            extraStatsContainer.appendChild(statDiv);
+          }
+        });
+      }
+
       // Histogram plot
       console.log("Fetching histogram plot...");
       const histogramPlotImg = getElement("group_histogram");
