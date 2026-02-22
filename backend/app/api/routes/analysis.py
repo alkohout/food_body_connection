@@ -121,6 +121,16 @@ def analysis_stats(
             .resample('M')
             .size()
         )
+        # Remove current month
+        current_month = pd.Timestamp.utcnow().to_period('M')
+        monthly_counts = monthly_counts[
+            monthly_counts.index.to_period('M') != current_month
+        ]
+
+        # Remove December 2025 - only half recorded and would skew average
+        monthly_counts = monthly_counts[
+            monthly_counts.index.to_period('M') != pd.Period('2025-12')
+        ]
         # Average per month
         average_per_month = monthly_counts.mean()
 
