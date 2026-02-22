@@ -109,9 +109,21 @@ def analysis_stats(
 
         # Calculate cutoff date (28 days ago from today)
         cutoff_date = pd.Timestamp.utcnow() - pd.Timedelta(days=28)
-
         # Filter and count
-        count = ((allergen_df['allergen_name'] == 'Triptan') & (allergen_df['date_time'] >= cutoff_date)).sum()
+        count_last28 = ((allergen_df['allergen_name'] == 'Triptan') & (allergen_df['date_time'] >= cutoff_date)).sum()
+
+        # Filter to Triptan only
+        triptan_df = allergen_df[allergen_df['allergen_name'] == 'Triptan']
+        # Count per month
+        monthly_counts = (
+            triptan_df
+            .set_index('date_time')
+            .resample('M')
+            .size()
+        )
+        # Average per month
+        average_per_month = monthly_counts.mean()
+
 
         return {
             "Total allergens logged": int(total_allergen_records),
@@ -119,7 +131,8 @@ def analysis_stats(
             "Total days tracked": int(total_days),
             "Average allergens logged per day": avg_allergens_per_day,
             "Average symptoms logged per day": avg_symptoms_per_day,
-            "Triptan usage in past month": int(count), 
+            "Triptan usage in past month": int(count_last28), 
+            "Average Triptan usage per month": round(average_per_month),
         }
 
     return {
