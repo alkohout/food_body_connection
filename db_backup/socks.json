@@ -1,0 +1,22 @@
+{
+    "Servers": {
+        "1": {
+            "Name": "PostgreSQL 16",
+            "Group": "Servers",
+            "Host": "localhost",
+            "Port": 5432,
+            "MaintenanceDB": "postgres",
+            "Username": "postgres",
+            "Comment": "Auto-detected PostgreSQL 16 installation with the data directory at /Library/PostgreSQL/16/data",
+            "DBRestrictionType": "databases",
+            "TunnelPort": "22",
+            "TunnelPromptPassword": 0,
+            "TunnelKeepAlive": 0,
+            "KerberosAuthentication": false,
+            "ConnectionParameters": {
+                "sslmode": "prefer",
+                "connect_timeout": 10
+            }
+        }
+    }
+}

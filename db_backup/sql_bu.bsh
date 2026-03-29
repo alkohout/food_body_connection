@@ -1,0 +1,1 @@
+pg_dump -h foodbodyconnection.cd0esyi86ky7.ap-southeast-2.rds.amazonaws.com -U kohoutal -d foodbodyconnection -F c -f fbc_backup.dump
