@@ -139,16 +139,17 @@ def analysis_stats(
         # --------------------------------------------------
         avg_length_historic = 31.0
 
-        cycle_events = get_allergen_events_df(
+        cycle_df = get_allergen_events_df(
             db=db,
             user_id=current_user.user_id,
             allergen_name="Period"
         )
 
-        cycle_dates = sorted([
-            event.date_time for event in cycle_events
-            if event.date_time is not None
-        ])
+        cycle_dates = []
+        if not cycle_df.empty and "date_time" in cycle_df.columns:
+            cycle_df = cycle_df.copy()
+            cycle_df["date_time"] = pd.to_datetime(cycle_df["date_time"], errors="coerce")
+            cycle_dates = sorted(cycle_df["date_time"].dropna().tolist())
 
         average_cycle_length = avg_length_historic
         predicted_next_cycle_date = None
@@ -163,13 +164,10 @@ def analysis_stats(
                 for i in range(1, len(cycle_dates))
             ]
 
-            # Average observed cycle length
             observed_avg = sum(intervals) / len(intervals)
-
-            # Blend observed average with historic base average
             average_cycle_length = round((avg_length_historic + observed_avg) / 2, 1)
 
-        if last_cycle_start:
+        if last_cycle_start is not None:
             predicted_next_cycle_date = last_cycle_start + timedelta(days=average_cycle_length)
 
         return {
