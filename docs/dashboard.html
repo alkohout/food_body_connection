@@ -182,9 +182,96 @@
 
             <div id="extra-stats"></div>
 
+        <div class="analysis-actions">
+          <button type="button" id="load-overview-plots-btn" class="secondary">Load overview plots</button>
+          <button type="button" id="load-deeper-analysis-btn" class="secondary">Show deeper analysis tools</button>
+        </div>
+
+        <div id="overview-plots-section" style="display:none;">
+          <h3>Exploratory Plots</h3>
+          <p>Overview of logged allergens and symptoms. Explore these plots to gain insights.</p>
+
+          <h4>Allergen Importance</h4>
+          <p>
+            The allergens you have been exposed to are ranked...
+          </p>
+          <div class="plot-container" style="position: relative;">
+            <figure class="img-figure">
+              <img id="allergenrank-plot" src="" alt="Allergen Rank Plot" />
+              <div
+                id="model-info-box"
+                onclick="window.location.href='model-metrics';"
+                title="Click to learn what these metrics mean"
+                style="
+                  position: absolute;
+                  top: 12px;
+                  right: 12px;
+                  padding: 10px;
+                  cursor: pointer;
+                  background: rgba(255,255,255,0.0);
+                  width: 220px;
+                  height: 120px;
+                "
+              ></div>
+              <figcaption>Figure : The allergen odds ratio versus allergen...</figcaption>
+            </figure>
+          </div>
+
+          <h4>Grouping symptoms</h4>
+          <p>
+            This chart shows how often symptoms are logged across different body systems.
+          </p>
+          <figure class="img-figure">
+            <img id="group_histogram" src="" alt="System Group Histogram" />
+            <figcaption>Figure : Symptom counts by body system...</figcaption>
+          </figure>
+        </div>
+
+        <div id="deeper-analysis-section" style="display:none;">
+          <h3>Deeper Analysis</h3>
+          <p>Using the plots above explore your data deeper by selecting:</p>
+
+          <div class="form-row">
+            <label for="allergen-intensity-input">– an allergen:</label>
+            <div class="autocomplete-wrapper" style="position: relative;">
+              <input type="text" id="allergen-intensity-input" autocomplete="off" />
+              <input type="hidden" id="allergen-intensity-id" />
+              <ul id="allergen-intensity-suggestions" class="suggestions"></ul>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label for="lag-window">– a lag window:</label>
+            <select id="lag-window">
+              <option value="0_6">0 – 6 hrs</option>
+              <option value="6_24">6 – 24 hrs</option>
+              <option value="24_48">24 – 48 hrs</option>
+              <option value="0_24">0 – 24 hrs</option>
+              <option value="0_48">0 – 48 hrs</option>
+              <option value="0_72">0 – 72 hrs</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <label for="symptom-group-input">– a symptom group:</label>
+            <div class="autocomplete-wrapper" style="position: relative;">
+              <input type="text" id="symptom-group-input" autocomplete="off" />
+              <input type="hidden" id="symptom-group-id" />
+              <ul id="symptom-group-suggestions" class="suggestions"></ul>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <button type="button" id="update-plot-btn" class="primary">Generate plots</button>
+          </div>
+
+          <!-- risk / dose / time series / temporal relationship plots here -->
+        </div>
+
         <!-- ===================== -->
         <!-- Analysis Summary -->
         <!-- ===================== -->
+        <!--
             <h3>Analysis Summary</h3>
             <div id="summaryDiv" style="white-space: pre-wrap; padding: 10px;"></div>
 
@@ -195,6 +282,7 @@
                 Once you’ve recorded sufficient entries, your analysis will appear here.
               </p>
             </div>
+        -->
         <!-- ===================== -->
         <!-- Model - Predictions -->
         <!-- ===================== -->
@@ -204,12 +292,14 @@
                 <span class="stat-value" id="predict-out">—</span>
             </div>
 -->
-
+<!--
             <div id="analysis-content">
+-->
           <!-- ===================== -->
           <!-- Bar plot - Symptom Frequency -->
           <!-- ===================== -->
 
+<!--
               <h3>Exploratory Plots</h3>
               <p>Overview of logged allergens and symptoms. Explore these plots to gain insights. </p>
               <h4>Allergen Importance</h4>
@@ -247,6 +337,7 @@
                 </figcaption>
               </figure>
               </div>
+-->              
 
               <!--
               <h4>Symptom frequency</h4>
@@ -264,6 +355,7 @@
                 </figure>
               -->
 
+<!--
               <h4>Grouping symptoms</h4>
               <p>
               This chart shows how often symptoms are logged across different body systems.
@@ -321,7 +413,7 @@
                 </button>
               </div>
 
-
+-->
               <!-- ===================== -->
               <!-- Time lag analysis -->
               <!-- ===================== -->
@@ -345,6 +437,7 @@
                 </table>
               </section>
   -->
+<!--
               <h4> Risk</h4>
 
               <p>
@@ -444,6 +537,7 @@
             </div>
 
         </section>
+-->
 
         <!-- ===================== -->
         <!-- Symptom distribution -->

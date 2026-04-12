@@ -801,155 +801,6 @@ const setupAnalysis = () => {
   });
 };
 
-const fetchAnalysisPlot = async () => {
-  try {
-    // Stats
-    console.log("Fetching analysis stats...");
-    const statsRes = await fetch(`${API_URL}/analysis/stats`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
-    });
-
-    if (!statsRes.ok) {
-      console.error("Failed to fetch stats:", statsRes.status);
-      return;
-    }
-
-    if (statsRes.ok) {
-      const stats = await statsRes.json();
-      console.log("Stats fetched successfully:", stats);
-
-      const totalAllergensEl = getElement("stat-total-allergens");
-      if (totalAllergensEl) {
-        totalAllergensEl.textContent = stats["Total allergens logged"] || 0;
-        console.log("Updated total allergens:", totalAllergensEl.textContent);
-      } else {
-        console.warn("Element stat-total-allergens not found");
-      }
-
-      const totalSymptomsEl = getElement("stat-total-symptoms");
-      if (totalSymptomsEl) {
-        totalSymptomsEl.textContent = stats["Total symptoms logged"] || 0;
-        console.log("Updated total symptoms:", totalSymptomsEl.textContent);
-      } else {
-        console.warn("Element stat-total-symptoms not found");
-      }
-
-      const totalEntriesEl = getElement("stat-total-entries");
-      if (totalEntriesEl) {
-        totalEntriesEl.textContent = 
-          (stats["Total allergens logged"] || 0) + (stats["Total symptoms logged"] || 0);
-        console.log("Updated total entries:", totalEntriesEl.textContent);
-      } else {
-        console.warn("Element stat-total-entries not found");
-      }
-
-      const daysEl = getElement("stat-days");
-      if (daysEl) {
-        daysEl.textContent = stats["Total days tracked"] || 0;
-        console.log("Updated days tracked:", daysEl.textContent);
-      } else {
-        console.warn("Element stat-days not found");
-      }
-
-      const avgAllergensPerDayEl = getElement("stat-avg-allergens-per-day");
-      if (avgAllergensPerDayEl) {
-        avgAllergensPerDayEl.textContent = stats["Average allergens logged per day"] || 0;
-        console.log("Updated avg allergens per day:", avgAllergensPerDayEl.textContent);
-      } else {
-        console.warn("Element stat-avg-allergens-per-day not found");
-      }
-
-      const avgSymptomsPerDayEl = getElement("stat-avg-symptoms-per-day");
-      if (avgSymptomsPerDayEl) {
-        avgSymptomsPerDayEl.textContent = stats["Average symptoms logged per day"] || 0;
-        console.log("Updated avg symptoms per day:", avgSymptomsPerDayEl.textContent);
-      } else {
-        console.warn("Element stat-avg-symptoms-per-day not found");
-      }
-
-      const emptyState = getElement("analysis-empty-state");
-      const content = getElement("analysis-content");
-
-      if ((totalAllergensEl.textContent === "0") || (totalSymptomsEl.textContent === "0")) {
-        if (emptyState) emptyState.style.display = "block";
-        if (content) content.style.display = "none";
-        return;
-      } else {
-        if (emptyState) emptyState.style.display = "none";
-        if (content) content.style.display = "block";
-      }
-
-      // Handle optional / extra stats dynamically
-      const extraStatsContainer = getElement("extra-stats");
-      if (extraStatsContainer) {
-        extraStatsContainer.innerHTML = ""; // clear previous
-
-        const standardKeys = [
-          "Total allergens logged",
-          "Total symptoms logged",
-          "Total days tracked",
-          "Average allergens logged per day",
-          "Average symptoms logged per day"
-        ];
-
-        Object.entries(stats).forEach(([key, value]) => {
-          if (!standardKeys.includes(key)) {
-            const statDiv = document.createElement("div");
-            statDiv.className = "stat-card stat-card--secondary stat-inline";
-            statDiv.innerHTML = `
-              <span class="stat-label">${key}</span>
-              <span class="stat-value">${value}</span>
-            `;
-            extraStatsContainer.appendChild(statDiv);
-          }
-        });
-      }
-
-      // Histogram plot
-      console.log("Fetching histogram plot...");
-      const histogramPlotImg = getElement("group_histogram");
-      if (histogramPlotImg) {
-        const res = await fetch(`${API_URL}/analysis/symptom_group_histogram`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
-        });
-        if (res.ok) {
-          const blob = await res.blob();
-          histogramPlotImg.src = URL.createObjectURL(blob);
-          console.log("Histogram plot fetched successfully");
-        } else {
-          console.error("Failed to fetch histogram plot:", res.status, res.statusText);
-        }
-      } else {
-        console.warn("Element group_histogram not found");
-      }
-
-      // Allergen rank plot
-      console.log("Fetching allergen rank plot...");
-      const allergenrankPlotImg = getElement("allergenrank-plot");
-      if (allergenrankPlotImg) {
-        const res = await fetch(`${API_URL}/analysis/plot_allergen_rank`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
-        });
-        if (res.ok) {
-          const blob = await res.blob();
-          allergenrankPlotImg.src = URL.createObjectURL(blob);
-          console.log("Allergen rank plot fetched successfully");
-        } else {
-          console.error("Failed to fetch allergen rank plot:", res.status, res.statusText);
-        }
-      } else {
-        console.warn("Element allergenrank-plot not found");
-      }
-
-      await getSummaryText();
-      console.log("Summary text fetched");
-    }
-
-  } catch (err) {
-      console.error("Failed to fetch analysis plots:", err);
-  }
-}
-
 // =========================================================
 // Tabs
 // =========================================================
@@ -966,7 +817,10 @@ const setupTabs = () => {
       const targetForm = getElement(`${target}-form`);
       if (targetForm) targetForm.classList.add("active");
 
-      if (target === "analysis") fetchAnalysisPlot();
+      if (target === "analysis") {
+        fetchAnalysisStats();
+        fetchSummaryText();
+      }
     });
   });
 };
@@ -990,23 +844,6 @@ function updateCaptions(allergenName, symptomGroup, lagText) {
   }
 }
 
-async function getSummaryText() {
-  try {
-    const response = await fetch(`${API_URL}/analysis/generate_summary_text`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
-    });
-
-    if (response.ok) {
-      const text = await response.text();
-      console.log("Summary text:", text);
-      const summaryDiv = getElement("summaryDiv");
-      if (summaryDiv) summaryDiv.innerText = text;
-    }
-  } catch (error) {
-    console.error("Error fetching summary text:", error);
-  }
-}
-
 // =========================================================
 // Global click handler for hiding suggestions
 // =========================================================
@@ -1023,7 +860,7 @@ document.addEventListener("click", (e) => {
 
 async function init() {
   console.log("init() started");
-  
+
   if (!localStorage.getItem("access_token")) {
     console.log("No access token, redirecting to login");
     window.location.href = "index.html";
@@ -1146,6 +983,7 @@ async function init() {
 
     // Set up analysis
     setupAnalysis();
+    setupAnalysisButtons();
 
     // Initialize captions
     initializeCaptions();
@@ -1197,3 +1035,189 @@ fetch(API_URL + "/auth/me", {
 .then(r => r.text())
 .then(t => console.log("AUTH RAW RESPONSE:", t));
 
+async function fetchSummaryText() {
+  if (summaryLoaded) return;
+
+  try {
+    const response = await fetch(`${API_URL}/analysis/generate_summary_text`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    });
+
+    if (response.ok) {
+      const text = await response.text();
+      const summaryDiv = getElement("summaryDiv");
+      if (summaryDiv) summaryDiv.innerText = text;
+      summaryLoaded = true;
+    }
+  } catch (error) {
+    console.error("Error fetching summary text:", error);
+  }
+}
+
+async function fetchHistogramPlot() {
+  if (histogramLoaded) return;
+
+  try {
+    const histogramPlotImg = getElement("group_histogram");
+    if (!histogramPlotImg) return;
+
+    const res = await fetch(`${API_URL}/analysis/symptom_group_histogram`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    });
+
+    if (res.ok) {
+      const blob = await res.blob();
+      histogramPlotImg.src = URL.createObjectURL(blob);
+      histogramLoaded = true;
+    }
+  } catch (err) {
+    console.error("Failed to fetch histogram plot:", err);
+  }
+}
+
+async function fetchAllergenRankPlot() {
+  if (allergenRankLoaded) return;
+
+  try {
+    const allergenrankPlotImg = getElement("allergenrank-plot");
+    if (!allergenrankPlotImg) return;
+
+    const res = await fetch(`${API_URL}/analysis/plot_allergen_rank`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    });
+
+    if (res.ok) {
+      const blob = await res.blob();
+      allergenrankPlotImg.src = URL.createObjectURL(blob);
+      allergenRankLoaded = true;
+    }
+  } catch (err) {
+    console.error("Failed to fetch allergen rank plot:", err);
+  }
+}
+
+let analysisStatsLoaded = false;
+let summaryLoaded = false;
+let histogramLoaded = false;
+let allergenRankLoaded = false;
+
+async function fetchAnalysisStats() {
+
+  if (analysisStatsLoaded) return;
+
+  try {
+    const statsRes = await fetch(`${API_URL}/analysis/stats`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    });
+
+    if (!statsRes.ok) {
+      console.error("Failed to fetch stats:", statsRes.status);
+      return;
+    }
+
+    const stats = await statsRes.json();
+
+    const totalAllergensEl = getElement("stat-total-allergens");
+    if (totalAllergensEl) totalAllergensEl.textContent = stats["Total allergens logged"] || 0;
+
+    const totalSymptomsEl = getElement("stat-total-symptoms");
+    if (totalSymptomsEl) totalSymptomsEl.textContent = stats["Total symptoms logged"] || 0;
+
+    const totalEntriesEl = getElement("stat-total-entries");
+    if (totalEntriesEl) {
+      totalEntriesEl.textContent =
+        (stats["Total allergens logged"] || 0) + (stats["Total symptoms logged"] || 0);
+    }
+
+    const daysEl = getElement("stat-days");
+    if (daysEl) daysEl.textContent = stats["Total days tracked"] || 0;
+
+    const avgAllergensPerDayEl = getElement("stat-avg-allergens-per-day");
+    if (avgAllergensPerDayEl) {
+      avgAllergensPerDayEl.textContent = stats["Average allergens logged per day"] || 0;
+    }
+
+    const avgSymptomsPerDayEl = getElement("stat-avg-symptoms-per-day");
+    if (avgSymptomsPerDayEl) {
+      avgSymptomsPerDayEl.textContent = stats["Average symptoms logged per day"] || 0;
+    }
+
+    const emptyState = getElement("analysis-empty-state");
+    const content = getElement("analysis-content");
+
+    if (
+      String(stats["Total allergens logged"] || 0) === "0" ||
+      String(stats["Total symptoms logged"] || 0) === "0"
+    ) {
+      if (emptyState) emptyState.style.display = "block";
+      if (content) content.style.display = "none";
+      return;
+    } else {
+      if (emptyState) emptyState.style.display = "none";
+      if (content) content.style.display = "block";
+    }
+
+    const extraStatsContainer = getElement("extra-stats");
+    if (extraStatsContainer) {
+      extraStatsContainer.innerHTML = "";
+
+      const standardKeys = [
+        "Total allergens logged",
+        "Total symptoms logged",
+        "Total days tracked",
+        "Average allergens logged per day",
+        "Average symptoms logged per day"
+      ];
+
+      Object.entries(stats).forEach(([key, value]) => {
+        if (!standardKeys.includes(key)) {
+          let displayValue = value;
+
+          if (key === "Predicted next cycle date" && value) {
+            displayValue = new Date(value).toLocaleDateString("en-GB", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric"
+            });
+          }
+
+          const statDiv = document.createElement("div");
+          statDiv.className = "stat-card stat-card--secondary stat-inline";
+          statDiv.innerHTML = `
+            <span class="stat-label">${key}</span>
+            <span class="stat-value">${displayValue ?? "—"}</span>
+          `;
+          extraStatsContainer.appendChild(statDiv);
+        }
+      });
+    }
+
+    analysisStatsLoaded = true;
+  } catch (err) {
+    console.error("Failed to fetch analysis stats:", err);
+  }
+}
+
+function setupAnalysisButtons() {
+  const histogramBtn = getElement("load-histogram-btn");
+  const rankBtn = getElement("load-allergen-rank-btn");
+
+  if (histogramBtn) {
+    histogramBtn.addEventListener("click", async () => {
+      histogramBtn.disabled = true;
+      histogramBtn.textContent = "Loading...";
+      await fetchHistogramPlot();
+      histogramBtn.textContent = "Loaded";
+    });
+  }
+
+  if (rankBtn) {
+    rankBtn.addEventListener("click", async () => {
+      rankBtn.disabled = true;
+      rankBtn.textContent = "Loading...";
+      await fetchAllergenRankPlot();
+      rankBtn.textContent = "Loaded";
+    });
+  }
+}
