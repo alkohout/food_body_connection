@@ -1208,7 +1208,7 @@ async function init() {
     );
 
     // Set up analysis
-    setupAnalysis();
+    //setupAnalysis();
     setupAnalysisButtons();
 
     // Initialize captions
