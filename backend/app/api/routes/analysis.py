@@ -179,7 +179,7 @@ def analysis_stats(
             "Triptan usage in past month": int(count_last28), 
             "Average Triptan usage per month": round(average_per_month),
             "Average cycle length": average_cycle_length,
-            "Predicted next cycle date": predicted_next_cycle_date.isoformat() if predicted_next_cycle_date else None,
+            "Predicted next cycle date": predicted_next_cycle_date.strftime("%A, %d %B %Y") if predicted_next_cycle_date else None,
         }
 
     return {
