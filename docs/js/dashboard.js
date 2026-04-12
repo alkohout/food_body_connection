@@ -1050,3 +1050,395 @@ const setupTabs = () => {
     });
   });
 };
+
+// =========================================================
+// Captions
+// =========================================================
+
+function updateCaptions(allergenName, symptomGroup, lagText) {
+  const elements = {
+    "caption-allergen": allergenName,
+    "caption-symptom-group": symptomGroup,
+    "caption-lag": lagText,
+    "caption-allergen-dose": allergenName,
+    "caption-lag-dose": lagText
+  };
+
+  for (const [id, text] of Object.entries(elements)) {
+    const el = getElement(id);
+    if (el) el.textContent = text;
+  }
+}
+
+// =========================================================
+// Global click handler for hiding suggestions
+// =========================================================
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".autocomplete-wrapper")) {
+    document.querySelectorAll(".suggestions").forEach(s => s.classList.remove("visible"));
+  }
+});
+
+// =========================================================
+// Init
+// =========================================================
+
+async function init() {
+  console.log("init() started");
+
+  if (!localStorage.getItem("access_token")) {
+    console.log("No access token, redirecting to login");
+    window.location.href = "index.html";
+    return;
+  }
+
+  try {
+
+    console.log("Calling getCurrentUser()");
+    const user = await getCurrentUser();
+    console.log("Received user:", user);
+
+    if (!user || !user.email) {
+      console.error("Invalid user object!", user);
+      throw new Error("Invalid user");
+    }
+
+    const userEmailEl = getElement("user-email");
+    if (userEmailEl) userEmailEl.textContent = user.email;
+
+    // Set up UI components
+    setupLogout();
+    setupDefaults();
+    setupTabs();
+
+    try {
+      const [units, allergens, recentAllergens, symptoms, recentSymptoms] = await Promise.all([
+        fetchUnits(),
+        fetchAllergens(),
+        fetchRecentAllergens(10),
+        fetchSymptoms(),
+        fetchRecentSymptoms(10)
+      ]);
+
+      populateAllergenSelect(allergens, recentAllergens);
+      populateSymptomSelect(symptoms, recentSymptoms);
+
+      setupAddAllergen();
+      setupAddSymptom();
+    } catch (err) {
+      console.error("Error during page init:", err);
+
+      const allergenSelect = getElement("allergen-select");
+      if (allergenSelect) {
+        allergenSelect.innerHTML = '<option value="">Error loading allergens</option>';
+      }
+    }
+
+    console.log("Data loading complete");
+
+    // -----------------------------------------
+    // Sync allergen select → inputs
+    // -----------------------------------------
+    const allergenSelect = getElement("allergen-select");
+    const allergenIdInput = getElement("allergen-id");
+
+    console.log({ allergenSelect, allergenIdInput });
+    if (allergenSelect) {
+      allergenSelect.addEventListener("change", () => {
+        const selectedOption = allergenSelect.selectedOptions[0];
+
+        if (!selectedOption || !allergenSelect.value) {
+          allergenIdInput.value = "";
+          return;
+        }
+
+        allergenIdInput.value = allergenSelect.value;
+      });
+    }
+    // -----------------------------------------
+    // Sync allergen select → inputs
+    // -----------------------------------------
+    const symptomSelect = getElement("symptom-select");
+    const symptomIdInput = getElement("symptom-id");
+
+    if (symptomSelect) {
+      symptomSelect.addEventListener("change", () => {
+        const selectedOption = symptomSelect.selectedOptions[0];
+
+        if (!selectedOption || !symptomSelect.value) {
+          symptomIdInput.value = "";
+          return;
+        }
+
+        symptomIdInput.value = symptomSelect.value;
+      });
+    }
+
+    // Set up autocomplete (after data is loaded)
+    console.log("Setting up autocomplete...");
+    setupAutocomplete(
+      getElement("symptom-select"),
+      getElement("symptom-id"),
+      getElement("symptom-suggestions"),
+      "symptom"
+    );
+    setupAutocomplete(
+      getElement("allergen-intensity-input"),
+      getElement("allergen-intensity-id"),
+      getElement("allergen-intensity-suggestions"),
+      "allergen"
+    );
+    setupAutocomplete(
+      getElement("symptom-group-input"),
+      null,
+      getElement("symptom-group-suggestions"),
+      "symptom_group"
+    );
+
+    // Set up forms
+    setupForms();
+
+    // ✅ Position slider labels
+    positionRangeLabels("symptom-intensity", "intensity-labels");
+
+    // Re-position on resize
+    window.addEventListener("resize", () =>
+      positionRangeLabels("symptom-intensity", "intensity-labels")
+    );
+
+    // Set up analysis
+    setupAnalysis();
+    setupAnalysisButtons();
+
+    // Initialize captions
+    initializeCaptions();
+
+    console.log("✅ init() completed successfully");
+
+  } catch (err) {
+    console.error("❌ init() failed:", err);
+    localStorage.removeItem("access_token");
+    window.location.href = "index.html";
+  }
+}
+
+function initializeCaptions() {
+  const allergenIntInput = getElement("allergen-intensity-input");
+  const symptomGroupInput = getElement("symptom-group-input");
+  const lagWindowInput = getElement("lag-window");
+
+  const captionAllergen = getElement("caption-allergen");
+  const captionSymptomGroup = getElement("caption-symptom-group");
+  const captionLag = getElement("caption-lag");
+  const captionLagDose = getElement("caption-lag-dose");
+  const captionAllergenDose = getElement("caption-allergen-dose");
+
+  if (captionAllergen && allergenIntInput) {
+    captionAllergen.textContent = allergenIntInput.value || "";
+  }
+  
+  if (captionSymptomGroup && symptomGroupInput) {
+    captionSymptomGroup.textContent = symptomGroupInput.value || "";
+  }
+  
+  if (captionLag && lagWindowInput && lagWindowInput.selectedOptions[0]) {
+    captionLag.textContent = lagWindowInput.selectedOptions[0].text || "";
+  }
+  
+  if (captionLagDose && lagWindowInput && lagWindowInput.selectedOptions[0]) {
+    captionLagDose.textContent = lagWindowInput.selectedOptions[0].text || "";
+  }
+  
+  if (captionAllergenDose && allergenIntInput) {
+    captionAllergenDose.textContent = allergenIntInput.value || "";
+  }
+}
+
+fetch(API_URL + "/auth/me", {
+   headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+})
+.then(r => r.text())
+.then(t => console.log("AUTH RAW RESPONSE:", t));
+
+async function fetchSummaryText() {
+  if (summaryLoaded) return;
+
+  try {
+    const response = await fetch(`${API_URL}/analysis/generate_summary_text`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    });
+
+    if (response.ok) {
+      const text = await response.text();
+      const summaryDiv = getElement("summaryDiv");
+      if (summaryDiv) summaryDiv.innerText = text;
+      summaryLoaded = true;
+    }
+  } catch (error) {
+    console.error("Error fetching summary text:", error);
+  }
+}
+
+async function fetchHistogramPlot() {
+  if (histogramLoaded) return;
+
+  try {
+    const histogramPlotImg = getElement("group_histogram");
+    if (!histogramPlotImg) return;
+
+    const res = await fetch(`${API_URL}/analysis/symptom_group_histogram`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    });
+
+    if (res.ok) {
+      const blob = await res.blob();
+      histogramPlotImg.src = URL.createObjectURL(blob);
+      histogramLoaded = true;
+    }
+  } catch (err) {
+    console.error("Failed to fetch histogram plot:", err);
+  }
+}
+
+async function fetchAllergenRankPlot() {
+  if (allergenRankLoaded) return;
+
+  try {
+    const allergenrankPlotImg = getElement("allergenrank-plot");
+    if (!allergenrankPlotImg) return;
+
+    const res = await fetch(`${API_URL}/analysis/plot_allergen_rank`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    });
+
+    if (res.ok) {
+      const blob = await res.blob();
+      allergenrankPlotImg.src = URL.createObjectURL(blob);
+      allergenRankLoaded = true;
+    }
+  } catch (err) {
+    console.error("Failed to fetch allergen rank plot:", err);
+  }
+}
+
+async function fetchAnalysisStats() {
+
+  if (analysisStatsLoaded) return;
+
+  try {
+    const statsRes = await fetch(`${API_URL}/analysis/stats`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+    });
+
+    if (!statsRes.ok) {
+      console.error("Failed to fetch stats:", statsRes.status);
+      return;
+    }
+
+    const stats = await statsRes.json();
+
+    const totalAllergensEl = getElement("stat-total-allergens");
+    if (totalAllergensEl) totalAllergensEl.textContent = stats["Total allergens logged"] || 0;
+
+    const totalSymptomsEl = getElement("stat-total-symptoms");
+    if (totalSymptomsEl) totalSymptomsEl.textContent = stats["Total symptoms logged"] || 0;
+
+    const totalEntriesEl = getElement("stat-total-entries");
+    if (totalEntriesEl) {
+      totalEntriesEl.textContent =
+        (stats["Total allergens logged"] || 0) + (stats["Total symptoms logged"] || 0);
+    }
+
+    const daysEl = getElement("stat-days");
+    if (daysEl) daysEl.textContent = stats["Total days tracked"] || 0;
+
+    const avgAllergensPerDayEl = getElement("stat-avg-allergens-per-day");
+    if (avgAllergensPerDayEl) {
+      avgAllergensPerDayEl.textContent = stats["Average allergens logged per day"] || 0;
+    }
+
+    const avgSymptomsPerDayEl = getElement("stat-avg-symptoms-per-day");
+    if (avgSymptomsPerDayEl) {
+      avgSymptomsPerDayEl.textContent = stats["Average symptoms logged per day"] || 0;
+    }
+
+    const emptyState = getElement("analysis-empty-state");
+    const content = getElement("analysis-content");
+
+    if (
+      String(stats["Total allergens logged"] || 0) === "0" ||
+      String(stats["Total symptoms logged"] || 0) === "0"
+    ) {
+      if (emptyState) emptyState.style.display = "block";
+      if (content) content.style.display = "none";
+      return;
+    } else {
+      if (emptyState) emptyState.style.display = "none";
+      if (content) content.style.display = "block";
+    }
+
+    const extraStatsContainer = getElement("extra-stats");
+    if (extraStatsContainer) {
+      extraStatsContainer.innerHTML = "";
+
+      const standardKeys = [
+        "Total allergens logged",
+        "Total symptoms logged",
+        "Total days tracked",
+        "Average allergens logged per day",
+        "Average symptoms logged per day"
+      ];
+
+      Object.entries(stats).forEach(([key, value]) => {
+        if (!standardKeys.includes(key)) {
+          let displayValue = value;
+
+          if (key === "Predicted next cycle date" && value) {
+            displayValue = new Date(value).toLocaleDateString("en-GB", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric"
+            });
+          }
+
+          const statDiv = document.createElement("div");
+          statDiv.className = "stat-card stat-card--secondary stat-inline";
+          statDiv.innerHTML = `
+            <span class="stat-label">${key}</span>
+            <span class="stat-value">${displayValue ?? "—"}</span>
+          `;
+          extraStatsContainer.appendChild(statDiv);
+        }
+      });
+    }
+
+    analysisStatsLoaded = true;
+  } catch (err) {
+    console.error("Failed to fetch analysis stats:", err);
+  }
+}
+
+function setupAnalysisButtons() {
+  const histogramBtn = getElement("load-histogram-btn");
+  const rankBtn = getElement("load-allergen-rank-btn");
+
+  if (histogramBtn) {
+    histogramBtn.addEventListener("click", async () => {
+      histogramBtn.disabled = true;
+      histogramBtn.textContent = "Loading...";
+      await fetchHistogramPlot();
+      histogramBtn.textContent = "Loaded";
+    });
+  }
+
+  if (rankBtn) {
+    rankBtn.addEventListener("click", async () => {
+      rankBtn.disabled = true;
+      rankBtn.textContent = "Loading...";
+      await fetchAllergenRankPlot();
+      rankBtn.textContent = "Loaded";
+    });
+  }
+}
