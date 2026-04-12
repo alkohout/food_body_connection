@@ -142,7 +142,7 @@ def analysis_stats(
         cycle_events = get_allergen_events_df(
             db=db,
             user_id=current_user.user_id,
-            allergen_name="period"
+            allergen_name="Period"
         )
 
         cycle_dates = sorted([
