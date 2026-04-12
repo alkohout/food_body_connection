@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.api.routes.auth import get_current_user
 from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Symptom
-from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
+from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df, get_symptom_events
 from io import BytesIO
 from datetime import date, datetime, time, timezone, timedelta
 from sqlalchemy import text, func, union_all, select, func
@@ -134,6 +134,43 @@ def analysis_stats(
         # Average per month
         average_per_month = monthly_counts.mean()
 
+        # --------------------------------------------------
+        # Cycle tracking
+        # --------------------------------------------------
+        avg_length_historic = 31.0
+
+        cycle_events = get_symptom_events(
+            db=db,
+            user_id=current_user.user_id,
+            symptom_name="cycle"
+        )
+
+        cycle_dates = sorted([
+            event.date_time for event in cycle_events
+            if event.date_time is not None
+        ])
+
+        average_cycle_length = avg_length_historic
+        predicted_next_cycle_date = None
+        last_cycle_start = None
+
+        if cycle_dates:
+            last_cycle_start = cycle_dates[-1]
+
+        if len(cycle_dates) >= 2:
+            intervals = [
+                (cycle_dates[i] - cycle_dates[i - 1]).days
+                for i in range(1, len(cycle_dates))
+            ]
+
+            # Average observed cycle length
+            observed_avg = sum(intervals) / len(intervals)
+
+            # Blend observed average with historic base average
+            average_cycle_length = round((avg_length_historic + observed_avg) / 2, 1)
+
+        if last_cycle_start:
+            predicted_next_cycle_date = last_cycle_start + timedelta(days=average_cycle_length)
 
         return {
             "Total allergens logged": int(total_allergen_records),
@@ -143,6 +180,8 @@ def analysis_stats(
             "Average symptoms logged per day": avg_symptoms_per_day,
             "Triptan usage in past month": int(count_last28), 
             "Average Triptan usage per month": round(average_per_month),
+            "Average cycle length": average_cycle_length,
+            "Predicted next cycle date": predicted_next_cycle_date.isoformat() if predicted_next_cycle_date else None,
         }
 
     return {
