@@ -1260,26 +1260,3 @@ fetch(API_URL + "/auth/me", {
 })
 .then(r => r.text())
 .then(t => console.log("AUTH RAW RESPONSE:", t));
-
-function setupAnalysisButtons() {
-  const histogramBtn = getElement("load-histogram-btn");
-  const rankBtn = getElement("load-allergen-rank-btn");
-
-  if (histogramBtn) {
-    histogramBtn.addEventListener("click", async () => {
-      histogramBtn.disabled = true;
-      histogramBtn.textContent = "Loading...";
-      await fetchHistogramPlot();
-      histogramBtn.textContent = "Loaded";
-    });
-  }
-
-  if (rankBtn) {
-    rankBtn.addEventListener("click", async () => {
-      rankBtn.disabled = true;
-      rankBtn.textContent = "Loading...";
-      await fetchAllergenRankPlot();
-      rankBtn.textContent = "Loaded";
-    });
-  }
-}
