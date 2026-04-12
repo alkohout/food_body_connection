@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.api.routes.auth import get_current_user
 from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Symptom
-from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df, get_symptom_events
+from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df, get_allergen_events_df
 from io import BytesIO
 from datetime import date, datetime, time, timezone, timedelta
 from sqlalchemy import text, func, union_all, select, func
@@ -139,10 +139,10 @@ def analysis_stats(
         # --------------------------------------------------
         avg_length_historic = 31.0
 
-        cycle_events = get_symptom_events(
+        cycle_events = get_allergen_events_df(
             db=db,
             user_id=current_user.user_id,
-            symptom_name="cycle"
+            allergen_name="period"
         )
 
         cycle_dates = sorted([
