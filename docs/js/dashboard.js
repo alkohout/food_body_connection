@@ -784,7 +784,6 @@ async function fetchSummaryText({ force = false } = {}) {
 
     const response = await fetch(`${API_URL}/analysis/generate_summary_text`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
-      cache: "no-store"
     });
 
     console.timeEnd("summary fetch");
@@ -819,7 +818,6 @@ async function fetchAnalysisStats({ force = false } = {}) {
 
     const statsRes = await fetch(`${API_URL}/analysis/stats`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
-      cache: "no-store"
     });
 
     console.timeEnd("analysis stats fetch");
@@ -929,7 +927,6 @@ async function fetchHistogramPlot({ force = false } = {}) {
 
     const res = await fetch(`${API_URL}/analysis/symptom_group_histogram`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
-      cache: "no-store"
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -964,7 +961,6 @@ async function fetchAllergenRankPlot({ force = false } = {}) {
 
     const res = await fetch(`${API_URL}/analysis/plot_allergen_rank`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
-      cache: "no-store"
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -992,14 +988,16 @@ async function fetchAllergenRankPlot({ force = false } = {}) {
 // =========================================================
 
 async function loadAnalysisTab() {
-  await fetchAnalysisStats();
+  fetchAnalysisStats()
+    .then(() => {
+      const totalAllergens = Number(getElement("stat-total-allergens")?.textContent || 0);
+      const totalSymptoms = Number(getElement("stat-total-symptoms")?.textContent || 0);
 
-  const totalAllergens = Number(getElement("stat-total-allergens")?.textContent || 0);
-  const totalSymptoms = Number(getElement("stat-total-symptoms")?.textContent || 0);
-
-  if (totalAllergens > 0 && totalSymptoms > 0) {
-    fetchSummaryText();
-  }
+      if (totalAllergens > 0 && totalSymptoms > 0) {
+        requestIdleCallback?.(() => fetchSummaryText()) || setTimeout(() => fetchSummaryText(), 100);
+      }
+    })
+    .catch(err => console.error(err));
 }
 
 // =========================================================
@@ -1213,6 +1211,17 @@ async function init() {
 
     // Initialize captions
     initializeCaptions();
+
+    setTimeout(() => {
+      fetchAnalysisStats().then(() => {
+        const totalAllergens = Number(getElement("stat-total-allergens")?.textContent || 0);
+        const totalSymptoms = Number(getElement("stat-total-symptoms")?.textContent || 0);
+
+        if (totalAllergens > 0 && totalSymptoms > 0) {
+          fetchSummaryText();
+        }
+      }).catch(err => console.error("Background analysis preload failed:", err));
+    }, 0);
 
     console.log("✅ init() completed successfully");
 
