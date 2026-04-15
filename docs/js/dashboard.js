@@ -993,9 +993,9 @@ async function loadAnalysisTab() {
       const totalAllergens = Number(getElement("stat-total-allergens")?.textContent || 0);
       const totalSymptoms = Number(getElement("stat-total-symptoms")?.textContent || 0);
 
-      if (totalAllergens > 0 && totalSymptoms > 0) {
-        requestIdleCallback?.(() => fetchSummaryText()) || setTimeout(() => fetchSummaryText(), 100);
-      }
+      //if (totalAllergens > 0 && totalSymptoms > 0) {
+      //  requestIdleCallback?.(() => fetchSummaryText()) || setTimeout(() => fetchSummaryText(), 100);
+      //}
     })
     .catch(err => console.error(err));
 }
