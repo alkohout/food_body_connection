@@ -770,6 +770,145 @@ function restoreButton(button, fallbackText = "Load") {
   button.textContent = button.dataset.originalText || fallbackText;
 }
 
+function getUserCacheKey(name) {
+  const userEmail = getElement("user-email")?.textContent || "default";
+  return `dashboard:${userEmail}:${name}`;
+}
+
+function saveCache(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify({
+      data,
+      savedAt: Date.now()
+    }));
+  } catch (err) {
+    console.warn("Failed to save cache:", key, err);
+  }
+}
+
+function loadCache(key, maxAgeMs = 1000 * 60 * 60 * 24) { // 24h default
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+
+    const isExpired = Date.now() - parsed.savedAt > maxAgeMs;
+    return {
+      ...parsed,
+      isExpired
+    };
+  } catch (err) {
+    console.warn("Failed to load cache:", key, err);
+    return null;
+  }
+}
+
+function removeCache(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch (err) {
+    console.warn("Failed to remove cache:", key, err);
+  }
+}
+
+function renderAnalysisStats(stats) {
+  const totalAllergens = Number(stats["Total allergens logged"] || 0);
+  const totalSymptoms = Number(stats["Total symptoms logged"] || 0);
+
+  const totalAllergensEl = getElement("stat-total-allergens");
+  if (totalAllergensEl) totalAllergensEl.textContent = totalAllergens;
+
+  const totalSymptomsEl = getElement("stat-total-symptoms");
+  if (totalSymptomsEl) totalSymptomsEl.textContent = totalSymptoms;
+
+  const totalEntriesEl = getElement("stat-total-entries");
+  if (totalEntriesEl) totalEntriesEl.textContent = totalAllergens + totalSymptoms;
+
+  const daysEl = getElement("stat-days");
+  if (daysEl) daysEl.textContent = stats["Total days tracked"] || 0;
+
+  const avgAllergensPerDayEl = getElement("stat-avg-allergens-per-day");
+  if (avgAllergensPerDayEl) {
+    avgAllergensPerDayEl.textContent = stats["Average allergens logged per day"] || 0;
+  }
+
+  const avgSymptomsPerDayEl = getElement("stat-avg-symptoms-per-day");
+  if (avgSymptomsPerDayEl) {
+    avgSymptomsPerDayEl.textContent = stats["Average symptoms logged per day"] || 0;
+  }
+
+  const emptyState = getElement("analysis-empty-state");
+  const content = getElement("analysis-content");
+  const hasData = totalAllergens > 0 && totalSymptoms > 0;
+
+  if (!hasData) {
+    if (emptyState) emptyState.style.display = "block";
+    if (content) content.style.display = "none";
+    setSummaryState("No summary yet.");
+  } else {
+    if (emptyState) emptyState.style.display = "none";
+    if (content) content.style.display = "block";
+  }
+
+  const extraStatsContainer = getElement("extra-stats");
+  if (extraStatsContainer) {
+    extraStatsContainer.innerHTML = "";
+
+    const standardKeys = [
+      "Total allergens logged",
+      "Total symptoms logged",
+      "Total days tracked",
+      "Average allergens logged per day",
+      "Average symptoms logged per day"
+    ];
+
+    Object.entries(stats).forEach(([key, value]) => {
+      if (standardKeys.includes(key)) return;
+
+      let displayValue = value;
+      if (key === "Predicted next cycle date" && value) {
+        displayValue = new Date(value).toLocaleDateString("en-GB", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric"
+        });
+      }
+
+      const statDiv = document.createElement("div");
+      statDiv.className = "stat-card stat-card--secondary stat-inline";
+      statDiv.innerHTML = `
+        <span class="stat-label">${key}</span>
+        <span class="stat-value">${displayValue ?? "—"}</span>
+      `;
+      extraStatsContainer.appendChild(statDiv);
+    });
+  }
+}
+
+function renderSummaryText(text) {
+  setSummaryState(text?.trim() || "No summary available.");
+}
+
+function invalidateAnalysisCacheStorage() {
+  removeCache(getUserCacheKey("analysis_stats"));
+  removeCache(getUserCacheKey("analysis_summary"));
+
+  analysisStatsLoaded = false;
+  summaryLoaded = false;
+}
+
+function markAnalysisCacheStale() {
+  localStorage.setItem(getUserCacheKey("analysis_stale"), "true");
+}
+
+function setAnalysisStatus(message) {
+  const el = getElement("analysis-status");
+  if (el) el.textContent = message;
+}
+
 // =========================================================
 // Fetch summary text
 // =========================================================
@@ -811,7 +950,7 @@ async function fetchSummaryText({ force = false } = {}) {
 
 async function fetchAnalysisStats({ force = false } = {}) {
   const cacheKey = getUserCacheKey("analysis_stats");
-  const cached = loadCache(cacheKey, 1000 * 60 * 60 * 12); // 12h
+  const cached = loadCache(cacheKey, 1000 * 60 * 60 * 12*7); // 48h
 
   if (!force && cached?.data) {
     renderAnalysisStats(cached.data);
@@ -924,17 +1063,24 @@ async function fetchAllergenRankPlot({ force = false } = {}) {
 
 function loadAnalysisTab() {
   const cachedStats = loadCache(getUserCacheKey("analysis_stats"));
-  const cachedSummary = loadCache(getUserCacheKey("analysis_summary"));
+  //const cachedSummary = loadCache(getUserCacheKey("analysis_summary"));
+
+  const isStale = localStorage.getItem(getUserCacheKey("analysis_stale")) === "true";
+  fetchAnalysisStats({ force: isStale });
+  //fetchSummaryText({ force: isStale });
+  if (isStale) {
+    localStorage.removeItem(getUserCacheKey("analysis_stale"));
+  }
 
   if (cachedStats?.data) {
     renderAnalysisStats(cachedStats.data);
   }
 
-  if (cachedSummary?.data) {
-    renderSummaryText(cachedSummary.data);
-  } else {
-    setSummaryState("Loading summary...");
-  }
+  //if (cachedSummary?.data) {
+  //  renderSummaryText(cachedSummary.data);
+  //} else {
+  //  setSummaryState("Loading summary...");
+  //}
 
   fetchAnalysisStats({ force: true }).then((stats) => {
     const totalAllergens = Number(stats?.["Total allergens logged"] || 0);
@@ -1165,9 +1311,9 @@ async function init() {
         const totalAllergens = Number(getElement("stat-total-allergens")?.textContent || 0);
         const totalSymptoms = Number(getElement("stat-total-symptoms")?.textContent || 0);
 
-        if (totalAllergens > 0 && totalSymptoms > 0) {
-          fetchSummaryText();
-        }
+        //if (totalAllergens > 0 && totalSymptoms > 0) {
+        //  fetchSummaryText();
+        //}
       }).catch(err => console.error("Background analysis preload failed:", err));
     }, 0);
 
@@ -1217,137 +1363,3 @@ fetch(API_URL + "/auth/me", {
 })
 .then(r => r.text())
 .then(t => console.log("AUTH RAW RESPONSE:", t));
-
-function getUserCacheKey(name) {
-  const userEmail = getElement("user-email")?.textContent || "default";
-  return `dashboard:${userEmail}:${name}`;
-}
-
-function saveCache(key, data) {
-  try {
-    localStorage.setItem(key, JSON.stringify({
-      data,
-      savedAt: Date.now()
-    }));
-  } catch (err) {
-    console.warn("Failed to save cache:", key, err);
-  }
-}
-
-function loadCache(key, maxAgeMs = 1000 * 60 * 60 * 24) { // 24h default
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return null;
-
-    const isExpired = Date.now() - parsed.savedAt > maxAgeMs;
-    return {
-      ...parsed,
-      isExpired
-    };
-  } catch (err) {
-    console.warn("Failed to load cache:", key, err);
-    return null;
-  }
-}
-
-function removeCache(key) {
-  try {
-    localStorage.removeItem(key);
-  } catch (err) {
-    console.warn("Failed to remove cache:", key, err);
-  }
-}
-
-function renderAnalysisStats(stats) {
-  const totalAllergens = Number(stats["Total allergens logged"] || 0);
-  const totalSymptoms = Number(stats["Total symptoms logged"] || 0);
-
-  const totalAllergensEl = getElement("stat-total-allergens");
-  if (totalAllergensEl) totalAllergensEl.textContent = totalAllergens;
-
-  const totalSymptomsEl = getElement("stat-total-symptoms");
-  if (totalSymptomsEl) totalSymptomsEl.textContent = totalSymptoms;
-
-  const totalEntriesEl = getElement("stat-total-entries");
-  if (totalEntriesEl) totalEntriesEl.textContent = totalAllergens + totalSymptoms;
-
-  const daysEl = getElement("stat-days");
-  if (daysEl) daysEl.textContent = stats["Total days tracked"] || 0;
-
-  const avgAllergensPerDayEl = getElement("stat-avg-allergens-per-day");
-  if (avgAllergensPerDayEl) {
-    avgAllergensPerDayEl.textContent = stats["Average allergens logged per day"] || 0;
-  }
-
-  const avgSymptomsPerDayEl = getElement("stat-avg-symptoms-per-day");
-  if (avgSymptomsPerDayEl) {
-    avgSymptomsPerDayEl.textContent = stats["Average symptoms logged per day"] || 0;
-  }
-
-  const emptyState = getElement("analysis-empty-state");
-  const content = getElement("analysis-content");
-  const hasData = totalAllergens > 0 && totalSymptoms > 0;
-
-  if (!hasData) {
-    if (emptyState) emptyState.style.display = "block";
-    if (content) content.style.display = "none";
-    setSummaryState("No summary yet.");
-  } else {
-    if (emptyState) emptyState.style.display = "none";
-    if (content) content.style.display = "block";
-  }
-
-  const extraStatsContainer = getElement("extra-stats");
-  if (extraStatsContainer) {
-    extraStatsContainer.innerHTML = "";
-
-    const standardKeys = [
-      "Total allergens logged",
-      "Total symptoms logged",
-      "Total days tracked",
-      "Average allergens logged per day",
-      "Average symptoms logged per day"
-    ];
-
-    Object.entries(stats).forEach(([key, value]) => {
-      if (standardKeys.includes(key)) return;
-
-      let displayValue = value;
-      if (key === "Predicted next cycle date" && value) {
-        displayValue = new Date(value).toLocaleDateString("en-GB", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric"
-        });
-      }
-
-      const statDiv = document.createElement("div");
-      statDiv.className = "stat-card stat-card--secondary stat-inline";
-      statDiv.innerHTML = `
-        <span class="stat-label">${key}</span>
-        <span class="stat-value">${displayValue ?? "—"}</span>
-      `;
-      extraStatsContainer.appendChild(statDiv);
-    });
-  }
-}
-
-function renderSummaryText(text) {
-  setSummaryState(text?.trim() || "No summary available.");
-}
-
-function invalidateAnalysisCacheStorage() {
-  removeCache(getUserCacheKey("analysis_stats"));
-  removeCache(getUserCacheKey("analysis_summary"));
-
-  analysisStatsLoaded = false;
-  summaryLoaded = false;
-}
-
-function markAnalysisCacheStale() {
-  localStorage.setItem(getUserCacheKey("analysis_stale"), "true");
-}
