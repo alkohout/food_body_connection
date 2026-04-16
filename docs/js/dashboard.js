@@ -36,6 +36,17 @@ function positionRangeLabels(sliderId, labelsId) {
   });
 }
 
+function isTokenExpired(token) {
+  try {
+    if (!token) return true;
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return Date.now() >= payload.exp * 1000;
+  } catch (err) {
+    console.warn("Failed to parse token:", err);
+    return true;
+  }
+}
+
 // =========================================================
 // Elements (re-query inside functions for safety)
 // =========================================================
@@ -1001,10 +1012,9 @@ async function fetchSummaryText({ force = false } = {}) {
 // =========================================================
 // Fetch analysis stats
 // =========================================================
-
 async function fetchAnalysisStats({ force = false } = {}) {
   const cacheKey = getUserCacheKey("analysis_stats");
-  const cached = loadCache(cacheKey, 1000 * 60 * 60 * 12*7); // 48h
+  const cached = loadCache(cacheKey, 1000 * 60 * 60 * 48); // 48h
 
   if (!force && cached?.data) {
     renderAnalysisStats(cached.data);
@@ -1016,20 +1026,29 @@ async function fetchAnalysisStats({ force = false } = {}) {
   analysisStatsLoading = true;
 
   try {
+    const token = localStorage.getItem("access_token");
+    if (!token || isTokenExpired(token)) {
+      throw new Error("Token expired");
+    }
+
     const statsRes = await fetch(`${API_URL}/analysis/stats`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+      headers: { Authorization: `Bearer ${token}` }
     });
+
+    if (statsRes.status === 401) {
+      localStorage.removeItem("access_token");
+      window.location.href = "index.html";
+      return null;
+    }
 
     if (!statsRes.ok) {
       throw new Error(`Failed to fetch stats: ${statsRes.status}`);
     }
 
     const stats = await statsRes.json();
-
     renderAnalysisStats(stats);
     saveCache(cacheKey, stats);
     analysisStatsLoaded = true;
-
     return stats;
   } catch (err) {
     console.error("Failed to fetch analysis stats:", err);
@@ -1207,9 +1226,11 @@ document.addEventListener("click", (e) => {
 
 async function init() {
   console.log("init() started");
+  const token = localStorage.getItem("access_token");
 
-  if (!localStorage.getItem("access_token")) {
-    console.log("No access token, redirecting to login");
+  if (!token || isTokenExpired(token)) {
+    console.log("Missing or expired token, redirecting to login");
+    localStorage.removeItem("access_token");
     window.location.href = "index.html";
     return;
   }
