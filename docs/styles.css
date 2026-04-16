@@ -414,3 +414,23 @@ select:focus {
 .project-footnote a:hover {
   color: #444;
 }
+
+.analysis-picker-container {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.analysis-display-container {
+  margin-top: 1rem;
+}
+
+.analysis-panel {
+  display: none;
+}
+
+.analysis-panel.visible {
+  display: block;
+}

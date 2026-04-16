@@ -752,6 +752,60 @@ function resetAnalysisCache() {
 // Analysis helpers
 // =========================================================
 
+function hideAllAnalysisPanels() {
+  const panels = [
+    getElement("analysis-placeholder"),
+    getElement("panel-allergen-importance"),
+    getElement("panel-symptom-grouping"),
+    getElement("panel-deeper-analysis")
+  ];
+
+  panels.forEach(panel => {
+    if (panel) panel.classList.remove("visible");
+  });
+}
+
+async function showAnalysisPanel(selected) {
+  hideAllAnalysisPanels();
+
+  const placeholder = getElement("analysis-placeholder");
+  const allergenPanel = getElement("panel-allergen-importance");
+  const symptomPanel = getElement("panel-symptom-grouping");
+  const deeperPanel = getElement("panel-deeper-analysis");
+
+  if (!selected) {
+    if (placeholder) placeholder.classList.add("visible");
+    return;
+  }
+
+  if (selected === "allergen-importance") {
+    if (allergenPanel) allergenPanel.classList.add("visible");
+    await fetchAllergenRankPlot();
+    return;
+  }
+
+  if (selected === "symptom-grouping") {
+    if (symptomPanel) symptomPanel.classList.add("visible");
+    await fetchHistogramPlot();
+    return;
+  }
+
+  if (selected === "deeper-analysis") {
+    if (deeperPanel) deeperPanel.classList.add("visible");
+    return;
+  }
+}
+
+function setupAnalysisDropdown() {
+  const analysisSelect = getElement("analysis-select");
+  if (!analysisSelect) return;
+
+  analysisSelect.addEventListener("change", async (e) => {
+    const selected = e.target.value;
+    await showAnalysisPanel(selected);
+  });
+}
+
 function setSummaryState(message) {
   const summaryDiv = getElement("summaryDiv");
   if (summaryDiv) summaryDiv.innerText = message;
@@ -840,16 +894,16 @@ function renderAnalysisStats(stats) {
   }
 
   const emptyState = getElement("analysis-empty-state");
-  const content = getElement("analysis-content");
+  const pickerContainer = document.querySelector(".analysis-picker-container");
   const hasData = totalAllergens > 0 && totalSymptoms > 0;
 
   if (!hasData) {
     if (emptyState) emptyState.style.display = "block";
-    if (content) content.style.display = "none";
+    if (pickerContainer) pickerContainer.style.display = "none";
     setSummaryState("No summary yet.");
   } else {
     if (emptyState) emptyState.style.display = "none";
-    if (content) content.style.display = "block";
+    if (pickerContainer) pickerContainer.style.display = "block";
   }
 
   const extraStatsContainer = getElement("extra-stats");
@@ -1095,31 +1149,6 @@ function loadAnalysisTab() {
 }
 
 // =========================================================
-// Analysis buttons
-// =========================================================
-
-function setupAnalysisButtons() {
-  const histogramBtn = getElement("load-histogram-btn");
-  const rankBtn = getElement("load-allergen-rank-btn");
-
-  if (histogramBtn) {
-    histogramBtn.addEventListener("click", async () => {
-      setButtonLoading(histogramBtn);
-      await fetchHistogramPlot();
-      histogramBtn.textContent = "Loaded";
-    });
-  }
-
-  if (rankBtn) {
-    rankBtn.addEventListener("click", async () => {
-      setButtonLoading(rankBtn);
-      await fetchAllergenRankPlot();
-      rankBtn.textContent = "Loaded";
-    });
-  }
-}
-
-// =========================================================
 // Tabs
 // =========================================================
 
@@ -1301,7 +1330,7 @@ async function init() {
 
     // Set up analysis
     //setupAnalysis();
-    setupAnalysisButtons();
+    setupAnalysisDropdown();
 
     // Initialize captions
     initializeCaptions();
