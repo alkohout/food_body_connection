@@ -1026,14 +1026,12 @@ async function fetchAnalysisStats({ force = false } = {}) {
   analysisStatsLoading = true;
 
   try {
-    const token = localStorage.getItem("access_token");
-    if (!token || isTokenExpired(token)) {
-      throw new Error("Token expired");
-    }
 
     console.log("Fetching analysis stats from:", `${API_URL}/analysis/stats`);
     const statsRes = await fetch(`${API_URL}/analysis/stats`, {
-      headers: { Authorization: `Bearer ${token}` }
+
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+      //headers: { Authorization: `Bearer ${token}` }
     });
     console.log("Response status:", statsRes.status);
 
