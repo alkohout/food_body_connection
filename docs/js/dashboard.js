@@ -1031,9 +1031,11 @@ async function fetchAnalysisStats({ force = false } = {}) {
       throw new Error("Token expired");
     }
 
+    console.log("Fetching analysis stats from:", `${API_URL}/analysis/stats`);
     const statsRes = await fetch(`${API_URL}/analysis/stats`, {
       headers: { Authorization: `Bearer ${token}` }
     });
+    console.log("Response status:", statsRes.status);
 
     if (statsRes.status === 401) {
       localStorage.removeItem("access_token");
