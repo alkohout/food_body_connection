@@ -1028,31 +1028,31 @@ async function fetchAnalysisStats({ force = false } = {}) {
   try {
 
     console.log("Fetching analysis stats from:", `${API_URL}/analysis/stats`);
-    const statsRes = await fetch(`${API_URL}/analysis/stats`, {
-
-      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
-      //headers: { Authorization: `Bearer ${token}` }
+    const url = `${API_URL}/analysis/stats`;
+    const token = localStorage.getItem("access_token");
+    const AnalStatsRes = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
     });
-    console.log("Response status:", statsRes.status);
 
-    if (statsRes.status === 401) {
-      localStorage.removeItem("access_token");
-      window.location.href = "index.html";
-      return null;
+    if (!AnalStatsRes.ok) {
+      throw new Error(`Failed to fetch analysis (${AnalStatsRes.status})`);
     }
 
-    if (!statsRes.ok) {
-      throw new Error(`Failed to fetch stats: ${statsRes.status}`);
-    }
+    console.log("Response status:", AnalStatsRes.status);
 
-    const stats = await statsRes.json();
+    const stats = await AnalStatsRes.json();
     renderAnalysisStats(stats);
     saveCache(cacheKey, stats);
     analysisStatsLoaded = true;
     return stats;
+
   } catch (err) {
     console.error("Failed to fetch analysis stats:", err);
     return cached?.data || null;
+
   } finally {
     analysisStatsLoading = false;
   }
