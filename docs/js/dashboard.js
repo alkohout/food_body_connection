@@ -1013,15 +1013,15 @@ async function fetchSummaryText({ force = false } = {}) {
 // Fetch analysis stats
 // =========================================================
 async function fetchAnalysisStats({ force = false } = {}) {
-  const cacheKey = getUserCacheKey("analysis_stats");
-  const cached = loadCache(cacheKey, 1000 * 60 * 60 * 48); // 48h
+  //const cacheKey = getUserCacheKey("analysis_stats");
+  //const cached = loadCache(cacheKey, 1000 * 60 * 60 * 48); // 48h
 
-  if (!force && cached?.data) {
-    renderAnalysisStats(cached.data);
-  }
+  //if (!force && cached?.data) {
+  //  renderAnalysisStats(cached.data);
+  //}
 
-  if (analysisStatsLoading) return cached?.data || null;
-  if (analysisStatsLoaded && !force) return cached?.data || null;
+  //if (analysisStatsLoading) return cached?.data || null;
+  //if (analysisStatsLoaded && !force) return cached?.data || null;
 
   analysisStatsLoading = true;
 
@@ -1045,13 +1045,14 @@ async function fetchAnalysisStats({ force = false } = {}) {
 
     const stats = await AnalStatsRes.json();
     renderAnalysisStats(stats);
-    saveCache(cacheKey, stats);
+    //saveCache(cacheKey, stats);
     analysisStatsLoaded = true;
     return stats;
 
   } catch (err) {
     console.error("Failed to fetch analysis stats:", err);
-    return cached?.data || null;
+  //  return cached?.data || null;
+    return null;
 
   } finally {
     analysisStatsLoading = false;
