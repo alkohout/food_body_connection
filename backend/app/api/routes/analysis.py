@@ -64,6 +64,8 @@ def analysis_stats(
             "Average symptoms logged per day": 0.0,
         }
 
+    allergen_df["date_time"] = pd.to_datetime(allergen_df["date_time"], errors="coerce", utc=True)
+
     # --------------------------------------------------
     # Safe total record counts
     # --------------------------------------------------
@@ -108,9 +110,13 @@ def analysis_stats(
     if (current_user.user_id == 4) : # Special case for myself to count triptan usage
 
         # Calculate cutoff date (28 days ago from today)
-        cutoff_date = pd.Timestamp.utcnow() - pd.Timedelta(days=28)
+        cutoff_date = pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=28)
         # Filter and count
         count_last28 = ((allergen_df['allergen_name'] == 'Triptan') & (allergen_df['date_time'] >= cutoff_date)).sum()
+
+        allergen_df = allergen_df.copy()
+        allergen_df["date_time"] = pd.to_datetime(allergen_df["date_time"], errors="coerce")
+        allergen_df = allergen_df.dropna(subset=["date_time"])
 
         # Filter to Triptan only
         triptan_df = allergen_df[allergen_df['allergen_name'] == 'Triptan']
