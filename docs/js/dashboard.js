@@ -978,41 +978,13 @@ function setAnalysisStatus(message) {
 // Fetch summary text
 // =========================================================
 
-async function fetchSummaryText({ force = false } = {}) {
-  if (summaryLoaded && !force) return;
-  if (summaryLoading) return;
-
-  summaryLoading = true;
-  setSummaryState("Loading summary...");
-
-  try {
-    console.time("summary fetch");
-
-    const response = await fetch(`${API_URL}/analysis/generate_summary_text`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
-    });
-
-    console.timeEnd("summary fetch");
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const text = await response.text();
-    setSummaryState(text?.trim() || "No summary available.");
-    summaryLoaded = true;
-  } catch (error) {
-    console.error("Error fetching summary text:", error);
-    setSummaryState("Failed to load summary.");
-  } finally {
-    summaryLoading = false;
-  }
-}
-
-// =========================================================
-// Fetch analysis stats
-// =========================================================
 async function fetchAnalysisStats({ force = false } = {}) {
+  console.log("fetchAnalysisStats entered", {
+    force,
+    analysisStatsLoading,
+    analysisStatsLoaded
+  });
+
   if (analysisStatsLoading) {
     console.log("Analysis stats already loading, skipping duplicate call");
     return null;
@@ -1032,10 +1004,6 @@ async function fetchAnalysisStats({ force = false } = {}) {
     console.log("Fetching analysis stats from:", url);
     console.trace("fetchAnalysisStats called from");
 
-    if (!token) {
-      throw new Error("No access token found");
-    }
-
     const AnalStatsRes = await fetch(url, {
       method: "GET",
       headers: {
@@ -1047,6 +1015,8 @@ async function fetchAnalysisStats({ force = false } = {}) {
     console.log("Analysis stats response status:", AnalStatsRes.status);
 
     if (!AnalStatsRes.ok) {
+      const text = await AnalStatsRes.text();
+      console.log("Analysis stats error body:", text);
       throw new Error(`Failed to fetch analysis (${AnalStatsRes.status})`);
     }
 
@@ -1063,6 +1033,7 @@ async function fetchAnalysisStats({ force = false } = {}) {
 
   } finally {
     analysisStatsLoading = false;
+    console.log("fetchAnalysisStats finished; analysisStatsLoading reset to false");
   }
 }
 
