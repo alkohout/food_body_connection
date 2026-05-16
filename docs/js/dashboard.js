@@ -1013,45 +1013,52 @@ async function fetchSummaryText({ force = false } = {}) {
 // Fetch analysis stats
 // =========================================================
 async function fetchAnalysisStats({ force = false } = {}) {
-  //const cacheKey = getUserCacheKey("analysis_stats");
-  //const cached = loadCache(cacheKey, 1000 * 60 * 60 * 48); // 48h
+  if (analysisStatsLoading) {
+    console.log("Analysis stats already loading, skipping duplicate call");
+    return null;
+  }
 
-  //if (!force && cached?.data) {
-  //  renderAnalysisStats(cached.data);
-  //}
-
-  //if (analysisStatsLoading) return cached?.data || null;
-  //if (analysisStatsLoaded && !force) return cached?.data || null;
+  if (analysisStatsLoaded && !force) {
+    console.log("Analysis stats already loaded, skipping duplicate call");
+    return null;
+  }
 
   analysisStatsLoading = true;
 
   try {
-
-    console.log("Fetching analysis stats from:", `${API_URL}/analysis/stats`);
     const url = `${API_URL}/analysis/stats`;
     const token = localStorage.getItem("access_token");
+
+    console.log("Fetching analysis stats from:", url);
+    console.trace("fetchAnalysisStats called from");
+
+    if (!token) {
+      throw new Error("No access token found");
+    }
+
     const AnalStatsRes = await fetch(url, {
+      method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: "application/json",
       },
     });
 
+    console.log("Analysis stats response status:", AnalStatsRes.status);
+
     if (!AnalStatsRes.ok) {
       throw new Error(`Failed to fetch analysis (${AnalStatsRes.status})`);
     }
 
-    console.log("Response status:", AnalStatsRes.status);
-
     const stats = await AnalStatsRes.json();
+    console.log("Analysis stats data:", stats);
+
     renderAnalysisStats(stats);
-    //saveCache(cacheKey, stats);
     analysisStatsLoaded = true;
     return stats;
 
   } catch (err) {
     console.error("Failed to fetch analysis stats:", err);
-  //  return cached?.data || null;
     return null;
 
   } finally {
