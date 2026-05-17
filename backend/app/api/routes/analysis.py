@@ -53,7 +53,7 @@ def analysis_stats(
     try: 
 
         logger.info("=== ENTERED /analysis/stats ===")
-        logger.info("user_id:", current_user.user_id)
+        logger.info("user_id: %s", current_user.user_id)
 
         # --------------------------------------------------
         # Load allergen and symptom event data
@@ -66,6 +66,7 @@ def analysis_stats(
 
         # If absolutely no data exists
         if allergen_df.empty and symptom_df.empty:
+            logger.info("no data exists")
             return {
                 "Total allergens logged": 0,
                 "Total symptoms logged": 0,
@@ -81,6 +82,7 @@ def analysis_stats(
         # --------------------------------------------------
         total_allergen_records = len(allergen_df) if not allergen_df.empty else 0
         total_symptom_records = len(symptom_df) if not symptom_df.empty else 0
+        logger.info("Total records counted")
 
         # --------------------------------------------------
         # Helper: compute safe daily average
@@ -104,6 +106,7 @@ def analysis_stats(
 
         avg_allergens_per_day = safe_avg(allergen_df, "allergen_name")
         avg_symptoms_per_day = safe_avg(symptom_df, "symptom_name")
+        logger.info("Averages calculated")
 
         # --------------------------------------------------
         # Compute total unique days tracked
@@ -116,9 +119,11 @@ def analysis_stats(
             return set(df["date_time"].dropna().dt.date)
 
         total_days = len(get_days(allergen_df) | get_days(symptom_df))
+        logger.info("total days calculated")
 
         if (current_user.user_id == 4) : # Special case for myself to count triptan usage
 
+            logger.info("Entering special stats for user_id 4")
             # Calculate cutoff date (28 days ago from today)
             cutoff_date = pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=28)
             # Filter and count
@@ -186,6 +191,7 @@ def analysis_stats(
             if last_cycle_start is not None:
                 predicted_next_cycle_date = last_cycle_start + timedelta(days=average_cycle_length)
 
+            logger.info("Exiting special stats for user_id 4")
             return {
                 "Total allergens logged": int(total_allergen_records),
                 "Total symptoms logged": int(total_symptom_records),
