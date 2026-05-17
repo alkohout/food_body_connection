@@ -52,19 +52,17 @@ def analysis_stats(
 
     try: 
 
-        print("=== ENTERED /analysis/stats ===")
-        print("user_id:", current_user.user_id)
+        logger.info("=== ENTERED /analysis/stats ===")
+        logger.info("user_id:", current_user.user_id)
 
         # --------------------------------------------------
         # Load allergen and symptom event data
         # --------------------------------------------------
         allergen_df = get_all_allergen_events_df(db, current_user.user_id)
-        print("loaded allergen_df")
+        logger.info("loaded allergen_df")
 
         symptom_df = get_all_symptom_events_df(db, current_user.user_id)
-        print("loaded symptom_df")
-
-        return {"ok": True}
+        logger.info("loaded symptom_df")
 
         # If absolutely no data exists
         if allergen_df.empty and symptom_df.empty:
