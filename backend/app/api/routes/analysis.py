@@ -48,13 +48,23 @@ def analysis_stats(
         Summary statistics for the user's data.
     """
 
+
+
     try: 
+
+        print("=== ENTERED /analysis/stats ===")
+        print("user_id:", current_user.user_id)
 
         # --------------------------------------------------
         # Load allergen and symptom event data
         # --------------------------------------------------
         allergen_df = get_all_allergen_events_df(db, current_user.user_id)
+        print("loaded allergen_df")
+
         symptom_df = get_all_symptom_events_df(db, current_user.user_id)
+        print("loaded symptom_df")
+
+        return {"ok": True}
 
         # If absolutely no data exists
         if allergen_df.empty and symptom_df.empty:
