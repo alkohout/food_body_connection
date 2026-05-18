@@ -51,15 +51,6 @@ function isTokenExpired(token) {
 // Elements (re-query inside functions for safety)
 // =========================================================
 
-// Don't cache element references at module load time
-const getElement = (id) => {
-  const el = document.getElementById(id);
-  if (!el) {
-    console.warn(`Element with id "${id}" not found`);
-  }
-  return el;
-};
-
 // =========================================================
 // Initialization
 // =========================================================
@@ -625,8 +616,6 @@ const submitForm = (formEl, endpoint, payloadFn, successEl, errorEl, resetFields
     return;
   }
 
-  invalidateAnalysisCacheStorage();
-
   formEl.addEventListener("submit", async e => {
     e.preventDefault();
 
@@ -724,42 +713,6 @@ let histogramLoading = false;
 let allergenRankLoading = false;
 
 // =========================================================
-// Analysis cache reset
-// =========================================================
-
-function resetAnalysisCache() {
-  analysisStatsLoaded = false;
-  summaryLoaded = false;
-  histogramLoaded = false;
-  allergenRankLoaded = false;
-
-  analysisStatsLoading = false;
-  summaryLoading = false;
-  histogramLoading = false;
-  allergenRankLoading = false;
-
-  const summaryDiv = getElement("summaryDiv");
-  if (summaryDiv) summaryDiv.innerText = "";
-
-  const statsMap = {
-    "stat-total-entries": "—",
-    "stat-total-allergens": "—",
-    "stat-total-symptoms": "—",
-    "stat-days": "—",
-    "stat-avg-allergens-per-day": "—",
-    "stat-avg-symptoms-per-day": "—"
-  };
-
-  Object.entries(statsMap).forEach(([id, value]) => {
-    const el = getElement(id);
-    if (el) el.textContent = value;
-  });
-
-  const extraStats = getElement("extra-stats");
-  if (extraStats) extraStats.innerHTML = "";
-}
-
-// =========================================================
 // Analysis helpers
 // =========================================================
 
@@ -835,49 +788,6 @@ function restoreButton(button, fallbackText = "Load") {
   button.textContent = button.dataset.originalText || fallbackText;
 }
 
-function getUserCacheKey(name) {
-  const userEmail = getElement("user-email")?.textContent || "default";
-  return `dashboard:${userEmail}:${name}`;
-}
-
-function saveCache(key, data) {
-  try {
-    localStorage.setItem(key, JSON.stringify({
-      data,
-      savedAt: Date.now()
-    }));
-  } catch (err) {
-    console.warn("Failed to save cache:", key, err);
-  }
-}
-
-function loadCache(key, maxAgeMs = 1000 * 60 * 60 * 24) { // 24h default
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return null;
-
-    const isExpired = Date.now() - parsed.savedAt > maxAgeMs;
-    return {
-      ...parsed,
-      isExpired
-    };
-  } catch (err) {
-    console.warn("Failed to load cache:", key, err);
-    return null;
-  }
-}
-
-function removeCache(key) {
-  try {
-    localStorage.removeItem(key);
-  } catch (err) {
-    console.warn("Failed to remove cache:", key, err);
-  }
-}
-
 function renderAnalysisStats(stats) {
   const totalAllergens = Number(stats["Total allergens logged"] || 0);
   const totalSymptoms = Number(stats["Total symptoms logged"] || 0);
@@ -950,18 +860,6 @@ function renderAnalysisStats(stats) {
 
 function renderSummaryText(text) {
   setSummaryState(text?.trim() || "No summary available.");
-}
-
-function invalidateAnalysisCacheStorage() {
-  removeCache(getUserCacheKey("analysis_stats"));
-  removeCache(getUserCacheKey("analysis_summary"));
-
-  analysisStatsLoaded = false;
-  summaryLoaded = false;
-}
-
-function markAnalysisCacheStale() {
-  localStorage.setItem(getUserCacheKey("analysis_stale"), "true");
 }
 
 function setAnalysisStatus(message) {
@@ -1108,20 +1006,11 @@ async function fetchAllergenRankPlot({ force = false } = {}) {
 // Analysis tab load
 // =========================================================
 function loadAnalysisTab() {
-  const cachedStats = loadCache(getUserCacheKey("analysis_stats"));
-  const isStale = localStorage.getItem(getUserCacheKey("analysis_stale")) === "true";
-
-  if (cachedStats?.data && !isStale) {
-    renderAnalysisStats(cachedStats.data);
-  }
 
   fetchAnalysisStats({ force: isStale }).catch(err => {
     console.error("Analysis refresh failed:", err);
   });
 
-  if (isStale) {
-    localStorage.removeItem(getUserCacheKey("analysis_stale"));
-  }
 }
 
 // =========================================================
