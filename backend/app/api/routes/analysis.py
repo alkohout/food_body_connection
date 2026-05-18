@@ -193,17 +193,22 @@ def analysis_stats(
 
             logger.info("Exiting special stats for user_id 4")
             logger.info("About to return static special stats")
-            return {
-                "Total allergens logged": 1,
-                "Total symptoms logged": 1,
-                "Total days tracked": 1,
-                "Average allergens logged per day": 1.0,
-                "Average symptoms logged per day": 1.0,
-                "Triptan usage in past month": 1,
-                "Average Triptan usage per month": 1,
-                "Average cycle length": 31.0,
-                "Predicted next cycle date": "Monday, 01 January 2026",
+            payload = {
+                "Total allergens logged": int(total_allergen_records),
+                "Total symptoms logged": int(total_symptom_records),
+                "Total days tracked": int(total_days),
+                "Average allergens logged per day": float(avg_allergens_per_day),
+                "Average symptoms logged per day": float(avg_symptoms_per_day),
+                "Triptan usage in past month": int(count_last28),
+                "Average Triptan usage per month": int(round(float(average_per_month))) if pd.notna(average_per_month) else 0,
+                "Average cycle length": float(average_cycle_length),
+                "Predicted next cycle date": predicted_next_cycle_date.strftime("%A, %d %B %Y") if predicted_next_cycle_date else None,
             }
+
+            logger.info("Returning payload: %s", payload)
+            logger.info("Payload types: %s", {k: type(v).__name__ for k, v in payload.items()})
+            return JSONResponse(content=payload)
+
 #            return {
 #                "Total allergens logged": int(total_allergen_records),
 #                "Total symptoms logged": int(total_symptom_records),
