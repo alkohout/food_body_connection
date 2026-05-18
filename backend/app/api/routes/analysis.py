@@ -28,100 +28,89 @@ DEFAULT_START_DATE = date(2025, 1, 1)  # earliest date
 DEFAULT_END_DATE = date.today()        # today
 
 @router.get("/stats")
+from sqlalchemy import text
+from fastapi.responses import JSONResponse
+from datetime import timedelta
+import pandas as pd
+
+@router.get("/stats")
 def analysis_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Return overall logging statistics for the current user.
-
-    Metrics include:
-    - Total allergens logged
-    - Total symptoms logged
-    - Total unique days tracked
-    - Average allergens logged per day
-    - Average symptoms logged per day
-
-    Returns
-    -------
-    dict
-        Summary statistics for the user's data.
-    """
-
-
-
-    try: 
-
+    try:
         logger.info("=== ENTERED /analysis/stats ===")
+
+        user_id = current_user.user_id
         logger.info("user_id: %s", current_user.user_id)
 
         # --------------------------------------------------
         # Load allergen and symptom event data
         # --------------------------------------------------
-        allergen_df = get_all_allergen_events_df(db, current_user.user_id)
-        logger.info("loaded allergen_df")
+        # Total counts
+        total_allergen_records = db.execute(text("""
+            SELECT COUNT(*)
+            FROM allergen_log
+            WHERE user_id = :user_id
+        """), {"user_id": user_id}).scalar() or 0
 
-        symptom_df = get_all_symptom_events_df(db, current_user.user_id)
-        logger.info("loaded symptom_df")
+        total_symptom_records = db.execute(text("""
+            SELECT COUNT(*)
+            FROM symptom_log
+            WHERE user_id = :user_id
+        """), {"user_id": user_id}).scalar() or 0
 
-        # If absolutely no data exists
-        if allergen_df.empty and symptom_df.empty:
-            logger.info("no data exists")
-            return {
-                "Total allergens logged": 0,
-                "Total symptoms logged": 0,
-                "Total days tracked": 0,
-                "Average allergens logged per day": 0.0,
-                "Average symptoms logged per day": 0.0,
-            }
+        # Distinct tracked days across both tables
+        total_days = db.execute(text("""
+            SELECT COUNT(*)
+            FROM (
+                SELECT DISTINCT DATE(date_time) AS d
+                FROM allergen_log
+                WHERE user_id = :user_id
 
-        allergen_df["date_time"] = pd.to_datetime(allergen_df["date_time"], errors="coerce", utc=True)
+                UNION
 
-        # --------------------------------------------------
-        # Safe total record counts
-        # --------------------------------------------------
-        total_allergen_records = len(allergen_df) if not allergen_df.empty else 0
-        total_symptom_records = len(symptom_df) if not symptom_df.empty else 0
-        logger.info("Total records counted")
+                SELECT DISTINCT DATE(date_time) AS d
+                FROM symptom_log
+                WHERE user_id = :user_id
+            ) x
+        """), {"user_id": user_id}).scalar() or 0
 
-        # --------------------------------------------------
-        # Helper: compute safe daily average
-        # --------------------------------------------------
-        def safe_avg(df, column):
-            if df.empty or column not in df.columns:
-                return 0.0
+        # Average allergens per day
+        avg_allergens_per_day = db.execute(text("""
+            SELECT AVG(cnt)::float
+            FROM (
+                SELECT DATE(date_time) AS d, COUNT(*) AS cnt
+                FROM allergen_log
+                WHERE user_id = :user_id
+                GROUP BY DATE(date_time)
+            ) x
+        """), {"user_id": user_id}).scalar()
 
-            if "date_time" not in df.columns:
-                return 0.0
+        avg_allergens_per_day = round(float(avg_allergens_per_day or 0), 2)
 
-            df = df.copy()
-            df["date_time"] = pd.to_datetime(df["date_time"], errors="coerce")
-            df = df.dropna(subset=["date_time"])
+        # Average symptoms per day
+        avg_symptoms_per_day = db.execute(text("""
+            SELECT AVG(cnt)::float
+            FROM (
+                SELECT DATE(date_time) AS d, COUNT(*) AS cnt
+                FROM symptom_log
+                WHERE user_id = :user_id
+                GROUP BY DATE(date_time)
+            ) x
+        """), {"user_id": user_id}).scalar()
 
-            if df.empty:
-                return 0.0
+        avg_symptoms_per_day = round(float(avg_symptoms_per_day or 0), 2)
 
-            daily = df.groupby(df["date_time"].dt.date)[column].count()
-            return float(round(daily.mean(), 2)) if not daily.empty else 0.0
+        payload = {
+            "Total allergens logged": int(total_allergen_records),
+            "Total symptoms logged": int(total_symptom_records),
+            "Total days tracked": int(total_days),
+            "Average allergens logged per day": float(avg_allergens_per_day),
+            "Average symptoms logged per day": float(avg_symptoms_per_day),
+        }
 
-        avg_allergens_per_day = safe_avg(allergen_df, "allergen_name")
-        avg_symptoms_per_day = safe_avg(symptom_df, "symptom_name")
-        logger.info("Averages calculated")
-
-        # --------------------------------------------------
-        # Compute total unique days tracked
-        # --------------------------------------------------
-        def get_days(df):
-            if df.empty or "date_time" not in df.columns:
-                return set()
-            df = df.copy()
-            df["date_time"] = pd.to_datetime(df["date_time"], errors="coerce")
-            return set(df["date_time"].dropna().dt.date)
-
-        total_days = len(get_days(allergen_df) | get_days(symptom_df))
-        logger.info("total days calculated")
-
-        if (current_user.user_id == 4) : # Special case for myself to count triptan usage
+        if (current_user.user_id == 5) : # Special case for myself to count triptan usage
 
             logger.info("Entering special stats for user_id 4")
             # Calculate cutoff date (28 days ago from today)
@@ -203,6 +192,37 @@ def analysis_stats(
                 "Predicted next cycle date": predicted_next_cycle_date.strftime("%A, %d %B %Y") if predicted_next_cycle_date else None,
             }
 
+        return payload
+
+    except Exception as e:
+        logger.exception("analysis_stats failed")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"analysis_stats failed: {str(e)}"}
+        )
+
+    """
+    Return overall logging statistics for the current user.
+
+    Metrics include:
+    - Total allergens logged
+    - Total symptoms logged
+    - Total unique days tracked
+    - Average allergens logged per day
+    - Average symptoms logged per day
+
+    Returns
+    -------
+    dict
+        Summary statistics for the user's data.
+    """
+
+
+
+    try: 
+
+
+
         return {
             "Total allergens logged": int(total_allergen_records),
             "Total symptoms logged": int(total_symptom_records),
@@ -217,6 +237,7 @@ def analysis_stats(
             status_code=500,
             content={"detail": f"analysis_stats failed: {str(e)}"}
         )
+        
 @router.get("/plot-data")
 def plot_data(
     allergen: Optional[str] = None,
