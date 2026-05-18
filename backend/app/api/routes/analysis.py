@@ -192,17 +192,29 @@ def analysis_stats(
                 predicted_next_cycle_date = last_cycle_start + timedelta(days=average_cycle_length)
 
             logger.info("Exiting special stats for user_id 4")
+            logger.info("About to return static special stats")
             return {
-                "Total allergens logged": int(total_allergen_records),
-                "Total symptoms logged": int(total_symptom_records),
-                "Total days tracked": int(total_days),
-                "Average allergens logged per day": avg_allergens_per_day,
-                "Average symptoms logged per day": avg_symptoms_per_day,
-                "Triptan usage in past month": int(count_last28), 
-                "Average Triptan usage per month": round(average_per_month),
-                "Average cycle length": average_cycle_length,
-                "Predicted next cycle date": predicted_next_cycle_date.strftime("%A, %d %B %Y") if predicted_next_cycle_date else None,
+                "Total allergens logged": 1,
+                "Total symptoms logged": 1,
+                "Total days tracked": 1,
+                "Average allergens logged per day": 1.0,
+                "Average symptoms logged per day": 1.0,
+                "Triptan usage in past month": 1,
+                "Average Triptan usage per month": 1,
+                "Average cycle length": 31.0,
+                "Predicted next cycle date": "Monday, 01 January 2026",
             }
+#            return {
+#                "Total allergens logged": int(total_allergen_records),
+#                "Total symptoms logged": int(total_symptom_records),
+#                "Total days tracked": int(total_days),
+#                "Average allergens logged per day": avg_allergens_per_day,
+#                "Average symptoms logged per day": avg_symptoms_per_day,
+#                "Triptan usage in past month": int(count_last28), 
+#                "Average Triptan usage per month": round(average_per_month),
+#                "Average cycle length": average_cycle_length,
+#                "Predicted next cycle date": predicted_next_cycle_date.strftime("%A, %d %B %Y") if predicted_next_cycle_date else None,
+#            }
 
         return {
             "Total allergens logged": int(total_allergen_records),
