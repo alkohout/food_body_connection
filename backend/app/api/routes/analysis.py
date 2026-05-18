@@ -429,3 +429,8 @@ def analysis_summary(
         "days_tracked": days_tracked,
         "avg_symptoms_per_day": round(avg_symptoms_per_day, 2)
     }
+
+@router.get("/stats-ping")
+def stats_ping(current_user: User = Depends(get_current_user)):
+    logger.info("stats-ping hit for user_id=%s", current_user.user_id)
+    return {"ok": True, "user_id": int(current_user.user_id)}
