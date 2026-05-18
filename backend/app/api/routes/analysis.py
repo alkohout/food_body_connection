@@ -16,6 +16,7 @@ from typing import Optional
 import logging
 import traceback
 import pandas as pd
+import math
 
 logger = logging.getLogger("plot_eda")
 logging.basicConfig(level=logging.INFO)
@@ -113,96 +114,17 @@ def analysis_stats(
         avg_symptoms_per_day = round(float(avg_symptoms_per_day or 0), 2)
 
         payload = {
-            "Total allergens logged": int(total_allergen_records),
-            "Total symptoms logged": int(total_symptom_records),
-            "Total days tracked": int(total_days),
-            "Average allergens logged per day": float(avg_allergens_per_day),
-            "Average symptoms logged per day": float(avg_symptoms_per_day),
-        }
-
-        if (current_user.user_id == 5) : # Special case for myself to count triptan usage
-
-            logger.info("Entering special stats for user_id 4")
-            # Calculate cutoff date (28 days ago from today)
-            cutoff_date = pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=28)
-            # Filter and count
-            count_last28 = ((allergen_df['allergen_name'] == 'Triptan') & (allergen_df['date_time'] >= cutoff_date)).sum()
-
-            allergen_df = allergen_df.copy()
-            allergen_df["date_time"] = pd.to_datetime(allergen_df["date_time"], errors="coerce")
-            allergen_df = allergen_df.dropna(subset=["date_time"])
-
-            # Filter to Triptan only
-            triptan_df = allergen_df[allergen_df['allergen_name'] == 'Triptan']
-            # Count per month
-            monthly_counts = (
-                triptan_df
-                .set_index('date_time')
-                .resample('M')
-                .size()
-            )
-            # Remove current month
-            current_month = pd.Timestamp.utcnow().to_period('M')
-            monthly_counts = monthly_counts[
-                monthly_counts.index.to_period('M') != current_month
-            ]
-
-            # Remove December 2025 - only half recorded and would skew average
-            monthly_counts = monthly_counts[
-                monthly_counts.index.to_period('M') != pd.Period('2025-12')
-            ]
-            # Average per month
-            average_per_month = monthly_counts.mean()
-
-            # --------------------------------------------------
-            # Cycle tracking
-            # --------------------------------------------------
-            avg_length_historic = 31.0
-
-            cycle_df = get_allergen_events_df(
-                db=db,
-                user_id=current_user.user_id,
-                allergen_name="Period"
-            )
-
-            cycle_dates = []
-            if not cycle_df.empty and "date_time" in cycle_df.columns:
-                cycle_df = cycle_df.copy()
-                cycle_df["date_time"] = pd.to_datetime(cycle_df["date_time"], errors="coerce")
-                cycle_dates = sorted(cycle_df["date_time"].dropna().tolist())
-
-            average_cycle_length = avg_length_historic
-            predicted_next_cycle_date = None
-            last_cycle_start = None
-
-            if cycle_dates:
-                last_cycle_start = cycle_dates[-1]
-
-            if len(cycle_dates) >= 2:
-                intervals = [
-                    (cycle_dates[i] - cycle_dates[i - 1]).days
-                    for i in range(1, len(cycle_dates))
-                ]
-
-                observed_avg = sum(intervals) / len(intervals)
-                average_cycle_length = round((avg_length_historic + observed_avg) / 2, 1)
-
-            if last_cycle_start is not None:
-                predicted_next_cycle_date = last_cycle_start + timedelta(days=average_cycle_length)
-
-            return {
                 "Total allergens logged": int(total_allergen_records),
                 "Total symptoms logged": int(total_symptom_records),
                 "Total days tracked": int(total_days),
-                "Average allergens logged per day": avg_allergens_per_day,
-                "Average symptoms logged per day": avg_symptoms_per_day,
-                "Triptan usage in past month": int(count_last28), 
-                "Average Triptan usage per month": round(average_per_month),
-                "Average cycle length": average_cycle_length,
-                "Predicted next cycle date": predicted_next_cycle_date.strftime("%A, %d %B %Y") if predicted_next_cycle_date else None,
+                "Average allergens logged per day": float(avg_allergens_per_day),
+                "Average symptoms logged per day": float(avg_symptoms_per_day),
             }
 
-        return payload
+        if current_user.user_id == 4:
+            payload.update(get_special_user_stats(db, current_user.user_id))
+
+        return payload 
 
     except Exception as e:
         logger.exception("analysis_stats failed")
@@ -210,6 +132,76 @@ def analysis_stats(
             status_code=500,
             content={"detail": f"analysis_stats failed: {str(e)}"}
         )
+
+def get_special_user_stats(db: Session, user_id: int) -> dict:
+    avg_length_historic = 31.0
+
+    # 1) Triptan usage in last 28 days
+    count_last28 = db.execute(text("""
+        SELECT COUNT(*)
+        FROM allergen_log al
+        JOIN allergen a ON a.allergen_id = al.allergen_id
+        WHERE al.user_id = :user_id
+          AND a.allergen_name = 'Triptan'
+          AND al.date_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '28 days'
+    """), {"user_id": user_id}).scalar() or 0
+
+    # 2) Average monthly Triptan usage, excluding current month and Dec 2025
+    monthly_rows = db.execute(text("""
+        SELECT DATE_TRUNC('month', al.date_time) AS month_start,
+               COUNT(*) AS monthly_count
+        FROM allergen_log al
+        JOIN allergen a ON a.allergen_id = al.allergen_id
+        WHERE al.user_id = :user_id
+          AND a.allergen_name = 'Triptan'
+          AND DATE_TRUNC('month', al.date_time) <> DATE_TRUNC('month', NOW() AT TIME ZONE 'UTC')
+          AND DATE_TRUNC('month', al.date_time) <> DATE '2025-12-01'
+        GROUP BY DATE_TRUNC('month', al.date_time)
+        ORDER BY month_start
+    """), {"user_id": user_id}).fetchall()
+
+    if monthly_rows:
+        average_per_month = sum(row.monthly_count for row in monthly_rows) / len(monthly_rows)
+    else:
+        average_per_month = 0.0
+
+    # 3) Fetch only Period dates for cycle tracking
+    cycle_rows = db.execute(text("""
+        SELECT al.date_time
+        FROM allergen_log al
+        JOIN allergen a ON a.allergen_id = al.allergen_id
+        WHERE al.user_id = :user_id
+          AND a.allergen_name = 'Period'
+          AND al.date_time IS NOT NULL
+        ORDER BY al.date_time
+    """), {"user_id": user_id}).fetchall()
+
+    cycle_dates = [row.date_time for row in cycle_rows if row.date_time is not None]
+
+    average_cycle_length = avg_length_historic
+    predicted_next_cycle_date = None
+
+    if len(cycle_dates) >= 2:
+        intervals = [
+            (cycle_dates[i] - cycle_dates[i - 1]).days
+            for i in range(1, len(cycle_dates))
+        ]
+        observed_avg = sum(intervals) / len(intervals)
+        average_cycle_length = round((avg_length_historic + observed_avg) / 2, 1)
+
+    if cycle_dates:
+        last_cycle_start = cycle_dates[-1]
+        predicted_next_cycle_date = last_cycle_start + timedelta(days=average_cycle_length)
+
+    return {
+        "Triptan usage in past month": int(count_last28),
+        "Average Triptan usage per month": int(round(average_per_month)),
+        "Average cycle length": float(average_cycle_length),
+        "Predicted next cycle date": (
+            predicted_next_cycle_date.strftime("%A, %d %B %Y")
+            if predicted_next_cycle_date else None
+        ),
+    }
 
 @router.get("/plot-data")
 def plot_data(
