@@ -27,58 +27,81 @@ DEFAULT_SYMPTOM = "Nausea"          # default symptom if none selected
 DEFAULT_START_DATE = date(2025, 1, 1)  # earliest date
 DEFAULT_END_DATE = date.today()        # today
 
-
 @router.get("/stats")
 def analysis_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    logger.info("stage 1 start")
+    try:
+        logger.info("stage 1 start")
 
-    allergen_df = get_all_allergen_events_df(db, current_user.user_id)
-    symptom_df = get_all_symptom_events_df(db, current_user.user_id)
+        allergen_df = get_all_allergen_events_df(db, current_user.user_id)
+        logger.info("loaded allergen_df shape=%s cols=%s", allergen_df.shape, list(allergen_df.columns))
 
-    total_allergen_records = len(allergen_df) if not allergen_df.empty else 0
-    total_symptom_records = len(symptom_df) if not symptom_df.empty else 0
+        symptom_df = get_all_symptom_events_df(db, current_user.user_id)
+        logger.info("loaded symptom_df shape=%s cols=%s", symptom_df.shape, list(symptom_df.columns))
 
-    def safe_avg(df, column):
-        if df.empty or column not in df.columns:
-            return 0.0
-        if "date_time" not in df.columns:
-            return 0.0
+        total_allergen_records = len(allergen_df) if not allergen_df.empty else 0
+        total_symptom_records = len(symptom_df) if not symptom_df.empty else 0
 
-        df = df.copy()
-        df["date_time"] = pd.to_datetime(df["date_time"], errors="coerce")
-        df = df.dropna(subset=["date_time"])
+        def safe_avg(df, column):
+            logger.info("safe_avg start for %s", column)
 
-        if df.empty:
-            return 0.0
+            if df.empty or column not in df.columns:
+                logger.info("safe_avg early return for %s", column)
+                return 0.0
 
-        daily = df.groupby(df["date_time"].dt.date)[column].count()
-        return float(round(daily.mean(), 2)) if not daily.empty else 0.0
+            if "date_time" not in df.columns:
+                logger.info("missing date_time for %s", column)
+                return 0.0
 
-    avg_allergens_per_day = safe_avg(allergen_df, "allergen_name")
-    avg_symptoms_per_day = safe_avg(symptom_df, "symptom_name")
+            df = df.copy()
+            df["date_time"] = pd.to_datetime(df["date_time"], errors="coerce")
+            df = df.dropna(subset=["date_time"])
 
-    def get_days(df):
-        if df.empty or "date_time" not in df.columns:
-            return set()
-        df = df.copy()
-        df["date_time"] = pd.to_datetime(df["date_time"], errors="coerce")
-        return set(df["date_time"].dropna().dt.date)
+            if df.empty:
+                logger.info("empty after cleanup for %s", column)
+                return 0.0
 
-    total_days = len(get_days(allergen_df) | get_days(symptom_df))
+            daily = df.groupby(df["date_time"].dt.date)[column].count()
+            result = float(round(daily.mean(), 2)) if not daily.empty else 0.0
+            logger.info("safe_avg result for %s = %s", column, result)
+            return result
 
-    payload = {
-        "Total allergens logged": int(total_allergen_records),
-        "Total symptoms logged": int(total_symptom_records),
-        "Total days tracked": int(total_days),
-        "Average allergens logged per day": float(avg_allergens_per_day),
-        "Average symptoms logged per day": float(avg_symptoms_per_day),
-    }
+        avg_allergens_per_day = safe_avg(allergen_df, "allergen_name")
+        avg_symptoms_per_day = safe_avg(symptom_df, "symptom_name")
 
-    logger.info("stage 1 payload: %s", payload)
-    return JSONResponse(content=payload)
+        def get_days(df):
+            logger.info("get_days called")
+            if df.empty or "date_time" not in df.columns:
+                return set()
+            df = df.copy()
+            df["date_time"] = pd.to_datetime(df["date_time"], errors="coerce")
+            return set(df["date_time"].dropna().dt.date)
+
+        total_days = len(get_days(allergen_df) | get_days(symptom_df))
+
+        payload = {
+            "Total allergens logged": int(total_allergen_records),
+            "Total symptoms logged": int(total_symptom_records),
+            "Total days tracked": int(total_days),
+            "Average allergens logged per day": float(avg_allergens_per_day),
+            "Average symptoms logged per day": float(avg_symptoms_per_day),
+        }
+
+        logger.info("stage 1 payload: %s", payload)
+        return JSONResponse(content=payload)
+
+    except Exception as e:
+        logger.exception("analysis_stats stage 1 crashed")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": str(e),
+                "type": type(e).__name__,
+                "traceback": traceback.format_exc(),
+            }
+        )
 
 @router.get("/statsold")
 def analysis_stats(
