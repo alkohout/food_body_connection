@@ -934,12 +934,7 @@ function renderAnalysisStats(stats) {
 
       let displayValue = value;
       if (key === "Predicted next cycle date" && value) {
-        displayValue = new Date(value).toLocaleDateString("en-GB", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric"
-        });
+        displayValue = value;
       }
 
       const statDiv = document.createElement("div");
@@ -1112,38 +1107,21 @@ async function fetchAllergenRankPlot({ force = false } = {}) {
 // =========================================================
 // Analysis tab load
 // =========================================================
-
 function loadAnalysisTab() {
   const cachedStats = loadCache(getUserCacheKey("analysis_stats"));
-  //const cachedSummary = loadCache(getUserCacheKey("analysis_summary"));
-
   const isStale = localStorage.getItem(getUserCacheKey("analysis_stale")) === "true";
-  fetchAnalysisStats({ force: isStale });
-  //fetchSummaryText({ force: isStale });
-  if (isStale) {
-    localStorage.removeItem(getUserCacheKey("analysis_stale"));
-  }
 
-  if (cachedStats?.data) {
+  if (cachedStats?.data && !isStale) {
     renderAnalysisStats(cachedStats.data);
   }
 
-  //if (cachedSummary?.data) {
-  //  renderSummaryText(cachedSummary.data);
-  //} else {
-  //  setSummaryState("Loading summary...");
-  //}
-
-  fetchAnalysisStats({ force: true }).then((stats) => {
-    const totalAllergens = Number(stats?.["Total allergens logged"] || 0);
-    const totalSymptoms = Number(stats?.["Total symptoms logged"] || 0);
-
-//    if (totalAllergens > 0 && totalSymptoms > 0) {
- //     fetchSummaryText({ force: true });
-  //  }
-  }).catch(err => {
+  fetchAnalysisStats({ force: isStale }).catch(err => {
     console.error("Analysis refresh failed:", err);
   });
+
+  if (isStale) {
+    localStorage.removeItem(getUserCacheKey("analysis_stale"));
+  }
 }
 
 // =========================================================
@@ -1335,17 +1313,6 @@ async function init() {
     // Initialize captions
     initializeCaptions();
 
-    setTimeout(() => {
-      fetchAnalysisStats().then(() => {
-        const totalAllergens = Number(getElement("stat-total-allergens")?.textContent || 0);
-        const totalSymptoms = Number(getElement("stat-total-symptoms")?.textContent || 0);
-
-        //if (totalAllergens > 0 && totalSymptoms > 0) {
-        //  fetchSummaryText();
-        //}
-      }).catch(err => console.error("Background analysis preload failed:", err));
-    }, 0);
-
     console.log("✅ init() completed successfully");
 
   } catch (err) {
@@ -1386,9 +1353,3 @@ function initializeCaptions() {
     captionAllergenDose.textContent = allergenIntInput.value || "";
   }
 }
-
-fetch(API_URL + "/auth/me", {
-   headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
-})
-.then(r => r.text())
-.then(t => console.log("AUTH RAW RESPONSE:", t));
