@@ -27,6 +27,7 @@ DEFAULT_SYMPTOM = "Nausea"          # default symptom if none selected
 DEFAULT_START_DATE = date(2025, 1, 1)  # earliest date
 DEFAULT_END_DATE = date.today()        # today
 
+
 @router.get("/stats")
 def analysis_stats(
     current_user: User = Depends(get_current_user),
@@ -35,6 +36,214 @@ def analysis_stats(
     logger.info("=== ENTERED /analysis/stats ===")
     return {"ok": True, "user_id": int(current_user.user_id)}
 
+@router.get("/statsold")
+def analysis_stats(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Return overall logging statistics for the current user.
+
+    Metrics include:
+    - Total allergens logged
+    - Total symptoms logged
+    - Total unique days tracked
+    - Average allergens logged per day
+    - Average symptoms logged per day
+
+    Returns
+    -------
+    dict
+        Summary statistics for the user's data.
+    """
+
+
+
+    try: 
+
+        logger.info("=== ENTERED /analysis/stats ===")
+        logger.info("user_id: %s", current_user.user_id)
+
+        # --------------------------------------------------
+        # Load allergen and symptom event data
+        # --------------------------------------------------
+        allergen_df = get_all_allergen_events_df(db, current_user.user_id)
+        logger.info("loaded allergen_df")
+
+        symptom_df = get_all_symptom_events_df(db, current_user.user_id)
+        logger.info("loaded symptom_df")
+
+        # If absolutely no data exists
+        if allergen_df.empty and symptom_df.empty:
+            logger.info("no data exists")
+            return {
+                "Total allergens logged": 0,
+                "Total symptoms logged": 0,
+                "Total days tracked": 0,
+                "Average allergens logged per day": 0.0,
+                "Average symptoms logged per day": 0.0,
+            }
+
+        allergen_df["date_time"] = pd.to_datetime(allergen_df["date_time"], errors="coerce", utc=True)
+
+        # --------------------------------------------------
+        # Safe total record counts
+        # --------------------------------------------------
+        total_allergen_records = len(allergen_df) if not allergen_df.empty else 0
+        total_symptom_records = len(symptom_df) if not symptom_df.empty else 0
+        logger.info("Total records counted")
+
+        # --------------------------------------------------
+        # Helper: compute safe daily average
+        # --------------------------------------------------
+        def safe_avg(df, column):
+            if df.empty or column not in df.columns:
+                return 0.0
+
+            if "date_time" not in df.columns:
+                return 0.0
+
+            df = df.copy()
+            df["date_time"] = pd.to_datetime(df["date_time"], errors="coerce")
+            df = df.dropna(subset=["date_time"])
+
+            if df.empty:
+                return 0.0
+
+            daily = df.groupby(df["date_time"].dt.date)[column].count()
+            return float(round(daily.mean(), 2)) if not daily.empty else 0.0
+
+        avg_allergens_per_day = safe_avg(allergen_df, "allergen_name")
+        avg_symptoms_per_day = safe_avg(symptom_df, "symptom_name")
+        logger.info("Averages calculated")
+
+        # --------------------------------------------------
+        # Compute total unique days tracked
+        # --------------------------------------------------
+        def get_days(df):
+            if df.empty or "date_time" not in df.columns:
+                return set()
+            df = df.copy()
+            df["date_time"] = pd.to_datetime(df["date_time"], errors="coerce")
+            return set(df["date_time"].dropna().dt.date)
+
+        total_days = len(get_days(allergen_df) | get_days(symptom_df))
+        logger.info("total days calculated")
+
+        if (current_user.user_id == 4) : # Special case for myself to count triptan usage
+
+            logger.info("Entering special stats for user_id 4")
+            # Calculate cutoff date (28 days ago from today)
+            cutoff_date = pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=28)
+            # Filter and count
+            count_last28 = ((allergen_df['allergen_name'] == 'Triptan') & (allergen_df['date_time'] >= cutoff_date)).sum()
+
+            allergen_df = allergen_df.copy()
+            allergen_df["date_time"] = pd.to_datetime(allergen_df["date_time"], errors="coerce")
+            allergen_df = allergen_df.dropna(subset=["date_time"])
+
+            # Filter to Triptan only
+            triptan_df = allergen_df[allergen_df['allergen_name'] == 'Triptan']
+            # Count per month
+            monthly_counts = (
+                triptan_df
+                .set_index('date_time')
+                .resample('M')
+                .size()
+            )
+            # Remove current month
+            current_month = pd.Timestamp.utcnow().to_period('M')
+            monthly_counts = monthly_counts[
+                monthly_counts.index.to_period('M') != current_month
+            ]
+
+            # Remove December 2025 - only half recorded and would skew average
+            monthly_counts = monthly_counts[
+                monthly_counts.index.to_period('M') != pd.Period('2025-12')
+            ]
+            # Average per month
+            average_per_month = monthly_counts.mean()
+
+            # --------------------------------------------------
+            # Cycle tracking
+            # --------------------------------------------------
+            avg_length_historic = 31.0
+
+            cycle_df = get_allergen_events_df(
+                db=db,
+                user_id=current_user.user_id,
+                allergen_name="Period"
+            )
+
+            cycle_dates = []
+            if not cycle_df.empty and "date_time" in cycle_df.columns:
+                cycle_df = cycle_df.copy()
+                cycle_df["date_time"] = pd.to_datetime(cycle_df["date_time"], errors="coerce")
+                cycle_dates = sorted(cycle_df["date_time"].dropna().tolist())
+
+            average_cycle_length = avg_length_historic
+            predicted_next_cycle_date = None
+            last_cycle_start = None
+
+            if cycle_dates:
+                last_cycle_start = cycle_dates[-1]
+
+            if len(cycle_dates) >= 2:
+                intervals = [
+                    (cycle_dates[i] - cycle_dates[i - 1]).days
+                    for i in range(1, len(cycle_dates))
+                ]
+
+                observed_avg = sum(intervals) / len(intervals)
+                average_cycle_length = round((avg_length_historic + observed_avg) / 2, 1)
+
+            if last_cycle_start is not None:
+                predicted_next_cycle_date = last_cycle_start + timedelta(days=average_cycle_length)
+
+            logger.info("Exiting special stats for user_id 4")
+            logger.info("About to return static special stats")
+            payload = {
+                "Total allergens logged": int(total_allergen_records),
+                "Total symptoms logged": int(total_symptom_records),
+                "Total days tracked": int(total_days),
+                "Average allergens logged per day": float(avg_allergens_per_day),
+                "Average symptoms logged per day": float(avg_symptoms_per_day),
+                "Triptan usage in past month": int(count_last28),
+                "Average Triptan usage per month": int(round(float(average_per_month))) if pd.notna(average_per_month) else 0,
+                "Average cycle length": float(average_cycle_length),
+                "Predicted next cycle date": predicted_next_cycle_date.strftime("%A, %d %B %Y") if predicted_next_cycle_date else None,
+            }
+
+            logger.info("Returning payload: %s", payload)
+            logger.info("Payload types: %s", {k: type(v).__name__ for k, v in payload.items()})
+            return JSONResponse(content=payload)
+
+#            return {
+#                "Total allergens logged": int(total_allergen_records),
+#                "Total symptoms logged": int(total_symptom_records),
+#                "Total days tracked": int(total_days),
+#                "Average allergens logged per day": avg_allergens_per_day,
+#                "Average symptoms logged per day": avg_symptoms_per_day,
+#                "Triptan usage in past month": int(count_last28), 
+#                "Average Triptan usage per month": round(average_per_month),
+#                "Average cycle length": average_cycle_length,
+#                "Predicted next cycle date": predicted_next_cycle_date.strftime("%A, %d %B %Y") if predicted_next_cycle_date else None,
+#            }
+
+        return {
+            "Total allergens logged": int(total_allergen_records),
+            "Total symptoms logged": int(total_symptom_records),
+            "Total days tracked": int(total_days),
+            "Average allergens logged per day": avg_allergens_per_day,
+            "Average symptoms logged per day": avg_symptoms_per_day,
+        }
+
+    except Exception as e:
+        logger.exception("analysis_stats failed")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"analysis_stats failed: {str(e)}"}
+        )
 @router.get("/plot-data")
 def plot_data(
     allergen: Optional[str] = None,
