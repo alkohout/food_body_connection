@@ -28,16 +28,26 @@ DEFAULT_START_DATE = date(2025, 1, 1)  # earliest date
 DEFAULT_END_DATE = date.today()        # today
 
 @router.get("/stats")
-from sqlalchemy import text
-from fastapi.responses import JSONResponse
-from datetime import timedelta
-import pandas as pd
-
-@router.get("/stats")
 def analysis_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """
+    Return overall logging statistics for the current user.
+
+    Metrics include:
+    - Total allergens logged
+    - Total symptoms logged
+    - Total unique days tracked
+    - Average allergens logged per day
+    - Average symptoms logged per day
+
+    Returns
+    -------
+    dict
+        Summary statistics for the user's data.
+    """
+
     try:
         logger.info("=== ENTERED /analysis/stats ===")
 
@@ -201,43 +211,6 @@ def analysis_stats(
             content={"detail": f"analysis_stats failed: {str(e)}"}
         )
 
-    """
-    Return overall logging statistics for the current user.
-
-    Metrics include:
-    - Total allergens logged
-    - Total symptoms logged
-    - Total unique days tracked
-    - Average allergens logged per day
-    - Average symptoms logged per day
-
-    Returns
-    -------
-    dict
-        Summary statistics for the user's data.
-    """
-
-
-
-    try: 
-
-
-
-        return {
-            "Total allergens logged": int(total_allergen_records),
-            "Total symptoms logged": int(total_symptom_records),
-            "Total days tracked": int(total_days),
-            "Average allergens logged per day": avg_allergens_per_day,
-            "Average symptoms logged per day": avg_symptoms_per_day,
-        }
-
-    except Exception as e:
-        logger.exception("analysis_stats failed")
-        return JSONResponse(
-            status_code=500,
-            content={"detail": f"analysis_stats failed: {str(e)}"}
-        )
-        
 @router.get("/plot-data")
 def plot_data(
     allergen: Optional[str] = None,
