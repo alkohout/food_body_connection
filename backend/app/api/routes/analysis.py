@@ -33,32 +33,12 @@ def analysis_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Return overall logging statistics for the current user.
-
-    Metrics include:
-    - Total allergens logged
-    - Total symptoms logged
-    - Total unique days tracked
-    - Average allergens logged per day
-    - Average symptoms logged per day
-
-    Returns
-    -------
-    dict
-        Summary statistics for the user's data.
-    """
-
     try:
         logger.info("=== ENTERED /analysis/stats ===")
 
         user_id = current_user.user_id
-        logger.info("user_id: %s", current_user.user_id)
+        logger.info("user_id: %s", user_id)
 
-        # --------------------------------------------------
-        # Load allergen and symptom event data
-        # --------------------------------------------------
-        # Total counts
         total_allergen_records = db.execute(text("""
             SELECT COUNT(*)
             FROM allergen_log
@@ -71,60 +51,59 @@ def analysis_stats(
             WHERE user_id = :user_id
         """), {"user_id": user_id}).scalar() or 0
 
-        # Distinct tracked days across both tables
         total_days = db.execute(text("""
             SELECT COUNT(*)
             FROM (
                 SELECT DISTINCT DATE(date_time) AS d
                 FROM allergen_log
                 WHERE user_id = :user_id
+                  AND date_time IS NOT NULL
 
                 UNION
 
                 SELECT DISTINCT DATE(date_time) AS d
                 FROM symptom_log
                 WHERE user_id = :user_id
+                  AND date_time IS NOT NULL
             ) x
         """), {"user_id": user_id}).scalar() or 0
 
-        # Average allergens per day
         avg_allergens_per_day = db.execute(text("""
             SELECT AVG(cnt)::float
             FROM (
                 SELECT DATE(date_time) AS d, COUNT(*) AS cnt
                 FROM allergen_log
                 WHERE user_id = :user_id
+                  AND date_time IS NOT NULL
                 GROUP BY DATE(date_time)
             ) x
         """), {"user_id": user_id}).scalar()
-
         avg_allergens_per_day = round(float(avg_allergens_per_day or 0), 2)
 
-        # Average symptoms per day
         avg_symptoms_per_day = db.execute(text("""
             SELECT AVG(cnt)::float
             FROM (
                 SELECT DATE(date_time) AS d, COUNT(*) AS cnt
                 FROM symptom_log
                 WHERE user_id = :user_id
+                  AND date_time IS NOT NULL
                 GROUP BY DATE(date_time)
             ) x
         """), {"user_id": user_id}).scalar()
-
         avg_symptoms_per_day = round(float(avg_symptoms_per_day or 0), 2)
 
         payload = {
-                "Total allergens logged": int(total_allergen_records),
-                "Total symptoms logged": int(total_symptom_records),
-                "Total days tracked": int(total_days),
-                "Average allergens logged per day": float(avg_allergens_per_day),
-                "Average symptoms logged per day": float(avg_symptoms_per_day),
-            }
+            "Total allergens logged": int(total_allergen_records),
+            "Total symptoms logged": int(total_symptom_records),
+            "Total days tracked": int(total_days),
+            "Average allergens logged per day": float(avg_allergens_per_day),
+            "Average symptoms logged per day": float(avg_symptoms_per_day),
+        }
 
-        if current_user.user_id == 4:
-            payload.update(get_special_user_stats(db, current_user.user_id))
+        if user_id == 4:
+            payload.update(get_special_user_stats(db, user_id))
 
-        return payload 
+        return payload
 
     except Exception as e:
         logger.exception("analysis_stats failed")
@@ -133,50 +112,54 @@ def analysis_stats(
             content={"detail": f"analysis_stats failed: {str(e)}"}
         )
 
+from datetime import timedelta, datetime
+
 def get_special_user_stats(db: Session, user_id: int) -> dict:
     avg_length_historic = 31.0
 
-    # 1) Triptan usage in last 28 days
     count_last28 = db.execute(text("""
         SELECT COUNT(*)
         FROM allergen_log al
         JOIN allergen a ON a.allergen_id = al.allergen_id
         WHERE al.user_id = :user_id
+          AND a.user_id = :user_id
           AND a.allergen_name = 'Triptan'
+          AND al.date_time IS NOT NULL
           AND al.date_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '28 days'
     """), {"user_id": user_id}).scalar() or 0
 
-    # 2) Average monthly Triptan usage, excluding current month and Dec 2025
     monthly_rows = db.execute(text("""
         SELECT DATE_TRUNC('month', al.date_time) AS month_start,
                COUNT(*) AS monthly_count
         FROM allergen_log al
         JOIN allergen a ON a.allergen_id = al.allergen_id
         WHERE al.user_id = :user_id
+          AND a.user_id = :user_id
           AND a.allergen_name = 'Triptan'
+          AND al.date_time IS NOT NULL
           AND DATE_TRUNC('month', al.date_time) <> DATE_TRUNC('month', NOW() AT TIME ZONE 'UTC')
           AND DATE_TRUNC('month', al.date_time) <> DATE '2025-12-01'
         GROUP BY DATE_TRUNC('month', al.date_time)
         ORDER BY month_start
     """), {"user_id": user_id}).fetchall()
 
-    if monthly_rows:
-        average_per_month = sum(row.monthly_count for row in monthly_rows) / len(monthly_rows)
-    else:
-        average_per_month = 0.0
+    average_per_month = (
+        sum(row.monthly_count for row in monthly_rows) / len(monthly_rows)
+        if monthly_rows else 0.0
+    )
 
-    # 3) Fetch only Period dates for cycle tracking
     cycle_rows = db.execute(text("""
-        SELECT al.date_time
+        SELECT DISTINCT DATE(al.date_time) AS cycle_day
         FROM allergen_log al
         JOIN allergen a ON a.allergen_id = al.allergen_id
         WHERE al.user_id = :user_id
+          AND a.user_id = :user_id
           AND a.allergen_name = 'Period'
           AND al.date_time IS NOT NULL
-        ORDER BY al.date_time
+        ORDER BY cycle_day
     """), {"user_id": user_id}).fetchall()
 
-    cycle_dates = [row.date_time for row in cycle_rows if row.date_time is not None]
+    cycle_dates = [row.cycle_day for row in cycle_rows if row.cycle_day is not None]
 
     average_cycle_length = avg_length_historic
     predicted_next_cycle_date = None
