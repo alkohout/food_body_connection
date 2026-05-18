@@ -33,8 +33,52 @@ def analysis_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    logger.info("=== ENTERED /analysis/stats ===")
-    return {"ok": True, "user_id": int(current_user.user_id)}
+    logger.info("stage 1 start")
+
+    allergen_df = get_all_allergen_events_df(db, current_user.user_id)
+    symptom_df = get_all_symptom_events_df(db, current_user.user_id)
+
+    total_allergen_records = len(allergen_df) if not allergen_df.empty else 0
+    total_symptom_records = len(symptom_df) if not symptom_df.empty else 0
+
+    def safe_avg(df, column):
+        if df.empty or column not in df.columns:
+            return 0.0
+        if "date_time" not in df.columns:
+            return 0.0
+
+        df = df.copy()
+        df["date_time"] = pd.to_datetime(df["date_time"], errors="coerce")
+        df = df.dropna(subset=["date_time"])
+
+        if df.empty:
+            return 0.0
+
+        daily = df.groupby(df["date_time"].dt.date)[column].count()
+        return float(round(daily.mean(), 2)) if not daily.empty else 0.0
+
+    avg_allergens_per_day = safe_avg(allergen_df, "allergen_name")
+    avg_symptoms_per_day = safe_avg(symptom_df, "symptom_name")
+
+    def get_days(df):
+        if df.empty or "date_time" not in df.columns:
+            return set()
+        df = df.copy()
+        df["date_time"] = pd.to_datetime(df["date_time"], errors="coerce")
+        return set(df["date_time"].dropna().dt.date)
+
+    total_days = len(get_days(allergen_df) | get_days(symptom_df))
+
+    payload = {
+        "Total allergens logged": int(total_allergen_records),
+        "Total symptoms logged": int(total_symptom_records),
+        "Total days tracked": int(total_days),
+        "Average allergens logged per day": float(avg_allergens_per_day),
+        "Average symptoms logged per day": float(avg_symptoms_per_day),
+    }
+
+    logger.info("stage 1 payload: %s", payload)
+    return JSONResponse(content=payload)
 
 @router.get("/statsold")
 def analysis_stats(
