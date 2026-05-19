@@ -51,6 +51,15 @@ function isTokenExpired(token) {
 // Elements (re-query inside functions for safety)
 // =========================================================
 
+// Don't cache element references at module load time
+const getElement = (id) => {
+  const el = document.getElementById(id);
+  if (!el) {
+    console.warn(`Element with id "${id}" not found`);
+  }
+  return el;
+};
+
 // =========================================================
 // Initialization
 // =========================================================
@@ -1006,11 +1015,9 @@ async function fetchAllergenRankPlot({ force = false } = {}) {
 // Analysis tab load
 // =========================================================
 function loadAnalysisTab() {
-
-  fetchAnalysisStats({ force: isStale }).catch(err => {
+  fetchAnalysisStats({ force: true }).catch(err => {
     console.error("Analysis refresh failed:", err);
   });
-
 }
 
 // =========================================================
