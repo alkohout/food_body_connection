@@ -1033,6 +1033,79 @@ function setupTimeSeries() {
   showCcfSection(false);
 }
 
+// =========================================================
+// Deeper analysis panel
+// =========================================================
+
+function setupDeeperAnalysis() {
+  const btn = getElement("update-plot-btn");
+  if (!btn) return;
+
+  btn.addEventListener("click", async () => {
+    const allergenName  = getElement("allergen-intensity-input")?.value?.trim();
+    const lagRaw        = getElement("lag-window")?.value || "0_24";
+    const symptomGroup  = getElement("symptom-group-input")?.value?.trim();
+
+    const statusEl   = getElement("deeper-status");
+    const plotsDiv   = getElement("deeper-plots");
+
+    if (!allergenName) {
+      if (statusEl) statusEl.textContent = "Please select an allergen first.";
+      return;
+    }
+
+    // Parse "0_6" → lag_start=0, lag_end=6
+    const [lagStart, lagEnd] = lagRaw.split("_").map(Number);
+
+    const token = localStorage.getItem("access_token");
+    const headers = { Authorization: `Bearer ${token}` };
+
+    if (statusEl) statusEl.textContent = "Generating plots…";
+    if (plotsDiv) plotsDiv.style.display = "none";
+
+    const base = new URLSearchParams({
+      allergen_name: allergenName,
+      lag_start: lagStart,
+      lag_end: lagEnd,
+      ...(symptomGroup ? { symptom_group: symptomGroup } : {}),
+    });
+
+    async function loadImg(url, imgId) {
+      const res = await fetch(url, { headers });
+      if (!res.ok) throw new Error(`${imgId}: server returned ${res.status}`);
+      const blob = await res.blob();
+      const img  = getElement(imgId);
+      if (!img) return;
+      if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+      img.src = URL.createObjectURL(blob);
+      img.dataset.objectUrl = img.src;
+    }
+
+    try {
+      await Promise.all([
+        loadImg(
+          `${API_URL}/analysis/plot_time_series?allergen_name=${encodeURIComponent(allergenName)}`,
+          "deeper-time-series-plot"
+        ),
+        loadImg(
+          `${API_URL}/analysis/plot_bar_plots?${base}`,
+          "deeper-bar-plot"
+        ),
+        loadImg(
+          `${API_URL}/analysis/plot_risk?${base}`,
+          "deeper-risk-plot"
+        ),
+      ]);
+
+      if (statusEl) statusEl.textContent = "";
+      if (plotsDiv) plotsDiv.style.display = "block";
+    } catch (err) {
+      if (statusEl) statusEl.textContent = `Error: ${err.message}`;
+      console.error("Deeper analysis error:", err);
+    }
+  });
+}
+
 function setupAnalysisDropdown() {
   const analysisSelect = getElement("analysis-select");
   if (!analysisSelect) return;
@@ -1213,29 +1286,32 @@ async function fetchHistogramPlot({ force = false } = {}) {
 
   histogramLoading = true;
 
+  const statusEl = getElement("histogram-status");
+  const img      = getElement("group_histogram");
+
+  if (statusEl) statusEl.textContent = "Loading…";
+  if (img) img.style.display = "none";
+
   try {
-    const histogramPlotImg = getElement("group_histogram");
-    if (!histogramPlotImg) return;
+    if (!img) return;
 
     const res = await fetch(`${API_URL}/analysis/symptom_group_histogram`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
     });
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`Server returned ${res.status}`);
 
     const blob = await res.blob();
+    if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+    img.src = URL.createObjectURL(blob);
+    img.dataset.objectUrl = img.src;
+    img.style.display = "";
 
-    if (histogramPlotImg.dataset.objectUrl) {
-      URL.revokeObjectURL(histogramPlotImg.dataset.objectUrl);
-    }
-
-    const objectUrl = URL.createObjectURL(blob);
-    histogramPlotImg.src = objectUrl;
-    histogramPlotImg.dataset.objectUrl = objectUrl;
-
+    if (statusEl) statusEl.textContent = "";
     histogramLoaded = true;
   } catch (err) {
     console.error("Failed to fetch histogram plot:", err);
+    if (statusEl) statusEl.textContent = `Could not load plot: ${err.message}`;
   } finally {
     histogramLoading = false;
   }
@@ -1247,29 +1323,32 @@ async function fetchAllergenRankPlot({ force = false } = {}) {
 
   allergenRankLoading = true;
 
+  const statusEl = getElement("allergenrank-status");
+  const img      = getElement("allergenrank-plot");
+
+  if (statusEl) statusEl.textContent = "Loading…";
+  if (img) img.style.display = "none";
+
   try {
-    const allergenrankPlotImg = getElement("allergenrank-plot");
-    if (!allergenrankPlotImg) return;
+    if (!img) return;
 
     const res = await fetch(`${API_URL}/analysis/plot_allergen_rank`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
     });
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`Server returned ${res.status}. You may need more data for the model to run.`);
 
     const blob = await res.blob();
+    if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+    img.src = URL.createObjectURL(blob);
+    img.dataset.objectUrl = img.src;
+    img.style.display = "";
 
-    if (allergenrankPlotImg.dataset.objectUrl) {
-      URL.revokeObjectURL(allergenrankPlotImg.dataset.objectUrl);
-    }
-
-    const objectUrl = URL.createObjectURL(blob);
-    allergenrankPlotImg.src = objectUrl;
-    allergenrankPlotImg.dataset.objectUrl = objectUrl;
-
+    if (statusEl) statusEl.textContent = "";
     allergenRankLoaded = true;
   } catch (err) {
     console.error("Failed to fetch allergen rank plot:", err);
+    if (statusEl) statusEl.textContent = `Could not load plot: ${err.message}`;
   } finally {
     allergenRankLoading = false;
   }
@@ -1865,6 +1944,7 @@ async function init() {
     // Set up analysis
     //setupAnalysis();
     setupAnalysisDropdown();
+    setupDeeperAnalysis();
     setupTimeSeries();
 
     // Initialize captions

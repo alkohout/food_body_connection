@@ -227,6 +227,7 @@
                 more strongly associated with symptoms after exposure.
               </p>
 
+              <p id="allergenrank-status" class="status"></p>
               <div class="plot-container" style="position: relative;">
                 <figure class="img-figure">
                   <img id="allergenrank-plot" src="" alt="Allergen Rank Plot" />
@@ -259,6 +260,7 @@
                 This chart shows how often symptoms are logged across different body systems.
               </p>
 
+              <p id="histogram-status" class="status"></p>
               <figure class="img-figure">
                 <img id="group_histogram" src="" alt="System Group Histogram" />
                 <figcaption>
@@ -408,7 +410,23 @@
                 </button>
               </div>
 
-              <!-- Add deeper analysis output plots here later -->
+              <p id="deeper-status" class="status"></p>
+
+              <div id="deeper-plots" style="display:none">
+                <figure class="img-figure" style="margin-top:1rem">
+                  <img id="deeper-time-series-plot" src="" alt="Time Series" style="width:100%" />
+                  <figcaption>Symptom burden and allergen exposure over time.</figcaption>
+                </figure>
+                <figure class="img-figure" style="margin-top:1rem">
+                  <img id="deeper-bar-plot" src="" alt="Temporal relationship" style="width:100%" />
+                  <figcaption>Temporal relationship: exposure days followed by symptoms / symptom days preceded by exposure.</figcaption>
+                </figure>
+                <figure class="img-figure" style="margin-top:1rem">
+                  <img id="deeper-risk-plot" src="" alt="Risk comparison" style="width:100%" />
+                  <figcaption>Symptom probability on exposed vs unexposed days.</figcaption>
+                </figure>
+              </div>
+
             </div>
           </div>
         </div>
