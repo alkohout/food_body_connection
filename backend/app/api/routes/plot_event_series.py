@@ -78,25 +78,30 @@ def _plot_allergen_series(db: Session, user_id: int, allergen_name: str) -> Byte
 
     dates = [log.date_time for log in logs]
     quantities = [log.quantity for log in logs]
-    has_quantity = any(q is not None for q in quantities)
+
+    non_null = [q for q in quantities if q is not None]
+    has_varied_quantity = len(set(non_null)) > 1 if non_null else False
 
     fig, ax = plt.subplots(figsize=(10, 3.5))
 
-    if has_quantity:
+    if has_varied_quantity:
+        # Meaningful quantity variation — scatter with y-axis
         ys = [q if q is not None else 0 for q in quantities]
         ax.vlines(dates, 0, ys, color="#2563eb", alpha=0.25, linewidth=1.2)
         ax.scatter(dates, ys, color="#2563eb", alpha=0.8, s=45, zorder=3)
         ax.set_ylabel("Quantity")
         ax.set_ylim(bottom=0)
     else:
-        ax.scatter(dates, [1] * len(dates), color="#2563eb", alpha=0.85,
-                   s=80, marker="|", linewidths=2.5)
+        # Binary / event data — clean rug / tick-mark plot
+        ax.vlines(dates, 0, 1, color="#2563eb", alpha=0.6, linewidth=2)
+        ax.set_ylim(0, 1.4)
         ax.set_yticks([])
-        ax.set_ylabel("")
+        for spine in ("left", "right", "top"):
+            ax.spines[spine].set_visible(False)
 
     ax.set_title(f"Allergen exposures: {allergen_name}", fontsize=13)
     ax.set_xlabel("Date")
-    ax.grid(axis="x", alpha=0.2)
+    ax.grid(axis="x", alpha=0.15)
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%d %b %Y"))
     fig.autofmt_xdate(rotation=30, ha="right")
     plt.tight_layout()
