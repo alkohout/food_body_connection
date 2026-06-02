@@ -1,10 +1,7 @@
 from app.schemas.analyse import X as XModel, y as YModel
-from app.data.analysis_data import get_allergen_name_str
-from sqlalchemy.orm import Session
-
 import pandas as pd
 
-def get_xy(db: Session, current_user: int, allergen_df: pd.DataFrame, symptom_df: pd.DataFrame, lag_window: tuple[int, int] = (0, 6)):
+def get_xy(allergen_df: pd.DataFrame, symptom_df: pd.DataFrame, lag_window: tuple[int, int] = (0, 6)):
     """
     Constructs the feature matrix X and target matrix y 
     based on allergen exposure and symptom dataframes.
@@ -32,11 +29,8 @@ def get_xy(db: Session, current_user: int, allergen_df: pd.DataFrame, symptom_df
         # Timestamp of allergen exposure
         exposure_time = allergen_event["date_time"]
 
-        # Allergen ID for lookup
-        allergen_id = allergen_event["allergen_id"]
-
-        # Convert allergen ID to human-readable allergen name
-        allergen_name = get_allergen_name_str(db, current_user, allergen_id) 
+        # Allergen name is already in the df from the JOIN query
+        allergen_name = allergen_event["allergen_name"]
 
         # Exposure volume (default to 0.0 if missing)
         volume = allergen_event.get("volume", 0.0)

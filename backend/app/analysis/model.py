@@ -127,7 +127,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         for lag_window in lag_windows:
 
             # Generate feature matrix (X) and target (y)
-            X, y = get_xy(db, current_user, allergen_events, symptom_events, lag_window)
+            X, y = get_xy(allergen_events, symptom_events, lag_window)
 
             # One-hot encode categorical allergen names
             X = pd.get_dummies(X["allergen_name"])
@@ -271,7 +271,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
                 "max_iter": 1000,
                 "class_weight": best_use_balanced
             },
-            n_boot=500,
+            n_boot=100,
             min_occurrences=5
         )
         
