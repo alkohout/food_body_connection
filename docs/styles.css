@@ -477,7 +477,8 @@ select:focus {
   border-bottom: 1px solid #e5e7eb;
 }
 
-/* Fixed-width columns for date and last column */
+/* Column widths — browser scales these proportionally to fill 100% */
+.logs-table thead th:first-child  { width: 110px; }
 .logs-table thead th:nth-child(2) { width: 140px; }
 .logs-table thead th:last-child   { width: 88px; }
 
