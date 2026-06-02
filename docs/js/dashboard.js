@@ -119,8 +119,11 @@ const fetchUnits = async () => {
       opt.textContent = u.unit_name;
       unitSelect.appendChild(opt);
     });
+
+    return units;
   } catch (err) {
     console.error("Failed to fetch units:", err);
+    return [];
   }
 }
 
@@ -619,7 +622,7 @@ const setupAutocomplete = (inputEl, idEl, suggestionsEl, type) => {
 // Generic form submitter
 // =========================================================
 
-const submitForm = (formEl, endpoint, payloadFn, successEl, errorEl, resetFields = []) => {
+const submitForm = (formEl, endpoint, payloadFn, successEl, errorEl, resetFields = [], onSuccess = null) => {
   if (!formEl) {
     console.warn("Form element not found for", endpoint);
     return;
@@ -648,6 +651,7 @@ const submitForm = (formEl, endpoint, payloadFn, successEl, errorEl, resetFields
       resetFields.forEach(f => {
         if (f) f.value = "";
       });
+      if (onSuccess) await onSuccess();
     } catch (err) {
       if (errorEl) errorEl.textContent = `Error: ${err.message}`;
     }
@@ -684,7 +688,8 @@ function setupForms() {
     },
     getElement("log-success"),
     getElement("log-error"),
-    [dateInput, allergenQuantityInput]
+    [dateInput, allergenQuantityInput],
+    loadAllergenLogs
   );
 
   // Symptom form
@@ -703,9 +708,20 @@ function setupForms() {
     }),
     getElement("symptom-success"),
     getElement("symptom-error"),
-    [symptomIdInput, symptomDateInput]
+    [symptomIdInput, symptomDateInput],
+    loadSymptomLogs
   );
 }
+
+// =========================================================
+// Cached data (populated in init, used by log renderers)
+// =========================================================
+
+let cachedAllergens = [];
+let cachedSymptoms = [];
+let cachedUnits = [];
+
+const INTENSITY_LABELS = ["None", "Mild", "Moderate", "Severe"];
 
 // =========================================================
 // Analysis state
@@ -1074,6 +1090,333 @@ document.addEventListener("click", (e) => {
 });
 
 // =========================================================
+// Recent logs – API helpers
+// =========================================================
+
+async function fetchAllergenLogs(limit = 10) {
+  const token = localStorage.getItem("access_token");
+  const res = await fetch(`${API_URL}/entries/allergens?limit=${limit}`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchSymptomLogs(limit = 10) {
+  const token = localStorage.getItem("access_token");
+  const res = await fetch(`${API_URL}/entries/symptoms?limit=${limit}`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function updateAllergenLog(logId, payload) {
+  const token = localStorage.getItem("access_token");
+  const res = await fetch(`${API_URL}/entries/allergens/${logId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function updateSymptomLog(logId, payload) {
+  const token = localStorage.getItem("access_token");
+  const res = await fetch(`${API_URL}/entries/symptoms/${logId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// =========================================================
+// Recent logs – display helpers
+// =========================================================
+
+function formatLogDate(isoString) {
+  const d = new Date(isoString);
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function isoToDateTimeLocal(isoString) {
+  const d = new Date(isoString);
+  const tzOffsetMs = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tzOffsetMs).toISOString().slice(0, 16);
+}
+
+// =========================================================
+// Recent logs – render allergen logs
+// =========================================================
+
+function renderAllergenLogs(logs, allergens, units) {
+  const container = getElement("allergen-logs-list");
+  if (!container) return;
+
+  if (!logs.length) {
+    container.innerHTML = '<p class="logs-empty">No allergen logs yet.</p>';
+    return;
+  }
+
+  container.innerHTML = "";
+
+  logs.forEach(log => {
+    const item = document.createElement("div");
+    item.className = "log-item";
+
+    const qtyText = log.quantity != null
+      ? `${log.quantity}${log.unit_name ? " " + log.unit_name : ""}`
+      : "—";
+
+    const display = document.createElement("div");
+    display.className = "log-item-display";
+    display.innerHTML = `
+      <span class="log-field log-field--name">${log.allergen_name}</span>
+      <span class="log-field log-field--meta">${formatLogDate(log.date_time)}</span>
+      <span class="log-field log-field--meta">${qtyText}</span>
+      <button class="log-edit-btn" type="button">Edit</button>
+    `;
+
+    const allergenOptions = allergens
+      .map(a => `<option value="${a.allergen_id}" ${a.allergen_id === log.allergen_id ? "selected" : ""}>${a.allergen_name}</option>`)
+      .join("");
+
+    const unitOptions = `<option value="">—</option>` +
+      units.map(u => `<option value="${u.unit_id}" ${u.unit_id === log.unit_id ? "selected" : ""}>${u.unit_name}</option>`).join("");
+
+    const edit = document.createElement("div");
+    edit.className = "log-item-edit";
+    edit.hidden = true;
+    edit.innerHTML = `
+      <div class="edit-row">
+        <label>Allergen</label>
+        <select class="edit-allergen">${allergenOptions}</select>
+      </div>
+      <div class="edit-row">
+        <label>Date &amp; time</label>
+        <input type="datetime-local" class="edit-date" value="${isoToDateTimeLocal(log.date_time)}" />
+      </div>
+      <div class="edit-row">
+        <label>Quantity</label>
+        <div class="inline-fields">
+          <input type="number" step="any" class="edit-qty" value="${log.quantity ?? ""}" style="width:70px" />
+          <select class="edit-unit" style="width:80px">${unitOptions}</select>
+        </div>
+      </div>
+      <div class="edit-actions">
+        <button type="button" class="primary save-log-btn">Save</button>
+        <button type="button" class="secondary cancel-log-btn">Cancel</button>
+        <span class="edit-error error"></span>
+      </div>
+    `;
+
+    item.appendChild(display);
+    item.appendChild(edit);
+    container.appendChild(item);
+
+    display.querySelector(".log-edit-btn").addEventListener("click", () => {
+      display.hidden = true;
+      edit.hidden = false;
+    });
+
+    edit.querySelector(".cancel-log-btn").addEventListener("click", () => {
+      edit.hidden = true;
+      display.hidden = false;
+    });
+
+    edit.querySelector(".save-log-btn").addEventListener("click", async () => {
+      const errorEl = edit.querySelector(".edit-error");
+      errorEl.textContent = "";
+
+      const allergenId = Number(edit.querySelector(".edit-allergen").value);
+      const dateTime = new Date(edit.querySelector(".edit-date").value).toISOString();
+      const qtyRaw = edit.querySelector(".edit-qty").value;
+      const unitId = Number(edit.querySelector(".edit-unit").value) || null;
+
+      try {
+        await updateAllergenLog(log.allergen_log_id, {
+          allergen_id: allergenId,
+          date_time: dateTime,
+          quantity: qtyRaw !== "" ? Number(qtyRaw) : null,
+          unit_id: unitId,
+        });
+
+        const newAllergenName = allergens.find(a => a.allergen_id === allergenId)?.allergen_name ?? "";
+        const newUnitName = units.find(u => u.unit_id === unitId)?.unit_name ?? "";
+        const newQtyText = qtyRaw !== "" ? `${Number(qtyRaw)}${newUnitName ? " " + newUnitName : ""}` : "—";
+
+        display.querySelector(".log-field--name").textContent = newAllergenName;
+        display.querySelectorAll(".log-field--meta")[0].textContent = formatLogDate(dateTime);
+        display.querySelectorAll(".log-field--meta")[1].textContent = newQtyText;
+
+        log.allergen_id = allergenId;
+        log.date_time = dateTime;
+        log.quantity = qtyRaw !== "" ? Number(qtyRaw) : null;
+        log.unit_id = unitId;
+
+        edit.hidden = true;
+        display.hidden = false;
+      } catch (err) {
+        errorEl.textContent = "Save failed: " + err.message;
+      }
+    });
+  });
+}
+
+// =========================================================
+// Recent logs – render symptom logs
+// =========================================================
+
+function renderSymptomLogs(logs, symptoms) {
+  const container = getElement("symptom-logs-list");
+  if (!container) return;
+
+  if (!logs.length) {
+    container.innerHTML = '<p class="logs-empty">No symptom logs yet.</p>';
+    return;
+  }
+
+  container.innerHTML = "";
+
+  logs.forEach(log => {
+    const item = document.createElement("div");
+    item.className = "log-item";
+
+    const display = document.createElement("div");
+    display.className = "log-item-display";
+    display.innerHTML = `
+      <span class="log-field log-field--name">${log.symptom_name}</span>
+      <span class="log-field log-field--meta">${formatLogDate(log.date_time)}</span>
+      <span class="log-field log-field--meta">${INTENSITY_LABELS[log.intensity] ?? "—"}</span>
+      <button class="log-edit-btn" type="button">Edit</button>
+    `;
+
+    const symptomOptions = symptoms
+      .map(s => `<option value="${s.symptom_id}" ${s.symptom_id === log.symptom_id ? "selected" : ""}>${s.symptom_name}</option>`)
+      .join("");
+
+    const edit = document.createElement("div");
+    edit.className = "log-item-edit";
+    edit.hidden = true;
+    edit.innerHTML = `
+      <div class="edit-row">
+        <label>Symptom</label>
+        <select class="edit-symptom">${symptomOptions}</select>
+      </div>
+      <div class="edit-row">
+        <label>Date &amp; time</label>
+        <input type="datetime-local" class="edit-date" value="${isoToDateTimeLocal(log.date_time)}" />
+      </div>
+      <div class="edit-row">
+        <label>Intensity</label>
+        <select class="edit-intensity">
+          <option value="0" ${log.intensity === 0 ? "selected" : ""}>None</option>
+          <option value="1" ${log.intensity === 1 ? "selected" : ""}>Mild</option>
+          <option value="2" ${log.intensity === 2 ? "selected" : ""}>Moderate</option>
+          <option value="3" ${log.intensity === 3 ? "selected" : ""}>Severe</option>
+        </select>
+      </div>
+      <div class="edit-actions">
+        <button type="button" class="primary save-log-btn">Save</button>
+        <button type="button" class="secondary cancel-log-btn">Cancel</button>
+        <span class="edit-error error"></span>
+      </div>
+    `;
+
+    item.appendChild(display);
+    item.appendChild(edit);
+    container.appendChild(item);
+
+    display.querySelector(".log-edit-btn").addEventListener("click", () => {
+      display.hidden = true;
+      edit.hidden = false;
+    });
+
+    edit.querySelector(".cancel-log-btn").addEventListener("click", () => {
+      edit.hidden = true;
+      display.hidden = false;
+    });
+
+    edit.querySelector(".save-log-btn").addEventListener("click", async () => {
+      const errorEl = edit.querySelector(".edit-error");
+      errorEl.textContent = "";
+
+      const symptomId = Number(edit.querySelector(".edit-symptom").value);
+      const dateTime = new Date(edit.querySelector(".edit-date").value).toISOString();
+      const intensity = Number(edit.querySelector(".edit-intensity").value);
+
+      try {
+        await updateSymptomLog(log.symptom_log_id, {
+          symptom_id: symptomId,
+          date_time: dateTime,
+          intensity: intensity,
+        });
+
+        const newSymptomName = symptoms.find(s => s.symptom_id === symptomId)?.symptom_name ?? "";
+
+        display.querySelector(".log-field--name").textContent = newSymptomName;
+        display.querySelectorAll(".log-field--meta")[0].textContent = formatLogDate(dateTime);
+        display.querySelectorAll(".log-field--meta")[1].textContent = INTENSITY_LABELS[intensity];
+
+        log.symptom_id = symptomId;
+        log.date_time = dateTime;
+        log.intensity = intensity;
+
+        edit.hidden = true;
+        display.hidden = false;
+      } catch (err) {
+        errorEl.textContent = "Save failed: " + err.message;
+      }
+    });
+  });
+}
+
+// =========================================================
+// Recent logs – load functions (called from init + form submit)
+// =========================================================
+
+async function loadAllergenLogs() {
+  const container = getElement("allergen-logs-list");
+  if (!container) return;
+  container.innerHTML = '<p class="logs-loading">Loading…</p>';
+  try {
+    const logs = await fetchAllergenLogs(10);
+    renderAllergenLogs(logs, cachedAllergens, cachedUnits);
+  } catch (err) {
+    container.innerHTML = '<p class="logs-empty">Could not load logs.</p>';
+    console.error("Failed to load allergen logs:", err);
+  }
+}
+
+async function loadSymptomLogs() {
+  const container = getElement("symptom-logs-list");
+  if (!container) return;
+  container.innerHTML = '<p class="logs-loading">Loading…</p>';
+  try {
+    const logs = await fetchSymptomLogs(10);
+    renderSymptomLogs(logs, cachedSymptoms);
+  } catch (err) {
+    container.innerHTML = '<p class="logs-empty">Could not load logs.</p>';
+    console.error("Failed to load symptom logs:", err);
+  }
+}
+
+// =========================================================
 // Init
 // =========================================================
 
@@ -1116,11 +1459,17 @@ async function init() {
         fetchRecentSymptoms(10)
       ]);
 
+      cachedAllergens = allergens || [];
+      cachedSymptoms = symptoms || [];
+      cachedUnits = units || [];
+
       populateAllergenSelect(allergens, recentAllergens);
       populateSymptomSelect(symptoms, recentSymptoms);
 
       setupAddAllergen();
       setupAddSymptom();
+
+      await Promise.all([loadAllergenLogs(), loadSymptomLogs()]);
     } catch (err) {
       console.error("Error during page init:", err);
 

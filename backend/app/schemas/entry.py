@@ -16,6 +16,17 @@ class SymptomLogCreate(BaseModel):
     symptom_id: int
     date_time: str  # or datetime
     intensity: Intensity
+class AllergenLogUpdate(BaseModel):
+    allergen_id: Optional[int] = None
+    date_time: Optional[str] = None
+    quantity: Optional[float] = None
+    unit_id: Optional[int] = None
+
+class SymptomLogUpdate(BaseModel):
+    symptom_id: Optional[int] = None
+    date_time: Optional[str] = None
+    intensity: Optional[Intensity] = None
+
 class UnitOut(BaseModel):
     unit_id: int
     unit_name: str

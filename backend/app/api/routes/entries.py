@@ -1,11 +1,11 @@
 # app/api/routes/entries.py
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models.table_class import AllergenLog, SymptomLog, User, Allergen, Symptom
+from app.models.table_class import AllergenLog, SymptomLog, User, Allergen, Symptom, Unit
 from app.api.routes.auth import get_current_user
-from app.schemas import AllergenLogCreate, SymptomLogCreate
+from app.schemas import AllergenLogCreate, SymptomLogCreate, AllergenLogUpdate, SymptomLogUpdate
 
 router = APIRouter(prefix="/entries", tags=["entries"])
 
@@ -150,4 +150,118 @@ def log_symptom(
         "symptom_log_id": new_entry.symptom_log_id
     }
 
+
+@router.get("/allergens")
+def get_allergen_logs(
+    limit: int = Query(10, ge=1, le=50),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    logs = (
+        db.query(AllergenLog, Allergen, Unit)
+        .join(Allergen, Allergen.allergen_id == AllergenLog.allergen_id)
+        .outerjoin(Unit, Unit.unit_id == AllergenLog.unit_id)
+        .filter(AllergenLog.user_id == current_user.user_id)
+        .order_by(AllergenLog.date_time.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "allergen_log_id": log.allergen_log_id,
+            "allergen_id": log.allergen_id,
+            "allergen_name": allergen.allergen_name,
+            "date_time": log.date_time.isoformat(),
+            "quantity": log.quantity,
+            "unit_id": log.unit_id,
+            "unit_name": unit.unit_name if unit else None,
+        }
+        for log, allergen, unit in logs
+    ]
+
+
+@router.get("/symptoms")
+def get_symptom_logs(
+    limit: int = Query(10, ge=1, le=50),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    logs = (
+        db.query(SymptomLog, Symptom)
+        .join(Symptom, Symptom.symptom_id == SymptomLog.symptom_id)
+        .filter(SymptomLog.user_id == current_user.user_id)
+        .order_by(SymptomLog.date_time.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "symptom_log_id": log.symptom_log_id,
+            "symptom_id": log.symptom_id,
+            "symptom_name": symptom.symptom_name,
+            "date_time": log.date_time.isoformat(),
+            "intensity": log.symptom_intensity,
+        }
+        for log, symptom in logs
+    ]
+
+
+@router.patch("/allergens/{allergen_log_id}")
+def update_allergen_log(
+    allergen_log_id: int,
+    payload: AllergenLogUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    log = (
+        db.query(AllergenLog)
+        .filter(
+            AllergenLog.allergen_log_id == allergen_log_id,
+            AllergenLog.user_id == current_user.user_id,
+        )
+        .first()
+    )
+    if not log:
+        raise HTTPException(404, "Allergen log not found")
+
+    if payload.allergen_id is not None:
+        log.allergen_id = payload.allergen_id
+    if payload.date_time is not None:
+        log.date_time = payload.date_time
+    log.quantity = payload.quantity
+    log.unit_id = payload.unit_id
+
+    db.commit()
+    db.refresh(log)
+    return {"message": "Updated", "allergen_log_id": log.allergen_log_id}
+
+
+@router.patch("/symptoms/{symptom_log_id}")
+def update_symptom_log(
+    symptom_log_id: int,
+    payload: SymptomLogUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    log = (
+        db.query(SymptomLog)
+        .filter(
+            SymptomLog.symptom_log_id == symptom_log_id,
+            SymptomLog.user_id == current_user.user_id,
+        )
+        .first()
+    )
+    if not log:
+        raise HTTPException(404, "Symptom log not found")
+
+    if payload.symptom_id is not None:
+        log.symptom_id = payload.symptom_id
+    if payload.date_time is not None:
+        log.date_time = payload.date_time
+    if payload.intensity is not None:
+        log.symptom_intensity = payload.intensity
+
+    db.commit()
+    db.refresh(log)
+    return {"message": "Updated", "symptom_log_id": log.symptom_log_id}
 

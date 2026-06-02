@@ -434,3 +434,129 @@ select:focus {
 .analysis-panel.visible {
   display: block;
 }
+
+
+/* =========================
+   Recent Logs
+   ========================= */
+
+.recent-logs-section {
+  margin-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 1rem;
+}
+
+.recent-logs-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.75rem 0;
+}
+
+.logs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.logs-empty,
+.logs-loading {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  font-style: italic;
+  margin: 0;
+}
+
+.log-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.log-item-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+}
+
+.log-field {
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+.log-field--name {
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-field--meta {
+  color: #6b7280;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.log-edit-btn {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.6rem;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  color: #374151;
+  cursor: pointer;
+  font-weight: 500;
+  width: auto;
+  margin: 0;
+}
+
+.log-edit-btn:hover {
+  background: #e5e7eb;
+}
+
+.log-item-edit {
+  padding: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.edit-row {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.edit-row label {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.25rem;
+}
+
+.edit-actions .primary,
+.edit-actions .secondary {
+  width: auto;
+  margin: 0;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+.edit-error {
+  font-size: 0.8rem;
+  margin: 0;
+}
