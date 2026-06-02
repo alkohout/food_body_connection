@@ -322,6 +322,23 @@
               <figure class="img-figure" id="ts-figure" style="display:none; margin-top:1rem">
                 <img id="ts-plot" src="" alt="Time Series Plot" style="width:100%" />
               </figure>
+
+              <!-- Cross-correlation section — visible only when two variables are selected -->
+              <div id="ts-ccf-section" style="display:none; margin-top:1.5rem; border-top:1px solid #e5e7eb; padding-top:1rem">
+                <h5 style="margin:0 0 0.25rem; font-size:0.9rem; font-weight:600; color:#374151">Cross-Correlation Analysis</h5>
+                <p style="margin:0 0 0.75rem; font-size:0.82rem; color:#6b7280">
+                  How strongly does variable 1 predict variable 2 at different time lags?
+                  A peak at +N hours means variable 1 tends to occur N hours <em>before</em> variable 2.
+                </p>
+                <button type="button" id="ts-ccf-btn" class="secondary" style="width:auto;margin:0;padding:0.35rem 0.9rem;font-size:0.85rem">
+                  Run cross-correlation
+                </button>
+                <p id="ts-ccf-status" class="status"></p>
+                <figure class="img-figure" id="ts-ccf-figure" style="display:none; margin-top:0.75rem">
+                  <img id="ts-ccf-plot" src="" alt="Cross-Correlation Plot" style="width:100%" />
+                </figure>
+              </div>
+
             </div>
 
             <!-- Deeper analysis -->

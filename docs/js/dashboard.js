@@ -885,31 +885,100 @@ function setupTimeSeries() {
   });
   nameSelect.addEventListener("change", fetchTsPlot);
 
-  // Variable 2
+  // ── CCF section helpers ─────────────────────────────────────
+
+  const ccfSection = getElement("ts-ccf-section");
+  const ccfFigure  = getElement("ts-ccf-figure");
+  const ccfStatus  = getElement("ts-ccf-status");
+  const ccfImg     = getElement("ts-ccf-plot");
+  const ccfBtn     = getElement("ts-ccf-btn");
+
+  function showCcfSection(visible) {
+    if (ccfSection) ccfSection.style.display = visible ? "" : "none";
+    if (!visible && ccfFigure) ccfFigure.style.display = "none";
+    if (!visible && ccfStatus) ccfStatus.textContent = "";
+  }
+
+  function resetCcfResult() {
+    if (ccfFigure) ccfFigure.style.display = "none";
+    if (ccfStatus) ccfStatus.textContent = "";
+  }
+
+  async function fetchCcfPlot() {
+    const type  = typeSelect.value;
+    const name  = nameSelect.value;
+    const type2 = type2Select?.value;
+    const name2 = name2Select?.value;
+    if (!name || !type2 || !name2) return;
+
+    const params = new URLSearchParams({ type, name, type2, name2 });
+    Object.entries(getDateRange()).forEach(([k, v]) => params.set(k, v));
+
+    if (ccfStatus)  ccfStatus.textContent = "Running analysis…";
+    if (ccfFigure)  ccfFigure.style.display = "none";
+
+    const token = localStorage.getItem("access_token");
+    try {
+      const res = await fetch(`${API_URL}/analysis/plot_cross_correlation?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const blob = await res.blob();
+      if (ccfImg.dataset.objectUrl) URL.revokeObjectURL(ccfImg.dataset.objectUrl);
+      const objectUrl = URL.createObjectURL(blob);
+      ccfImg.src = objectUrl;
+      ccfImg.dataset.objectUrl = objectUrl;
+
+      if (ccfStatus)  ccfStatus.textContent = "";
+      if (ccfFigure)  ccfFigure.style.display = "block";
+    } catch (err) {
+      if (ccfStatus) ccfStatus.textContent = `Analysis failed: ${err.message}`;
+      console.error("CCF plot error:", err);
+    }
+  }
+
+  if (ccfBtn) ccfBtn.addEventListener("click", fetchCcfPlot);
+
+  // ── Variable 2 ──────────────────────────────────────────────
+
   type2Select?.addEventListener("change", () => {
     populateNameSelect(type2Select, name2Select);
-    if (!type2Select.value) fetchTsPlot(); // cleared second var → refresh single
+    resetCcfResult();
+    if (!type2Select.value) {
+      showCcfSection(false);
+      if (nameSelect.value) fetchTsPlot();
+    }
   });
-  name2Select?.addEventListener("change", () => { if (nameSelect.value) fetchTsPlot(); });
 
-  // Date range buttons
+  name2Select?.addEventListener("change", () => {
+    resetCcfResult();
+    const hasBoth = !!(nameSelect.value && name2Select.value && type2Select.value);
+    showCcfSection(hasBoth);
+    if (nameSelect.value) fetchTsPlot();
+  });
+
+  // ── Date range buttons ───────────────────────────────────────
+
   document.querySelectorAll(".ts-range-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".ts-range-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       const isCustom = btn.dataset.range === "custom";
       if (customRange) customRange.style.display = isCustom ? "" : "none";
+      resetCcfResult();
       if (!isCustom && nameSelect.value) fetchTsPlot();
     });
   });
 
   // Custom date inputs
-  dateFrom?.addEventListener("change", () => { if (nameSelect.value) fetchTsPlot(); });
-  dateTo?.addEventListener("change",   () => { if (nameSelect.value) fetchTsPlot(); });
+  dateFrom?.addEventListener("change", () => { resetCcfResult(); if (nameSelect.value) fetchTsPlot(); });
+  dateTo?.addEventListener("change",   () => { resetCcfResult(); if (nameSelect.value) fetchTsPlot(); });
 
   // Init
   populateNameSelect(typeSelect, nameSelect);
   if (name2Select) name2Select.disabled = true;
+  showCcfSection(false);
 }
 
 function setupAnalysisDropdown() {

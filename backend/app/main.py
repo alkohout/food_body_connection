@@ -18,6 +18,7 @@ import app.api.routes.plot_bar_plots as plot_bar_plots
 import app.api.routes.plot_risk as plot_risk
 import app.api.routes.generate_summary_text as generate_summary_text
 import app.api.routes.plot_event_series as plot_event_series
+import app.api.routes.plot_time_series_analysis as plot_time_series_analysis
 from app.api.routes import units
 from app.api.routes import entries
 
@@ -54,6 +55,7 @@ app.include_router(plot_bar_plots.router)
 app.include_router(plot_risk.router)
 app.include_router(generate_summary_text.router)
 app.include_router(plot_event_series.router)
+app.include_router(plot_time_series_analysis.router)
 
 # Create tables (temporary — later use migrations)
 Base.metadata.create_all(bind=engine)
