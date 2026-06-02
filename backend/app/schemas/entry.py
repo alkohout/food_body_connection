@@ -25,7 +25,7 @@ class AllergenLogUpdate(BaseModel):
 class SymptomLogUpdate(BaseModel):
     symptom_id: Optional[int] = None
     date_time: Optional[str] = None
-    intensity: Optional[Intensity] = None
+    intensity: Optional[int] = None
 
 class UnitOut(BaseModel):
     unit_id: int
