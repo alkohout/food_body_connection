@@ -534,3 +534,38 @@ select:focus {
 
 .log-row--saved td   { background: #dcfce7; transition: background 0.8s ease; }
 .log-row--error td   { background: #fee2e2; transition: background 0.8s ease; }
+
+
+/* =========================
+   Time series – controls
+   ========================= */
+
+.ts-type-sel { width: 100px; flex-shrink: 0; }
+.ts-name-sel { flex: 1; min-width: 0; }
+
+.ts-range-btns {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.ts-range-btn {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #374151;
+  width: auto;
+  margin: 0;
+}
+
+.ts-range-btn:hover { background: #e5e7eb; }
+
+.ts-range-btn.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}

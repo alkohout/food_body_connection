@@ -797,26 +797,49 @@ async function showAnalysisPanel(selected) {
 // =========================================================
 
 function setupTimeSeries() {
-  const typeSelect = getElement("ts-type-select");
-  const nameSelect = getElement("ts-name-select");
-  const figure    = getElement("ts-figure");
-  const img       = getElement("ts-plot");
-  const status    = getElement("ts-status");
+  const typeSelect  = getElement("ts-type-select");
+  const nameSelect  = getElement("ts-name-select");
+  const type2Select = getElement("ts-type2-select");
+  const name2Select = getElement("ts-name2-select");
+  const figure      = getElement("ts-figure");
+  const img         = getElement("ts-plot");
+  const status      = getElement("ts-status");
+  const customRange = getElement("ts-custom-range");
+  const dateFrom    = getElement("ts-date-from");
+  const dateTo      = getElement("ts-date-to");
 
   if (!typeSelect || !nameSelect) return;
 
-  function populateNames() {
-    const isAllergen = typeSelect.value === "allergen";
+  function populateNameSelect(typeEl, nameEl) {
+    const val = typeEl.value;
+    if (!val) { nameEl.innerHTML = '<option value="">Select…</option>'; nameEl.disabled = true; return; }
+    const isAllergen = val === "allergen";
     const items = isAllergen ? cachedAllergens : cachedSymptoms;
-
-    nameSelect.innerHTML = '<option value="">Select…</option>';
+    nameEl.innerHTML = '<option value="">Select…</option>';
     items.forEach(item => {
       const label = isAllergen ? item.allergen_name : item.symptom_name;
-      nameSelect.appendChild(new Option(label, label));
+      nameEl.appendChild(new Option(label, label));
     });
+    nameEl.disabled = false;
+  }
 
-    if (figure) figure.style.display = "none";
-    if (status) status.textContent = "";
+  function getDateRange() {
+    const active = document.querySelector(".ts-range-btn.active");
+    const range = active?.dataset.range ?? "all";
+    if (range === "all") return {};
+    if (range === "custom") {
+      const params = {};
+      if (dateFrom?.value) params.date_from = dateFrom.value;
+      if (dateTo?.value)   params.date_to   = dateTo.value;
+      return params;
+    }
+    const months = range === "3m" ? 3 : 1;
+    const from = new Date();
+    from.setMonth(from.getMonth() - months);
+    return {
+      date_from: from.toISOString().slice(0, 10),
+      date_to:   new Date().toISOString().slice(0, 10),
+    };
   }
 
   async function fetchTsPlot() {
@@ -824,17 +847,21 @@ function setupTimeSeries() {
     const name = nameSelect.value;
     if (!name) return;
 
+    const type2 = type2Select?.value || "";
+    const name2 = name2Select?.value || "";
+
+    const params = new URLSearchParams({ type, name });
+    if (type2 && name2) { params.set("type2", type2); params.set("name2", name2); }
+    Object.entries(getDateRange()).forEach(([k, v]) => params.set(k, v));
+
     if (status) status.textContent = "Loading…";
     if (figure) figure.style.display = "none";
 
     const token = localStorage.getItem("access_token");
-    const url = `${API_URL}/analysis/plot_event_series?type=${encodeURIComponent(type)}&name=${encodeURIComponent(name)}`;
-
     try {
-      const res = await fetch(url, {
+      const res = await fetch(`${API_URL}/analysis/plot_event_series?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const blob = await res.blob();
@@ -851,10 +878,38 @@ function setupTimeSeries() {
     }
   }
 
-  typeSelect.addEventListener("change", populateNames);
+  // Variable 1
+  typeSelect.addEventListener("change", () => {
+    populateNameSelect(typeSelect, nameSelect);
+    if (figure) figure.style.display = "none";
+  });
   nameSelect.addEventListener("change", fetchTsPlot);
 
-  populateNames();
+  // Variable 2
+  type2Select?.addEventListener("change", () => {
+    populateNameSelect(type2Select, name2Select);
+    if (!type2Select.value) fetchTsPlot(); // cleared second var → refresh single
+  });
+  name2Select?.addEventListener("change", () => { if (nameSelect.value) fetchTsPlot(); });
+
+  // Date range buttons
+  document.querySelectorAll(".ts-range-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".ts-range-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const isCustom = btn.dataset.range === "custom";
+      if (customRange) customRange.style.display = isCustom ? "" : "none";
+      if (!isCustom && nameSelect.value) fetchTsPlot();
+    });
+  });
+
+  // Custom date inputs
+  dateFrom?.addEventListener("change", () => { if (nameSelect.value) fetchTsPlot(); });
+  dateTo?.addEventListener("change",   () => { if (nameSelect.value) fetchTsPlot(); });
+
+  // Init
+  populateNameSelect(typeSelect, nameSelect);
+  if (name2Select) name2Select.disabled = true;
 }
 
 function setupAnalysisDropdown() {

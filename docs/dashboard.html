@@ -270,21 +270,51 @@
             <!-- Time series -->
             <div id="panel-time-series" class="analysis-panel">
               <h4>Time Series Plot</h4>
-              <p>Select an allergen or symptom to see all recorded events over time.</p>
+              <p>Compare one or two variables over time.</p>
 
               <div class="form-row">
-                <label for="ts-type-select">Type</label>
-                <select id="ts-type-select">
-                  <option value="allergen">Allergen</option>
-                  <option value="symptom">Symptom</option>
-                </select>
+                <label>Variable 1</label>
+                <div class="inline-fields">
+                  <select id="ts-type-select" class="ts-type-sel">
+                    <option value="allergen">Allergen</option>
+                    <option value="symptom">Symptom</option>
+                  </select>
+                  <select id="ts-name-select" class="ts-name-sel">
+                    <option value="">Select…</option>
+                  </select>
+                </div>
               </div>
 
               <div class="form-row">
-                <label for="ts-name-select">Name</label>
-                <select id="ts-name-select">
-                  <option value="">Select…</option>
-                </select>
+                <label>Variable 2</label>
+                <div class="inline-fields">
+                  <select id="ts-type2-select" class="ts-type-sel">
+                    <option value="">None</option>
+                    <option value="allergen">Allergen</option>
+                    <option value="symptom">Symptom</option>
+                  </select>
+                  <select id="ts-name2-select" class="ts-name-sel" disabled>
+                    <option value="">Select…</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <label>Date range</label>
+                <div class="ts-range-btns">
+                  <button type="button" class="ts-range-btn active" data-range="all">All</button>
+                  <button type="button" class="ts-range-btn" data-range="3m">3 months</button>
+                  <button type="button" class="ts-range-btn" data-range="1m">1 month</button>
+                  <button type="button" class="ts-range-btn" data-range="custom">Custom</button>
+                </div>
+              </div>
+
+              <div class="form-row" id="ts-custom-range" style="display:none">
+                <label>From / To</label>
+                <div class="inline-fields">
+                  <input type="date" id="ts-date-from" />
+                  <input type="date" id="ts-date-to" />
+                </div>
               </div>
 
               <p id="ts-status" class="status"></p>
