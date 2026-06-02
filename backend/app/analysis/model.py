@@ -265,7 +265,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             y=best_y,
             feature_names=best_X.columns,
             params={
-                "penalty": best_params["penalty"],
+                "penalty": "l2",
                 "C": best_params["C"],
                 "solver": "liblinear",
                 "max_iter": 1000,
