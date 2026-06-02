@@ -337,6 +337,32 @@
                 <figure class="img-figure" id="ts-ccf-figure" style="display:none; margin-top:0.75rem">
                   <img id="ts-ccf-plot" src="" alt="Cross-Correlation Plot" style="width:100%" />
                 </figure>
+
+                <!-- Peri-event -->
+                <div style="margin-top:1.25rem; border-top:1px solid #f3f4f6; padding-top:1rem">
+                  <h5 style="margin:0 0 0.25rem; font-size:0.9rem; font-weight:600; color:#374151">Peri-event Analysis</h5>
+                  <p style="margin:0 0 0.75rem; font-size:0.82rem; color:#6b7280">
+                    Treats <strong>variable 2</strong> as the trigger event and shows how often
+                    <strong>variable 1</strong> occurs in the days surrounding it.
+                  </p>
+                  <div class="inline-fields" style="margin-bottom:0.75rem">
+                    <label style="font-size:0.82rem;color:#6b7280;white-space:nowrap">Window ±</label>
+                    <select id="ts-peri-window" style="width:90px">
+                      <option value="3">3 days</option>
+                      <option value="5">5 days</option>
+                      <option value="7" selected>7 days</option>
+                      <option value="14">14 days</option>
+                    </select>
+                  </div>
+                  <button type="button" id="ts-peri-btn" class="secondary" style="width:auto;margin:0;padding:0.35rem 0.9rem;font-size:0.85rem">
+                    Run peri-event analysis
+                  </button>
+                  <p id="ts-peri-status" class="status"></p>
+                  <figure class="img-figure" id="ts-peri-figure" style="display:none; margin-top:0.75rem">
+                    <img id="ts-peri-plot" src="" alt="Peri-event Plot" style="width:100%" />
+                  </figure>
+                </div>
+
               </div>
 
             </div>

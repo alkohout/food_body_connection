@@ -900,8 +900,10 @@ function setupTimeSeries() {
   }
 
   function resetCcfResult() {
-    if (ccfFigure) ccfFigure.style.display = "none";
-    if (ccfStatus) ccfStatus.textContent = "";
+    if (ccfFigure)  ccfFigure.style.display  = "none";
+    if (ccfStatus)  ccfStatus.textContent     = "";
+    if (periFigure) periFigure.style.display  = "none";
+    if (periStatus) periStatus.textContent    = "";
   }
 
   async function fetchCcfPlot() {
@@ -939,6 +941,56 @@ function setupTimeSeries() {
   }
 
   if (ccfBtn) ccfBtn.addEventListener("click", fetchCcfPlot);
+
+  // ── Peri-event ──────────────────────────────────────────────
+
+  const periBtn     = getElement("ts-peri-btn");
+  const periFigure  = getElement("ts-peri-figure");
+  const periStatus  = getElement("ts-peri-status");
+  const periImg     = getElement("ts-peri-plot");
+  const periWindow  = getElement("ts-peri-window");
+
+  function resetPeriResult() {
+    if (periFigure) periFigure.style.display = "none";
+    if (periStatus) periStatus.textContent = "";
+  }
+
+  async function fetchPeriPlot() {
+    const type  = typeSelect.value;
+    const name  = nameSelect.value;
+    const type2 = type2Select?.value;
+    const name2 = name2Select?.value;
+    const win   = periWindow?.value ?? "7";
+    if (!name || !type2 || !name2) return;
+
+    const params = new URLSearchParams({ type, name, type2, name2, window_days: win });
+    Object.entries(getDateRange()).forEach(([k, v]) => params.set(k, v));
+
+    if (periStatus) periStatus.textContent = "Running analysis…";
+    if (periFigure) periFigure.style.display = "none";
+
+    const token = localStorage.getItem("access_token");
+    try {
+      const res = await fetch(`${API_URL}/analysis/plot_peri_event?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const blob = await res.blob();
+      if (periImg.dataset.objectUrl) URL.revokeObjectURL(periImg.dataset.objectUrl);
+      const objectUrl = URL.createObjectURL(blob);
+      periImg.src = objectUrl;
+      periImg.dataset.objectUrl = objectUrl;
+
+      if (periStatus) periStatus.textContent = "";
+      if (periFigure) periFigure.style.display = "block";
+    } catch (err) {
+      if (periStatus) periStatus.textContent = `Analysis failed: ${err.message}`;
+      console.error("Peri-event plot error:", err);
+    }
+  }
+
+  if (periBtn) periBtn.addEventListener("click", fetchPeriPlot);
 
   // ── Variable 2 ──────────────────────────────────────────────
 

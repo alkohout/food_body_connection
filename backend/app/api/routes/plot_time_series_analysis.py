@@ -33,6 +33,146 @@ from app.models.table_class import User
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
+
+# ──────────────────────────────────────────────
+# Peri-event time histogram
+# ──────────────────────────────────────────────
+
+def _peri_event(anchor_dates, target_dates, window_days: int):
+    """
+    For each anchor event, count how many target events fall on each
+    relative day (–window to +window).  Returns rates normalised by
+    the number of anchor events, plus the overall baseline rate.
+    """
+    def _naive(d):
+        return pd.Timestamp(d.replace(tzinfo=None) if getattr(d, "tzinfo", None) else d)
+
+    anchors = [_naive(d) for d in anchor_dates]
+    targets = [_naive(d) for d in target_dates]
+    n_anchors = len(anchors)
+
+    days   = list(range(-window_days, window_days + 1))
+    counts = {d: 0 for d in days}
+
+    for anchor in anchors:
+        for target in targets:
+            delta = (target - anchor).total_seconds() / 86400  # fractional days
+            day_bin = int(np.floor(delta))
+            if -window_days <= day_bin <= window_days:
+                counts[day_bin] += 1
+
+    rates = [counts[d] / n_anchors for d in days]
+
+    # Overall baseline: mean target events per day across the full span
+    all_ts = anchors + targets
+    span   = max((max(all_ts) - min(all_ts)).days, 1)
+    baseline = len(targets) / span
+
+    return days, rates, n_anchors, baseline
+
+
+@router.get("/plot_peri_event")
+def plot_peri_event(
+    item_type:   str = Query(..., alias="type"),
+    name:        str = Query(..., min_length=1),
+    type2:       str = Query(...),
+    name2:       str = Query(..., min_length=1),
+    window_days: int = Query(7, ge=1, le=30),
+    date_from: Optional[str] = Query(None),
+    date_to:   Optional[str] = Query(None),
+    db:           Session = Depends(get_db),
+    current_user: User    = Depends(get_current_user),
+):
+    """
+    Peri-event time histogram.
+
+    Variable 2 is the sparse 'anchor' event (e.g. Period).
+    Variable 1 is the target event whose rate is measured around each anchor
+    (e.g. Triptan).
+
+    Returns a bar chart of mean target events per day at each relative day
+    (–window_days … +window_days), with a dashed baseline rate line.
+    """
+    if item_type not in ("allergen", "symptom"):
+        raise HTTPException(400, "type must be 'allergen' or 'symptom'")
+    if type2 not in ("allergen", "symptom"):
+        raise HTTPException(400, "type2 must be 'allergen' or 'symptom'")
+
+    from_dt = _parse_date(date_from)
+    to_dt   = _parse_date(date_to, end_of_day=True)
+
+    try:
+        fetch1 = _get_allergen_data if item_type == "allergen" else _get_symptom_data
+        fetch2 = _get_allergen_data if type2      == "allergen" else _get_symptom_data
+
+        # variable 1 = target, variable 2 = anchor
+        dates1, values1 = fetch1(db, current_user.user_id, name,  from_dt, to_dt)
+        dates2, _       = fetch2(db, current_user.user_id, name2, from_dt, to_dt)
+
+        if len(dates2) < 2:
+            raise HTTPException(
+                400,
+                f"Need at least 2 '{name2}' events to run peri-event analysis."
+            )
+
+        days, rates, n_anchors, baseline = _peri_event(dates2, dates1, window_days)
+
+        # ── Interpretation ──────────────────────────────────────────
+        max_rate = max(rates) if rates else 0
+        max_day  = days[rates.index(max_rate)] if rates else 0
+
+        if baseline > 0 and max_rate > baseline * 1.5:
+            where = (
+                f"{abs(max_day)} day(s) before" if max_day < 0
+                else f"on the same day as" if max_day == 0
+                else f"{max_day} day(s) after"
+            )
+            pct = (max_rate - baseline) / baseline * 100
+            summary = (
+                f"Peak usage {where} {name2}  "
+                f"({pct:.0f} % above baseline,  r̄ = {max_rate:.2f} events/day)"
+            )
+        else:
+            summary = f"No clear clustering of {name} around {name2} events."
+
+        # ── Plot ────────────────────────────────────────────────────
+        fig, ax = plt.subplots(figsize=(10, 4.2))
+
+        bar_colors = ["#1d4ed8" if d == 0 else "#3b82f6" for d in days]
+        ax.bar(days, rates, width=0.75, color=bar_colors, alpha=0.75, zorder=3)
+
+        ax.axhline(baseline, color="#9ca3af", linestyle="--", linewidth=1.5,
+                   label=f"Baseline  ({baseline:.2f} events/day)")
+        ax.axvline(0, color="black", linewidth=0.7, alpha=0.3)
+
+        # Highlight the peak bar
+        ax.bar([max_day], [max_rate], width=0.75, color="#1d4ed8",
+               alpha=1.0, edgecolor="black", linewidth=1.2, zorder=4)
+
+        ax.set_xticks(days)
+        ax.set_xlabel(f"Days relative to {name2}  (0 = day of event)", fontsize=9)
+        ax.set_ylabel(f"Mean {name} events / day")
+        ax.set_title(
+            f"Peri-event analysis:  {name}  around  {name2}  "
+            f"(n = {n_anchors} anchor events)",
+            fontsize=12,
+        )
+        ax.legend(frameon=False, fontsize=8, loc="upper right")
+        ax.grid(axis="y", alpha=0.2)
+        ax.set_ylim(bottom=0)
+
+        fig.text(0.5, 0.01, summary, ha="center", fontsize=9,
+                 color="#374151", style="italic")
+
+        plt.tight_layout(rect=[0, 0.06, 1, 1])
+        return StreamingResponse(_save_fig(fig), media_type="image/png")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("plot_peri_event failed")
+        raise HTTPException(500, f"Failed to generate plot: {e}")
+
 _BIN_FREQ   = "12h"   # time-grid resolution
 _MAX_LAG    = 14      # ±14 bins = ±7 days
 
