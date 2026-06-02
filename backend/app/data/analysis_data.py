@@ -255,91 +255,38 @@ def get_all_symptom_events_df(
 ):
     """
     Retrieve all symptom log events as a pandas DataFrame.
-
-    Parameters
-    ----------
-    db : Session
-        Database session.
-    user_id : int
-        ID of the user.
-    symptom_name : str, optional
-        Filter results by specific symptom name.
-    symptom_group : str, optional
-        Filter results by symptom group.
-    start_dt : datetime, optional
-        Filter events occurring on or after this datetime.
-    end_dt : datetime, optional
-        Filter events occurring on or before this datetime.
-
-    Returns
-    -------
-    pandas.DataFrame
-        DataFrame containing:
-        - date_time
-        - symptom_id
-        - symptom_name
-        - symptom_group
-        - symptom_intensity
-
-        Returns empty DataFrame if no records found.
+    Uses a single JOIN query instead of N+1 individual lookups.
     """
-
-    # --------------------------------------------------
-    # Retrieve raw symptom events
-    # --------------------------------------------------
-    events = get_all_symptom_events(
-        db,
-        user_id,
-        start_dt,
-        end_dt
+    q = (
+        db.query(SymptomLog, Symptom)
+        .join(Symptom, Symptom.symptom_id == SymptomLog.symptom_id)
+        .filter(SymptomLog.user_id == user_id)
     )
+    if start_dt:
+        q = q.filter(SymptomLog.date_time >= start_dt)
+    if end_dt:
+        q = q.filter(SymptomLog.date_time <= end_dt + timedelta(hours=24))
+    if symptom_name is not None:
+        q = q.filter(Symptom.symptom_name == symptom_name)
+    if symptom_group is not None:
+        q = q.filter(Symptom.symptom_group == symptom_group)
 
-    # --------------------------------------------------
-    # Build DataFrame rows with symptom metadata
-    # --------------------------------------------------
-    rows = []
-
-    for e in events:
-
-        # Fetch symptom details
-        symptom = (
-            db.query(Symptom)
-            .filter(Symptom.user_id == user_id)
-            .filter(Symptom.symptom_id == e.symptom_id)
-            .first()
-        )
-
-        rows.append({
-            "date_time": e.date_time,
-            "symptom_id": e.symptom_id,
+    rows = [
+        {
+            "date_time": log.date_time,
+            "symptom_id": log.symptom_id,
             "symptom_name": symptom.symptom_name,
             "symptom_group": symptom.symptom_group,
-            "symptom_intensity": e.symptom_intensity,
-        })
+            "symptom_intensity": log.symptom_intensity,
+        }
+        for log, symptom in q.all()
+    ]
 
-    # --------------------------------------------------
-    # Convert rows to DataFrame
-    # --------------------------------------------------
     df = pd.DataFrame(rows)
-
-    # Return early if empty
     if df.empty:
         return df
 
-    # --------------------------------------------------
-    # Ensure datetime column is timezone-aware
-    # --------------------------------------------------
     df["date_time"] = pd.to_datetime(df["date_time"], utc=True)
-
-    # --------------------------------------------------
-    # Apply optional filters
-    # --------------------------------------------------
-    if symptom_name is not None:
-        df = df[df["symptom_name"] == symptom_name]
-
-    if symptom_group is not None:
-        df = df[df["symptom_group"] == symptom_group]
-
     return df
 
 def get_all_allergen_events(
@@ -398,72 +345,31 @@ def get_all_allergen_events_df(
 ):
     """
     Retrieve all allergen log events as a pandas DataFrame.
-
-    Parameters
-    ----------
-    db : Session
-        Database session.
-    user_id : int
-        ID of the user.
-    allergen_name : str, optional
-        Filter results by allergen name.
-    start_dt : datetime, optional
-        Filter events occurring on or after this datetime.
-    end_dt : datetime, optional
-        Filter events occurring on or before this datetime.
-
-    Returns
-    -------
-    pandas.DataFrame
-        DataFrame containing:
-        - date_time
-        - allergen_id
-        - allergen_name
-        - quantity
-        - unit_id
-        - volume
-
-        Returns empty DataFrame if no records found.
+    Uses a single JOIN query instead of N+1 individual lookups.
     """
-
-    # --------------------------------------------------
-    # Retrieve raw allergen events
-    # --------------------------------------------------
-    events = get_all_allergen_events(
-        db,
-        user_id,
-        start_dt,
-        end_dt
+    q = (
+        db.query(AllergenLog, Allergen, Unit)
+        .join(Allergen, Allergen.allergen_id == AllergenLog.allergen_id)
+        .outerjoin(Unit, Unit.unit_id == AllergenLog.unit_id)
+        .filter(AllergenLog.user_id == user_id)
     )
+    if start_dt:
+        q = q.filter(AllergenLog.date_time >= start_dt)
+    if end_dt:
+        q = q.filter(AllergenLog.date_time <= end_dt)
+    if allergen_name is not None:
+        q = q.filter(Allergen.allergen_name == allergen_name)
 
-    # --------------------------------------------------
-    # Build DataFrame rows with metadata and volume
-    # --------------------------------------------------
     rows = []
-
-    for e in events:
-
-        # Fetch allergen metadata
-        allergen = (
-            db.query(Allergen)
-            .filter(Allergen.user_id == user_id)
-            .filter(Allergen.allergen_id == e.allergen_id)
-            .first()
-        )
-
-        # Retrieve unit conversion
-        unit_obj = get_unit(db, unit_id=e.unit_id)
-        conversion = unit_obj.unit_conversion if unit_obj else None
-
-        # Calculate standardized volume if possible
-        volume = e.quantity * conversion if e.quantity and conversion else None
-
+    for log, allergen, unit in q.all():
+        conversion = unit.unit_conversion if unit else None
+        volume = log.quantity * conversion if log.quantity and conversion else None
         rows.append({
-            "date_time": e.date_time,
-            "allergen_id": e.allergen_id,
+            "date_time": log.date_time,
+            "allergen_id": log.allergen_id,
             "allergen_name": allergen.allergen_name,
-            "quantity": e.quantity,
-            "unit_id": e.unit_id,
+            "quantity": log.quantity,
+            "unit_id": log.unit_id,
             "volume": volume,
         })
 
@@ -480,13 +386,6 @@ def get_all_allergen_events_df(
     # Ensure datetime column is timezone-aware
     # --------------------------------------------------
     df["date_time"] = pd.to_datetime(df["date_time"], utc=True)
-
-    # --------------------------------------------------
-    # Apply optional allergen name filter
-    # --------------------------------------------------
-    if allergen_name is not None:
-        df = df[df["allergen_name"] == allergen_name]
-
     return df
 
 def get_unit(

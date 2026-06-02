@@ -143,11 +143,10 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             pos_rate = y.mean()
             use_balanced = pos_rate < 0.25 or pos_rate > 0.75
 
-            # Hyperparameter grid for model tuning
+            # Hyperparameter grid for model tuning (kept small for speed)
             param_grid = {
-                "penalty": ["l1", "l2"],
                 "C": [0.1, 1, 10],
-                "class_weight": ["balanced"] if use_balanced else [None]
+                "class_weight": ["balanced"] if use_balanced else [None],
             }
             
             # --------------------------------------------------
@@ -210,8 +209,8 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             # --------------------------------------------------
             # Nested Cross-Validation
             # --------------------------------------------------
-            outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-            inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+            outer_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+            inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
 
             # Hyperparameter tuning on inner folds
             grid = GridSearchCV(base_model, param_grid, cv=inner_cv, scoring="roc_auc")
