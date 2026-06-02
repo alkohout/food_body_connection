@@ -16,7 +16,8 @@ import app.api.routes.plot_allergen_rank as plot_allergen_rank
 import app.api.routes.plot_time_series as plot_time_series
 import app.api.routes.plot_bar_plots as plot_bar_plots
 import app.api.routes.plot_risk as plot_risk
-import app.api.routes.generate_summary_text as generate_summary_text 
+import app.api.routes.generate_summary_text as generate_summary_text
+import app.api.routes.plot_event_series as plot_event_series
 from app.api.routes import units
 from app.api.routes import entries
 
@@ -52,6 +53,7 @@ app.include_router(plot_time_series.router)
 app.include_router(plot_bar_plots.router)
 app.include_router(plot_risk.router)
 app.include_router(generate_summary_text.router)
+app.include_router(plot_event_series.router)
 
 # Create tables (temporary — later use migrations)
 Base.metadata.create_all(bind=engine)

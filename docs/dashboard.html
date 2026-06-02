@@ -208,6 +208,7 @@
               <option value="">Select an analysis…</option>
               <option value="allergen-importance">Allergen importance plot</option>
               <option value="symptom-grouping">Symptom grouping plot</option>
+              <option value="time-series">Time series plot</option>
               <option value="deeper-analysis">Deeper analysis</option>
             </select>
           </div>
@@ -263,6 +264,33 @@
                 <figcaption>
                   Figure: Symptom counts by body system...
                 </figcaption>
+              </figure>
+            </div>
+
+            <!-- Time series -->
+            <div id="panel-time-series" class="analysis-panel">
+              <h4>Time Series Plot</h4>
+              <p>Select an allergen or symptom to see all recorded events over time.</p>
+
+              <div class="form-row">
+                <label for="ts-type-select">Type</label>
+                <select id="ts-type-select">
+                  <option value="allergen">Allergen</option>
+                  <option value="symptom">Symptom</option>
+                </select>
+              </div>
+
+              <div class="form-row">
+                <label for="ts-name-select">Name</label>
+                <select id="ts-name-select">
+                  <option value="">Select…</option>
+                </select>
+              </div>
+
+              <p id="ts-status" class="status"></p>
+
+              <figure class="img-figure" id="ts-figure" style="display:none; margin-top:1rem">
+                <img id="ts-plot" src="" alt="Time Series Plot" style="width:100%" />
               </figure>
             </div>
 

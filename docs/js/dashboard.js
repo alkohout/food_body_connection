@@ -746,6 +746,7 @@ function hideAllAnalysisPanels() {
     getElement("analysis-placeholder"),
     getElement("panel-allergen-importance"),
     getElement("panel-symptom-grouping"),
+    getElement("panel-time-series"),
     getElement("panel-deeper-analysis")
   ];
 
@@ -779,10 +780,81 @@ async function showAnalysisPanel(selected) {
     return;
   }
 
+  if (selected === "time-series") {
+    const tsPanel = getElement("panel-time-series");
+    if (tsPanel) tsPanel.classList.add("visible");
+    return;
+  }
+
   if (selected === "deeper-analysis") {
     if (deeperPanel) deeperPanel.classList.add("visible");
     return;
   }
+}
+
+// =========================================================
+// Time series panel
+// =========================================================
+
+function setupTimeSeries() {
+  const typeSelect = getElement("ts-type-select");
+  const nameSelect = getElement("ts-name-select");
+  const figure    = getElement("ts-figure");
+  const img       = getElement("ts-plot");
+  const status    = getElement("ts-status");
+
+  if (!typeSelect || !nameSelect) return;
+
+  function populateNames() {
+    const isAllergen = typeSelect.value === "allergen";
+    const items = isAllergen ? cachedAllergens : cachedSymptoms;
+
+    nameSelect.innerHTML = '<option value="">Select…</option>';
+    items.forEach(item => {
+      const label = isAllergen ? item.allergen_name : item.symptom_name;
+      nameSelect.appendChild(new Option(label, label));
+    });
+
+    if (figure) figure.style.display = "none";
+    if (status) status.textContent = "";
+  }
+
+  async function fetchTsPlot() {
+    const type = typeSelect.value;
+    const name = nameSelect.value;
+    if (!name) return;
+
+    if (status) status.textContent = "Loading…";
+    if (figure) figure.style.display = "none";
+
+    const token = localStorage.getItem("access_token");
+    const url = `${API_URL}/analysis/plot_event_series?type=${encodeURIComponent(type)}&name=${encodeURIComponent(name)}`;
+
+    try {
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const blob = await res.blob();
+      if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+      const objectUrl = URL.createObjectURL(blob);
+      img.src = objectUrl;
+      img.dataset.objectUrl = objectUrl;
+
+      if (status) status.textContent = "";
+      if (figure) figure.style.display = "block";
+    } catch (err) {
+      if (status) status.textContent = `Could not load plot: ${err.message}`;
+      console.error("Time series plot error:", err);
+    }
+  }
+
+  typeSelect.addEventListener("change", populateNames);
+  nameSelect.addEventListener("change", fetchTsPlot);
+
+  populateNames();
 }
 
 function setupAnalysisDropdown() {
@@ -1617,6 +1689,7 @@ async function init() {
     // Set up analysis
     //setupAnalysis();
     setupAnalysisDropdown();
+    setupTimeSeries();
 
     // Initialize captions
     initializeCaptions();
