@@ -1161,6 +1161,33 @@ function isoToDateTimeLocal(isoString) {
 }
 
 // =========================================================
+// Recent logs – cell builder helper
+// =========================================================
+
+function buildLogCell(displayText, inputEl) {
+  const td = document.createElement("td");
+  td.className = "log-cell";
+
+  const span = document.createElement("span");
+  span.className = "cell-display";
+  span.textContent = displayText;
+
+  inputEl.className = "cell-input";
+  inputEl.hidden = true;
+
+  td.appendChild(span);
+  td.appendChild(inputEl);
+
+  td.addEventListener("click", () => {
+    span.hidden = true;
+    inputEl.hidden = false;
+    inputEl.focus();
+  });
+
+  return td;
+}
+
+// =========================================================
 // Recent logs – render allergen logs
 // =========================================================
 
@@ -1173,109 +1200,145 @@ function renderAllergenLogs(logs, allergens, units) {
     return;
   }
 
-  container.innerHTML = "";
+  const table = document.createElement("table");
+  table.className = "logs-table";
+  table.innerHTML = `<thead><tr><th>Allergen</th><th>Date &amp; time</th><th>Amount</th></tr></thead>`;
+  const tbody = document.createElement("tbody");
+  table.appendChild(tbody);
 
   logs.forEach(log => {
-    const item = document.createElement("div");
-    item.className = "log-item";
+    const orig = {
+      allergen_id: log.allergen_id,
+      date_time: log.date_time,
+      quantity: log.quantity,
+      unit_id: log.unit_id,
+    };
 
-    const qtyText = log.quantity != null
-      ? `${log.quantity}${log.unit_name ? " " + log.unit_name : ""}`
-      : "—";
+    // Allergen select
+    const allergenSel = document.createElement("select");
+    allergens.forEach(a => allergenSel.appendChild(new Option(a.allergen_name, a.allergen_id, false, a.allergen_id === log.allergen_id)));
 
-    const display = document.createElement("div");
-    display.className = "log-item-display";
-    display.innerHTML = `
-      <span class="log-field log-field--name">${log.allergen_name}</span>
-      <span class="log-field log-field--meta">${formatLogDate(log.date_time)}</span>
-      <span class="log-field log-field--meta">${qtyText}</span>
-      <button class="log-edit-btn" type="button">Edit</button>
-    `;
+    // Date input
+    const dateInp = document.createElement("input");
+    dateInp.type = "datetime-local";
+    dateInp.value = isoToDateTimeLocal(log.date_time);
 
-    const allergenOptions = allergens
-      .map(a => `<option value="${a.allergen_id}" ${a.allergen_id === log.allergen_id ? "selected" : ""}>${a.allergen_name}</option>`)
-      .join("");
+    // Amount cell: qty + unit side-by-side when editing
+    const amountTd = document.createElement("td");
+    amountTd.className = "log-cell";
 
-    const unitOptions = `<option value="">—</option>` +
-      units.map(u => `<option value="${u.unit_id}" ${u.unit_id === log.unit_id ? "selected" : ""}>${u.unit_name}</option>`).join("");
+    const amountSpan = document.createElement("span");
+    amountSpan.className = "cell-display";
+    const qtyStr = log.quantity != null ? String(log.quantity) : "";
+    const unitName = units.find(u => u.unit_id === log.unit_id)?.unit_name ?? "";
+    amountSpan.textContent = qtyStr ? `${qtyStr}${unitName ? " " + unitName : ""}` : "—";
 
-    const edit = document.createElement("div");
-    edit.className = "log-item-edit";
-    edit.hidden = true;
-    edit.innerHTML = `
-      <div class="edit-row">
-        <label>Allergen</label>
-        <select class="edit-allergen">${allergenOptions}</select>
-      </div>
-      <div class="edit-row">
-        <label>Date &amp; time</label>
-        <input type="datetime-local" class="edit-date" value="${isoToDateTimeLocal(log.date_time)}" />
-      </div>
-      <div class="edit-row">
-        <label>Quantity</label>
-        <div class="inline-fields">
-          <input type="number" step="any" class="edit-qty" value="${log.quantity ?? ""}" style="width:70px" />
-          <select class="edit-unit" style="width:80px">${unitOptions}</select>
-        </div>
-      </div>
-      <div class="edit-actions">
-        <button type="button" class="primary save-log-btn">Save</button>
-        <button type="button" class="secondary cancel-log-btn">Cancel</button>
-        <span class="edit-error error"></span>
-      </div>
-    `;
+    const amountWrap = document.createElement("div");
+    amountWrap.className = "cell-amount-inputs";
+    amountWrap.hidden = true;
 
-    item.appendChild(display);
-    item.appendChild(edit);
-    container.appendChild(item);
+    const qtyInp = document.createElement("input");
+    qtyInp.type = "number";
+    qtyInp.step = "any";
+    qtyInp.className = "cell-input cell-qty";
+    qtyInp.value = log.quantity ?? "";
 
-    display.querySelector(".log-edit-btn").addEventListener("click", () => {
-      display.hidden = true;
-      edit.hidden = false;
+    const unitSel = document.createElement("select");
+    unitSel.className = "cell-input cell-unit";
+    unitSel.appendChild(new Option("—", ""));
+    units.forEach(u => unitSel.appendChild(new Option(u.unit_name, u.unit_id, false, u.unit_id === log.unit_id)));
+
+    amountWrap.appendChild(qtyInp);
+    amountWrap.appendChild(unitSel);
+    amountTd.appendChild(amountSpan);
+    amountTd.appendChild(amountWrap);
+    amountTd.addEventListener("click", () => {
+      amountSpan.hidden = true;
+      amountWrap.hidden = false;
+      qtyInp.focus();
     });
 
-    edit.querySelector(".cancel-log-btn").addEventListener("click", () => {
-      edit.hidden = true;
-      display.hidden = false;
+    const allergenName = allergens.find(a => a.allergen_id === log.allergen_id)?.allergen_name ?? "";
+    const allergenTd = buildLogCell(allergenName, allergenSel);
+    const dateTd = buildLogCell(formatLogDate(log.date_time), dateInp);
+
+    const tr = document.createElement("tr");
+    tr.className = "log-row";
+    tr.dataset.dirty = "false";
+    tr.appendChild(allergenTd);
+    tr.appendChild(dateTd);
+    tr.appendChild(amountTd);
+    tbody.appendChild(tr);
+
+    const allInputs = [allergenSel, dateInp, qtyInp, unitSel];
+    allInputs.forEach(inp => {
+      inp.addEventListener("input", () => { tr.dataset.dirty = "true"; });
+      inp.addEventListener("change", () => { tr.dataset.dirty = "true"; });
+      inp.addEventListener("keydown", e => {
+        if (e.key === "Enter") { e.preventDefault(); inp.blur(); }
+        if (e.key === "Escape") {
+          allergenSel.value = orig.allergen_id;
+          dateInp.value = isoToDateTimeLocal(orig.date_time);
+          qtyInp.value = orig.quantity ?? "";
+          unitSel.value = orig.unit_id ?? "";
+          tr.dataset.dirty = "false";
+          closeAllergenCells();
+        }
+      });
     });
 
-    edit.querySelector(".save-log-btn").addEventListener("click", async () => {
-      const errorEl = edit.querySelector(".edit-error");
-      errorEl.textContent = "";
+    function closeAllergenCells() {
+      allergenTd.querySelector(".cell-display").hidden = false;
+      allergenSel.hidden = true;
+      dateTd.querySelector(".cell-display").hidden = false;
+      dateInp.hidden = true;
+      amountSpan.hidden = false;
+      amountWrap.hidden = true;
+    }
 
-      const allergenId = Number(edit.querySelector(".edit-allergen").value);
-      const dateTime = new Date(edit.querySelector(".edit-date").value).toISOString();
-      const qtyRaw = edit.querySelector(".edit-qty").value;
-      const unitId = Number(edit.querySelector(".edit-unit").value) || null;
+    tr.addEventListener("focusout", () => {
+      setTimeout(async () => {
+        if (tr.contains(document.activeElement)) return;
+        if (tr.dataset.dirty !== "true") return;
+        tr.dataset.dirty = "false";
 
-      try {
-        await updateAllergenLog(log.allergen_log_id, {
-          allergen_id: allergenId,
-          date_time: dateTime,
-          quantity: qtyRaw !== "" ? Number(qtyRaw) : null,
-          unit_id: unitId,
-        });
+        const allergenId = Number(allergenSel.value);
+        const dateTime = new Date(dateInp.value).toISOString();
+        const qty = qtyInp.value !== "" ? Number(qtyInp.value) : null;
+        const unitId = Number(unitSel.value) || null;
 
-        const newAllergenName = allergens.find(a => a.allergen_id === allergenId)?.allergen_name ?? "";
-        const newUnitName = units.find(u => u.unit_id === unitId)?.unit_name ?? "";
-        const newQtyText = qtyRaw !== "" ? `${Number(qtyRaw)}${newUnitName ? " " + newUnitName : ""}` : "—";
+        tr.classList.add("log-row--saving");
+        try {
+          await updateAllergenLog(log.allergen_log_id, { allergen_id: allergenId, date_time: dateTime, quantity: qty, unit_id: unitId });
 
-        display.querySelector(".log-field--name").textContent = newAllergenName;
-        display.querySelectorAll(".log-field--meta")[0].textContent = formatLogDate(dateTime);
-        display.querySelectorAll(".log-field--meta")[1].textContent = newQtyText;
+          allergenTd.querySelector(".cell-display").textContent = allergens.find(a => a.allergen_id === allergenId)?.allergen_name ?? "";
+          dateTd.querySelector(".cell-display").textContent = formatLogDate(dateTime);
+          const newQtyStr = qty != null ? String(qty) : "";
+          const newUnitName = units.find(u => u.unit_id === unitId)?.unit_name ?? "";
+          amountSpan.textContent = newQtyStr ? `${newQtyStr}${newUnitName ? " " + newUnitName : ""}` : "—";
 
-        log.allergen_id = allergenId;
-        log.date_time = dateTime;
-        log.quantity = qtyRaw !== "" ? Number(qtyRaw) : null;
-        log.unit_id = unitId;
-
-        edit.hidden = true;
-        display.hidden = false;
-      } catch (err) {
-        errorEl.textContent = "Save failed: " + err.message;
-      }
+          Object.assign(orig, { allergen_id: allergenId, date_time: dateTime, quantity: qty, unit_id: unitId });
+          closeAllergenCells();
+          tr.classList.remove("log-row--saving");
+          tr.classList.add("log-row--saved");
+          setTimeout(() => tr.classList.remove("log-row--saved"), 1000);
+        } catch (err) {
+          allergenSel.value = orig.allergen_id;
+          dateInp.value = isoToDateTimeLocal(orig.date_time);
+          qtyInp.value = orig.quantity ?? "";
+          unitSel.value = orig.unit_id ?? "";
+          closeAllergenCells();
+          tr.classList.remove("log-row--saving");
+          tr.classList.add("log-row--error");
+          setTimeout(() => tr.classList.remove("log-row--error"), 2000);
+          console.error("Failed to save allergen log:", err);
+        }
+      }, 0);
     });
   });
+
+  container.innerHTML = "";
+  container.appendChild(table);
 }
 
 // =========================================================
@@ -1291,99 +1354,99 @@ function renderSymptomLogs(logs, symptoms) {
     return;
   }
 
-  container.innerHTML = "";
+  const table = document.createElement("table");
+  table.className = "logs-table";
+  table.innerHTML = `<thead><tr><th>Symptom</th><th>Date &amp; time</th><th>Intensity</th></tr></thead>`;
+  const tbody = document.createElement("tbody");
+  table.appendChild(tbody);
 
   logs.forEach(log => {
-    const item = document.createElement("div");
-    item.className = "log-item";
+    const orig = { symptom_id: log.symptom_id, date_time: log.date_time, intensity: log.intensity };
 
-    const display = document.createElement("div");
-    display.className = "log-item-display";
-    display.innerHTML = `
-      <span class="log-field log-field--name">${log.symptom_name}</span>
-      <span class="log-field log-field--meta">${formatLogDate(log.date_time)}</span>
-      <span class="log-field log-field--meta">${INTENSITY_LABELS[log.intensity] ?? "—"}</span>
-      <button class="log-edit-btn" type="button">Edit</button>
-    `;
+    const symptomSel = document.createElement("select");
+    symptoms.forEach(s => symptomSel.appendChild(new Option(s.symptom_name, s.symptom_id, false, s.symptom_id === log.symptom_id)));
 
-    const symptomOptions = symptoms
-      .map(s => `<option value="${s.symptom_id}" ${s.symptom_id === log.symptom_id ? "selected" : ""}>${s.symptom_name}</option>`)
-      .join("");
+    const dateInp = document.createElement("input");
+    dateInp.type = "datetime-local";
+    dateInp.value = isoToDateTimeLocal(log.date_time);
 
-    const edit = document.createElement("div");
-    edit.className = "log-item-edit";
-    edit.hidden = true;
-    edit.innerHTML = `
-      <div class="edit-row">
-        <label>Symptom</label>
-        <select class="edit-symptom">${symptomOptions}</select>
-      </div>
-      <div class="edit-row">
-        <label>Date &amp; time</label>
-        <input type="datetime-local" class="edit-date" value="${isoToDateTimeLocal(log.date_time)}" />
-      </div>
-      <div class="edit-row">
-        <label>Intensity</label>
-        <select class="edit-intensity">
-          <option value="0" ${log.intensity === 0 ? "selected" : ""}>None</option>
-          <option value="1" ${log.intensity === 1 ? "selected" : ""}>Mild</option>
-          <option value="2" ${log.intensity === 2 ? "selected" : ""}>Moderate</option>
-          <option value="3" ${log.intensity === 3 ? "selected" : ""}>Severe</option>
-        </select>
-      </div>
-      <div class="edit-actions">
-        <button type="button" class="primary save-log-btn">Save</button>
-        <button type="button" class="secondary cancel-log-btn">Cancel</button>
-        <span class="edit-error error"></span>
-      </div>
-    `;
+    const intensitySel = document.createElement("select");
+    INTENSITY_LABELS.forEach((label, val) => intensitySel.appendChild(new Option(label, val, false, val === log.intensity)));
 
-    item.appendChild(display);
-    item.appendChild(edit);
-    container.appendChild(item);
+    const symptomName = symptoms.find(s => s.symptom_id === log.symptom_id)?.symptom_name ?? "";
+    const symptomTd = buildLogCell(symptomName, symptomSel);
+    const dateTd = buildLogCell(formatLogDate(log.date_time), dateInp);
+    const intensityTd = buildLogCell(INTENSITY_LABELS[log.intensity] ?? "—", intensitySel);
 
-    display.querySelector(".log-edit-btn").addEventListener("click", () => {
-      display.hidden = true;
-      edit.hidden = false;
+    const tr = document.createElement("tr");
+    tr.className = "log-row";
+    tr.dataset.dirty = "false";
+    tr.appendChild(symptomTd);
+    tr.appendChild(dateTd);
+    tr.appendChild(intensityTd);
+    tbody.appendChild(tr);
+
+    function closeSymptomCells() {
+      [symptomTd, dateTd, intensityTd].forEach(td => {
+        td.querySelector(".cell-display").hidden = false;
+        td.querySelector(".cell-input").hidden = true;
+      });
+    }
+
+    [symptomSel, dateInp, intensitySel].forEach(inp => {
+      inp.addEventListener("input", () => { tr.dataset.dirty = "true"; });
+      inp.addEventListener("change", () => { tr.dataset.dirty = "true"; });
+      inp.addEventListener("keydown", e => {
+        if (e.key === "Enter") { e.preventDefault(); inp.blur(); }
+        if (e.key === "Escape") {
+          symptomSel.value = orig.symptom_id;
+          dateInp.value = isoToDateTimeLocal(orig.date_time);
+          intensitySel.value = orig.intensity;
+          tr.dataset.dirty = "false";
+          closeSymptomCells();
+        }
+      });
     });
 
-    edit.querySelector(".cancel-log-btn").addEventListener("click", () => {
-      edit.hidden = true;
-      display.hidden = false;
-    });
+    tr.addEventListener("focusout", () => {
+      setTimeout(async () => {
+        if (tr.contains(document.activeElement)) return;
+        if (tr.dataset.dirty !== "true") return;
+        tr.dataset.dirty = "false";
 
-    edit.querySelector(".save-log-btn").addEventListener("click", async () => {
-      const errorEl = edit.querySelector(".edit-error");
-      errorEl.textContent = "";
+        const symptomId = Number(symptomSel.value);
+        const dateTime = new Date(dateInp.value).toISOString();
+        const intensity = Number(intensitySel.value);
 
-      const symptomId = Number(edit.querySelector(".edit-symptom").value);
-      const dateTime = new Date(edit.querySelector(".edit-date").value).toISOString();
-      const intensity = Number(edit.querySelector(".edit-intensity").value);
+        tr.classList.add("log-row--saving");
+        try {
+          await updateSymptomLog(log.symptom_log_id, { symptom_id: symptomId, date_time: dateTime, intensity });
 
-      try {
-        await updateSymptomLog(log.symptom_log_id, {
-          symptom_id: symptomId,
-          date_time: dateTime,
-          intensity: intensity,
-        });
+          symptomTd.querySelector(".cell-display").textContent = symptoms.find(s => s.symptom_id === symptomId)?.symptom_name ?? "";
+          dateTd.querySelector(".cell-display").textContent = formatLogDate(dateTime);
+          intensityTd.querySelector(".cell-display").textContent = INTENSITY_LABELS[intensity];
 
-        const newSymptomName = symptoms.find(s => s.symptom_id === symptomId)?.symptom_name ?? "";
-
-        display.querySelector(".log-field--name").textContent = newSymptomName;
-        display.querySelectorAll(".log-field--meta")[0].textContent = formatLogDate(dateTime);
-        display.querySelectorAll(".log-field--meta")[1].textContent = INTENSITY_LABELS[intensity];
-
-        log.symptom_id = symptomId;
-        log.date_time = dateTime;
-        log.intensity = intensity;
-
-        edit.hidden = true;
-        display.hidden = false;
-      } catch (err) {
-        errorEl.textContent = "Save failed: " + err.message;
-      }
+          Object.assign(orig, { symptom_id: symptomId, date_time: dateTime, intensity });
+          closeSymptomCells();
+          tr.classList.remove("log-row--saving");
+          tr.classList.add("log-row--saved");
+          setTimeout(() => tr.classList.remove("log-row--saved"), 1000);
+        } catch (err) {
+          symptomSel.value = orig.symptom_id;
+          dateInp.value = isoToDateTimeLocal(orig.date_time);
+          intensitySel.value = orig.intensity;
+          closeSymptomCells();
+          tr.classList.remove("log-row--saving");
+          tr.classList.add("log-row--error");
+          setTimeout(() => tr.classList.remove("log-row--error"), 2000);
+          console.error("Failed to save symptom log:", err);
+        }
+      }, 0);
     });
   });
+
+  container.innerHTML = "";
+  container.appendChild(table);
 }
 
 // =========================================================
