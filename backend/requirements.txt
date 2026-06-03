@@ -5,6 +5,7 @@ pydantic[email]
 python-dotenv
 python-jose[cryptography]
 passlib[bcrypt]
+bcrypt==3.2.2
 psycopg2-binary
 matplotlib
 numpy
