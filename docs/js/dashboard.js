@@ -720,6 +720,7 @@ function setupForms() {
 let cachedAllergens = [];
 let cachedSymptoms = [];
 let cachedUnits = [];
+let cachedMedications = [];
 let currentUser = null;
 
 const INTENSITY_LABELS = ["None", "Mild", "Moderate", "Severe"];
@@ -814,11 +815,13 @@ function setupTimeSeries() {
   function populateNameSelect(typeEl, nameEl) {
     const val = typeEl.value;
     if (!val) { nameEl.innerHTML = '<option value="">Select…</option>'; nameEl.disabled = true; return; }
-    const isAllergen = val === "allergen";
-    const items = isAllergen ? cachedAllergens : cachedSymptoms;
     nameEl.innerHTML = '<option value="">Select…</option>';
+    let items, labelKey;
+    if (val === "allergen")        { items = cachedAllergens;   labelKey = "allergen_name"; }
+    else if (val === "symptom")    { items = cachedSymptoms;    labelKey = "symptom_name"; }
+    else                           { items = cachedMedications; labelKey = "medication_name"; }
     items.forEach(item => {
-      const label = isAllergen ? item.allergen_name : item.symptom_name;
+      const label = item[labelKey];
       nameEl.appendChild(new Option(label, label));
     });
     nameEl.disabled = false;
@@ -2183,17 +2186,19 @@ async function init() {
     setupTabs();
 
     try {
-      const [units, allergens, recentAllergens, symptoms, recentSymptoms] = await Promise.all([
+      const [units, allergens, recentAllergens, symptoms, recentSymptoms, medications] = await Promise.all([
         fetchUnits(),
         fetchAllergens(),
         fetchRecentAllergens(10),
         fetchSymptoms(),
-        fetchRecentSymptoms(10)
+        fetchRecentSymptoms(10),
+        fetchMedList().catch(() => []),
       ]);
 
       cachedAllergens = allergens || [];
       cachedSymptoms = symptoms || [];
       cachedUnits = units || [];
+      cachedMedications = medications || [];
 
       populateAllergenSelect(allergens, recentAllergens);
       populateSymptomSelect(symptoms, recentSymptoms);

@@ -14,7 +14,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.api.routes.auth import get_current_user
-from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Symptom
+from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Symptom, Medication, MedicationRegimen
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +63,64 @@ def _get_allergen_data(db, user_id, name, from_dt, to_dt):
     if not logs:
         raise HTTPException(404, f"No events for allergen '{name}' in the selected range")
     return [log.date_time for log in logs], [log.quantity for log in logs]
+
+
+def _get_medication_data(db, user_id, name, from_dt, to_dt):
+    """Return a step-function (dates, doses) representing total daily dose over time."""
+    med = db.query(Medication).filter(
+        Medication.user_id == user_id,
+        Medication.medication_name == name,
+    ).first()
+    if not med:
+        raise HTTPException(404, f"Medication '{name}' not found")
+
+    regimens = (
+        db.query(MedicationRegimen)
+        .filter(
+            MedicationRegimen.user_id == user_id,
+            MedicationRegimen.medication_id == med.medication_id,
+        )
+        .order_by(MedicationRegimen.start_date, MedicationRegimen.regimen_id)
+        .all()
+    )
+    if not regimens:
+        raise HTTPException(404, f"No regimen data for medication '{name}'")
+
+    # Collect every date where total dose might change
+    change_dates = set()
+    for r in regimens:
+        change_dates.add(r.start_date)
+        if r.end_date:
+            change_dates.add(r.end_date)
+    change_dates = sorted(change_dates)
+
+    # Sum all doses that are active on each change date
+    step_dates, step_doses = [], []
+    for d in change_dates:
+        total = sum(
+            r.dose for r in regimens
+            if r.start_date <= d and (r.end_date is None or r.end_date > d)
+        )
+        step_dates.append(datetime(d.year, d.month, d.day, tzinfo=timezone.utc))
+        step_doses.append(total)
+
+    # Cap with today if the last regimen is still open
+    if regimens[-1].end_date is None:
+        step_dates.append(datetime.now(timezone.utc))
+        step_doses.append(step_doses[-1])
+
+    # Apply optional date-range filter
+    if from_dt or to_dt:
+        pairs = [
+            (d, v) for d, v in zip(step_dates, step_doses)
+            if (not from_dt or d >= from_dt) and (not to_dt or d <= to_dt)
+        ]
+        if not pairs:
+            raise HTTPException(404, f"No regimen data for '{name}' in the selected range")
+        step_dates, step_doses = zip(*pairs)
+        step_dates, step_doses = list(step_dates), list(step_doses)
+
+    return step_dates, step_doses
 
 
 def _get_symptom_data(db, user_id, name, from_dt, to_dt):
@@ -148,6 +206,14 @@ def _draw_secondary(ax, dates, values, item_type, color):
         ax.tick_params(axis="y", colors=color)
 
 
+def _draw_medication(ax, dates, doses, color, ylabel="Daily dose (mg)"):
+    """Medication step function — shared by primary and secondary axes."""
+    ax.step(dates, doses, where="post", color=color, linewidth=2.5, alpha=0.85)
+    ax.set_ylabel(ylabel, color=color)
+    ax.tick_params(axis="y", colors=color)
+    ax.set_ylim(bottom=0)
+
+
 def _save_fig(fig) -> BytesIO:
     buf = BytesIO()
     plt.savefig(buf, format="png", dpi=150, bbox_inches="tight")
@@ -178,43 +244,65 @@ def plot_event_series(
       - Variable 1 (blue)  : vertical lines on the left y-axis
       - Variable 2 (orange): diamond markers on a twin right y-axis
     """
-    if item_type not in ("allergen", "symptom"):
-        raise HTTPException(400, "type must be 'allergen' or 'symptom'")
-    if type2 and type2 not in ("allergen", "symptom"):
-        raise HTTPException(400, "type2 must be 'allergen' or 'symptom'")
+    _VALID = ("allergen", "symptom", "medication")
+    if item_type not in _VALID:
+        raise HTTPException(400, f"type must be one of {_VALID}")
+    if type2 and type2 not in _VALID:
+        raise HTTPException(400, f"type2 must be one of {_VALID}")
 
     from_dt = _parse_date(date_from)
     to_dt   = _parse_date(date_to, end_of_day=True)
 
     try:
+        def _fetch(t, n):
+            if t == "allergen":
+                return _get_allergen_data(db, current_user.user_id, n, from_dt, to_dt)
+            elif t == "symptom":
+                return _get_symptom_data(db, current_user.user_id, n, from_dt, to_dt)
+            else:
+                return _get_medication_data(db, current_user.user_id, n, from_dt, to_dt)
+
+        def _draw_primary_ax(ax, dates, values, t, color):
+            if t == "medication":
+                _draw_medication(ax, dates, values, color)
+            else:
+                _draw_primary(ax, dates, values, t, color)
+
+        def _draw_secondary_ax(ax, dates, values, t, color):
+            if t == "medication":
+                _draw_medication(ax, dates, values, color)
+            else:
+                _draw_secondary(ax, dates, values, t, color)
+
         # Variable 1
-        if item_type == "allergen":
-            dates1, values1 = _get_allergen_data(db, current_user.user_id, name, from_dt, to_dt)
-        else:
-            dates1, values1 = _get_symptom_data(db, current_user.user_id, name, from_dt, to_dt)
+        dates1, values1 = _fetch(item_type, name)
 
         has_second = bool(type2 and name2)
 
         if has_second:
             # Variable 2
-            if type2 == "allergen":
-                dates2, values2 = _get_allergen_data(db, current_user.user_id, name2, from_dt, to_dt)
-            else:
-                dates2, values2 = _get_symptom_data(db, current_user.user_id, name2, from_dt, to_dt)
+            dates2, values2 = _fetch(type2, name2)
 
             fig, ax1 = plt.subplots(figsize=(10, 4))
-            _draw_primary(ax1, dates1, values1, item_type, _COL1)
+            _draw_primary_ax(ax1, dates1, values1, item_type, _COL1)
 
             ax2 = ax1.twinx()
-            _draw_secondary(ax2, dates2, values2, type2, _COL2)
+            _draw_secondary_ax(ax2, dates2, values2, type2, _COL2)
 
-            # Legend
+            # Legend — use a step line marker for medication, diamond for others
+            def _legend_handle(t, color, label):
+                if t == "medication":
+                    return Line2D([0], [0], color=color, linewidth=2.5, label=label)
+                elif t == "allergen":
+                    return Line2D([0], [0], color=color, linewidth=2.5, label=label)
+                else:
+                    return Line2D([0], [0], color=color, marker="D", linestyle="None",
+                                  markersize=7, markeredgecolor="white",
+                                  markeredgewidth=0.5, label=label)
+
             legend_handles = [
-                Line2D([0], [0], color=_COL1, linewidth=2.5,
-                       label=f"{item_type.title()}: {name}"),
-                Line2D([0], [0], color=_COL2, marker="D", linestyle="None",
-                       markersize=7, markeredgecolor="white", markeredgewidth=0.5,
-                       label=f"{type2.title()}: {name2}"),
+                _legend_handle(item_type, _COL1, f"{item_type.title()}: {name}"),
+                _legend_handle(type2, _COL2, f"{type2.title()}: {name2}"),
             ]
             ax1.legend(handles=legend_handles, frameon=False,
                        loc="upper left", fontsize=9)
@@ -224,13 +312,11 @@ def plot_event_series(
             ax1.grid(axis="x", alpha=0.15)
 
         else:
-            # Single variable — original single-panel style
+            # Single variable
+            type_label = item_type.title()
             fig, ax1 = plt.subplots(figsize=(10, 3.5))
-            _draw_primary(ax1, dates1, values1, item_type, _COL1)
-            ax1.set_title(
-                f"{'Allergen' if item_type == 'allergen' else 'Symptom'}: {name}",
-                fontsize=11, loc="left", pad=4,
-            )
+            _draw_primary_ax(ax1, dates1, values1, item_type, _COL1)
+            ax1.set_title(f"{type_label}: {name}", fontsize=11, loc="left", pad=4)
             ax1.set_xlabel("Date")
             ax1.xaxis.set_major_formatter(mdates.DateFormatter("%d %b %Y"))
             ax1.grid(axis="x", alpha=0.15)
