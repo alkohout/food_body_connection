@@ -279,13 +279,15 @@ async function addNewAllergen(name) {
     const data = await res.json();
     console.log("Created allergen:", data);
 
-    // ✅ FULL refresh, correctly
     const allergens = await fetchAllergens();
     const recentAllergens = await fetchRecentAllergens(5);
+    cachedAllergens = allergens || [];
     populateAllergenSelect(allergens, recentAllergens);
 
-    const select = getElement("allergen-select");
-    if (select) select.value = data.allergen_id;
+    const select  = getElement("allergen-select");
+    const idInput = getElement("allergen-id");
+    if (select)  select.value  = data.allergen_id;
+    if (idInput) idInput.value = data.allergen_id;
 
     return data;
   } catch (err) {
@@ -469,21 +471,14 @@ async function addNewSymptom(name) {
     const data = await res.json();
     console.log("Created symptom:", data);
 
-    // ✅ FULL refresh (same pattern as allergens)
     const symptoms = await fetchSymptoms();
     const recentSymptoms = await fetchRecentSymptoms(5);
+    cachedSymptoms = symptoms || [];
     populateSymptomSelect(symptoms, recentSymptoms);
 
-    // AUTO‑SELECT the newly added symptom
-    const select = getElement("symptom-select");
-    if (select) {
-      select.value = data.symptom_id;
-    }
-
-    // Fill the text input and ID hidden input
-    const input = getElement("symptom-select");
+    const select  = getElement("symptom-select");
     const idInput = getElement("symptom-id");
-    if (input) input.value = data.symptom_name;
+    if (select)  select.value  = data.symptom_id;
     if (idInput) idInput.value = data.symptom_id;
 
     return data;
