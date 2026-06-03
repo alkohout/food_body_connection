@@ -720,6 +720,7 @@ function setupForms() {
 let cachedAllergens = [];
 let cachedSymptoms = [];
 let cachedUnits = [];
+let currentUser = null;
 
 const INTENSITY_LABELS = ["None", "Mild", "Moderate", "Severe"];
 
@@ -1031,6 +1032,29 @@ function setupTimeSeries() {
   populateNameSelect(typeSelect, nameSelect);
   if (name2Select) name2Select.disabled = true;
   showCcfSection(false);
+
+  // Default plot for user 4
+  if (currentUser?.user_id === 4) {
+    function selectByName(selectEl, name) {
+      const lower = name.toLowerCase();
+      const opt = Array.from(selectEl.options).find(o => o.text.toLowerCase() === lower);
+      if (opt) selectEl.value = opt.value;
+      return !!opt;
+    }
+
+    typeSelect.value = "allergen";
+    populateNameSelect(typeSelect, nameSelect);
+    selectByName(nameSelect, "triptan");
+
+    if (type2Select && name2Select) {
+      type2Select.value = "allergen";
+      populateNameSelect(type2Select, name2Select);
+      selectByName(name2Select, "period");
+      name2Select.disabled = false;
+      showCcfSection(!!(nameSelect.value && name2Select.value));
+      if (nameSelect.value) fetchTsPlot();
+    }
+  }
 }
 
 // =========================================================
@@ -1361,6 +1385,14 @@ function loadAnalysisTab() {
   fetchAnalysisStats({ force: true }).catch(err => {
     console.error("Analysis refresh failed:", err);
   });
+
+  if (currentUser?.user_id === 4) {
+    const analysisSelect = getElement("analysis-select");
+    if (analysisSelect && !analysisSelect.value) {
+      analysisSelect.value = "time-series";
+      showAnalysisPanel("time-series");
+    }
+  }
 }
 
 // =========================================================
@@ -1831,6 +1863,8 @@ async function init() {
       console.error("Invalid user object!", user);
       throw new Error("Invalid user");
     }
+
+    currentUser = user;
 
     const userEmailEl = getElement("user-email");
     if (userEmailEl) userEmailEl.textContent = user.email;
