@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pydantic[email]
+python-dotenv
+python-jose[cryptography]
+passlib[bcrypt]
+psycopg2-binary
+matplotlib
+numpy
+pandas
+seaborn
+scipy
+scikit-learn
+statsmodels
+python-multipart
+typing_extensions
