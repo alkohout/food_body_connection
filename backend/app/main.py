@@ -21,6 +21,7 @@ import app.api.routes.plot_event_series as plot_event_series
 import app.api.routes.plot_time_series_analysis as plot_time_series_analysis
 from app.api.routes import units
 from app.api.routes import entries
+import app.api.routes.medications as medications
 
 app = FastAPI(title="Food–Body Connection API")
 
@@ -45,6 +46,7 @@ app.include_router(create_symptom.router)
 app.include_router(symptom_groups.router)
 app.include_router(units.router)
 app.include_router(entries.router)
+app.include_router(medications.router)
 app.include_router(analysis.router)
 app.include_router(intensity_volume.router)
 app.include_router(temporal_stats.router)

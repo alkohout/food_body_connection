@@ -1,6 +1,6 @@
 # backend/app/models/table_class.py
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, CheckConstraint
+from sqlalchemy import Column, Integer, String, Float, DateTime, Date, ForeignKey, CheckConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy import UniqueConstraint
 from datetime import datetime, timezone
@@ -19,6 +19,8 @@ class User(Base):
     symptom_log = relationship("SymptomLog", back_populates="user", cascade="all, delete-orphan")
     allergen = relationship("Allergen",back_populates="user", cascade="all, delete-orphan")
     symptom = relationship("Symptom",back_populates="user", cascade="all, delete-orphan")
+    medication = relationship("Medication", back_populates="user", cascade="all, delete-orphan")
+    medication_regimen = relationship("MedicationRegimen", back_populates="user", cascade="all, delete-orphan")
 
 class Allergen(Base):
     __tablename__ = 'allergen'
@@ -93,6 +95,37 @@ class SymptomLog(Base):
     
     # Add check constraint for symptom_intensity
     __table_args__ = (
-        CheckConstraint('symptom_intensity >= 0 AND symptom_intensity <= 3', 
+        CheckConstraint('symptom_intensity >= 0 AND symptom_intensity <= 3',
                        name='check_symptom_intensity_range'),
     )
+
+
+class Medication(Base):
+    __tablename__ = 'medication'
+
+    medication_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False)
+    medication_name = Column(String(255), nullable=False)
+
+    user = relationship("User", back_populates="medication")
+    regimens = relationship("MedicationRegimen", back_populates="medication", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'medication_name', name='uq_user_medication'),
+    )
+
+
+class MedicationRegimen(Base):
+    __tablename__ = 'medication_regimen'
+
+    regimen_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False)
+    medication_id = Column(Integer, ForeignKey('medication.medication_id'), nullable=False)
+    dose = Column(Float, nullable=False)
+    unit = Column(String(50), nullable=False, default='mg')
+    note = Column(String(255), nullable=True)   # e.g. "morning dose", "evening dose"
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=True)       # null = currently active
+
+    user = relationship("User", back_populates="medication_regimen")
+    medication = relationship("Medication", back_populates="regimens")

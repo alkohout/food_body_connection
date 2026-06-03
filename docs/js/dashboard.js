@@ -1130,6 +1130,311 @@ function setupDeeperAnalysis() {
   });
 }
 
+// =========================================================
+// Medications tab – API helpers
+// =========================================================
+
+async function fetchMedList() {
+  const token = localStorage.getItem("access_token");
+  const res = await fetch(`${API_URL}/medications`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchCurrentRegimens() {
+  const token = localStorage.getItem("access_token");
+  const res = await fetch(`${API_URL}/medications/regimens/current`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function fetchAllRegimens() {
+  const token = localStorage.getItem("access_token");
+  const res = await fetch(`${API_URL}/medications/regimens`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function apiCreateMedication(name) {
+  const token = localStorage.getItem("access_token");
+  const res = await fetch(`${API_URL}/medications`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ medication_name: name }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function apiCreateRegimen(payload) {
+  const token = localStorage.getItem("access_token");
+  const res = await fetch(`${API_URL}/medications/regimens`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function apiChangeDose(regimenId, payload) {
+  const token = localStorage.getItem("access_token");
+  const res = await fetch(`${API_URL}/medications/regimens/${regimenId}/change-dose`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// =========================================================
+// Medications tab – render helpers
+// =========================================================
+
+function formatMedDate(dateStr) {
+  if (!dateStr) return "present";
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function buildMedCard(r) {
+  const card = document.createElement("div");
+  card.className = "med-card";
+
+  const noteText = r.note ? ` · ${r.note}` : "";
+  card.innerHTML = `
+    <div class="med-card-header">
+      <span class="med-card-name">${r.medication_name}</span>
+      <span class="med-card-dose">${r.dose} ${r.unit}${noteText}</span>
+    </div>
+    <div class="med-card-since">Since ${formatMedDate(r.start_date)}</div>
+    <div class="med-card-actions">
+      <button type="button" class="secondary med-change-btn">Change dose</button>
+    </div>
+    <div class="med-change-panel" style="display:none">
+      <div class="form-row">
+        <label>New dose</label>
+        <div class="inline-fields">
+          <input type="number" class="med-change-dose" step="any" value="${r.dose}" style="width:80px" />
+          <input type="text" class="med-change-unit" value="${r.unit}" style="width:60px" />
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Note</label>
+        <input type="text" class="med-change-note" value="${r.note || ""}" placeholder="e.g. morning dose" />
+      </div>
+      <div class="form-row">
+        <label>Effective from</label>
+        <input type="date" class="med-change-date" value="${new Date().toISOString().slice(0, 10)}" />
+      </div>
+      <div class="form-row">
+        <label></label>
+        <div class="inline-fields">
+          <button type="button" class="primary med-change-submit" style="width:auto;margin:0">Update</button>
+          <button type="button" class="secondary med-change-cancel" style="width:auto;margin:0">Cancel</button>
+        </div>
+      </div>
+      <p class="med-change-error error"></p>
+    </div>
+  `;
+
+  const changeBtn  = card.querySelector(".med-change-btn");
+  const changePanel = card.querySelector(".med-change-panel");
+  const cancelBtn  = card.querySelector(".med-change-cancel");
+  const submitBtn  = card.querySelector(".med-change-submit");
+  const errorEl    = card.querySelector(".med-change-error");
+
+  changeBtn.addEventListener("click", () => {
+    changePanel.style.display = changePanel.style.display === "none" ? "" : "none";
+    errorEl.textContent = "";
+  });
+
+  cancelBtn.addEventListener("click", () => {
+    changePanel.style.display = "none";
+    errorEl.textContent = "";
+  });
+
+  submitBtn.addEventListener("click", async () => {
+    const newDose  = parseFloat(card.querySelector(".med-change-dose").value);
+    const newUnit  = card.querySelector(".med-change-unit").value.trim();
+    const newNote  = card.querySelector(".med-change-note").value.trim() || null;
+    const newStart = card.querySelector(".med-change-date").value;
+
+    if (!newDose || !newUnit || !newStart) {
+      errorEl.textContent = "Please fill in dose, unit, and date.";
+      return;
+    }
+
+    submitBtn.disabled = true;
+    try {
+      await apiChangeDose(r.regimen_id, {
+        medication_id: r.medication_id,
+        dose: newDose,
+        unit: newUnit,
+        note: newNote,
+        start_date: newStart,
+      });
+      await loadMedicationsTab();
+    } catch (err) {
+      errorEl.textContent = `Error: ${err.message}`;
+      submitBtn.disabled = false;
+    }
+  });
+
+  return card;
+}
+
+function renderMedCards(regimens) {
+  const container = getElement("med-current-list");
+  if (!container) return;
+
+  if (!regimens.length) {
+    container.innerHTML = '<p class="logs-empty">No active medications. Add one below.</p>';
+    return;
+  }
+
+  container.innerHTML = "";
+  regimens.forEach(r => container.appendChild(buildMedCard(r)));
+}
+
+function renderMedHistory(regimens) {
+  const container = getElement("med-history-list");
+  if (!container) return;
+
+  if (!regimens.length) {
+    container.innerHTML = '<p class="logs-empty">No history yet.</p>';
+    return;
+  }
+
+  const table = document.createElement("table");
+  table.className = "med-history-table";
+  table.innerHTML = `
+    <thead><tr>
+      <th>Medication</th><th>Dose</th><th>Note</th><th>From</th><th>To</th>
+    </tr></thead>
+  `;
+  const tbody = document.createElement("tbody");
+  regimens.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.className = r.end_date ? "med-row--ended" : "med-row--active";
+    tr.innerHTML = `
+      <td>${r.medication_name}</td>
+      <td>${r.dose} ${r.unit}</td>
+      <td>${r.note || "—"}</td>
+      <td>${formatMedDate(r.start_date)}</td>
+      <td>${r.end_date ? formatMedDate(r.end_date) : "current"}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  container.innerHTML = "";
+  container.appendChild(table);
+}
+
+// =========================================================
+// Medications tab – load + setup
+// =========================================================
+
+async function loadMedicationsTab() {
+  const currentContainer = getElement("med-current-list");
+  const historyContainer = getElement("med-history-list");
+  if (currentContainer) currentContainer.innerHTML = '<p class="logs-loading">Loading…</p>';
+  if (historyContainer) historyContainer.innerHTML = '<p class="logs-loading">Loading…</p>';
+
+  try {
+    const [current, all] = await Promise.all([fetchCurrentRegimens(), fetchAllRegimens()]);
+    renderMedCards(current);
+    renderMedHistory(all);
+  } catch (err) {
+    console.error("Failed to load medications:", err);
+    if (currentContainer) currentContainer.innerHTML = '<p class="logs-empty">Could not load medications.</p>';
+    if (historyContainer) historyContainer.innerHTML = "";
+  }
+}
+
+function setupMedicationsTab() {
+  const addToggle  = getElement("med-add-toggle");
+  const addPanel   = getElement("med-add-panel");
+  const submitBtn  = getElement("med-add-submit");
+  const errorEl    = getElement("med-add-error");
+  const nameInput  = getElement("med-name-input");
+  const doseInput  = getElement("med-dose-input");
+  const unitInput  = getElement("med-unit-input");
+  const noteInput  = getElement("med-note-input");
+  const startInput = getElement("med-start-input");
+  const datalist   = document.getElementById("med-name-list");
+
+  if (!addToggle) return;
+
+  if (startInput) startInput.value = new Date().toISOString().slice(0, 10);
+  if (unitInput)  unitInput.value  = "mg";
+
+  addToggle.addEventListener("click", () => {
+    const open = addPanel.style.display !== "none";
+    addPanel.style.display = open ? "none" : "";
+    addToggle.textContent  = open ? "+ Add medication" : "− Cancel";
+  });
+
+  async function refreshMedDatalist() {
+    try {
+      const meds = await fetchMedList();
+      if (datalist) {
+        datalist.innerHTML = "";
+        meds.forEach(m => {
+          const opt = document.createElement("option");
+          opt.value = m.medication_name;
+          datalist.appendChild(opt);
+        });
+      }
+    } catch (err) {
+      console.warn("Could not refresh med datalist:", err);
+    }
+  }
+  refreshMedDatalist();
+
+  if (!submitBtn) return;
+
+  submitBtn.addEventListener("click", async () => {
+    const name      = nameInput?.value.trim();
+    const dose      = parseFloat(doseInput?.value);
+    const unit      = unitInput?.value.trim() || "mg";
+    const note      = noteInput?.value.trim() || null;
+    const startDate = startInput?.value;
+
+    if (!name)      { errorEl.textContent = "Enter a medication name."; return; }
+    if (!dose)      { errorEl.textContent = "Enter a dose."; return; }
+    if (!startDate) { errorEl.textContent = "Enter a start date."; return; }
+    errorEl.textContent = "";
+    submitBtn.disabled = true;
+
+    try {
+      const med = await apiCreateMedication(name);
+      await apiCreateRegimen({ medication_id: med.medication_id, dose, unit, note, start_date: startDate });
+
+      nameInput.value  = "";
+      doseInput.value  = "";
+      unitInput.value  = "mg";
+      noteInput.value  = "";
+      startInput.value = new Date().toISOString().slice(0, 10);
+      addPanel.style.display = "none";
+      addToggle.textContent  = "+ Add medication";
+
+      await Promise.all([loadMedicationsTab(), refreshMedDatalist()]);
+    } catch (err) {
+      errorEl.textContent = `Error: ${err.message}`;
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+}
+
 function setupAnalysisDropdown() {
   const analysisSelect = getElement("analysis-select");
   if (!analysisSelect) return;
@@ -1414,6 +1719,9 @@ const setupTabs = () => {
 
       if (target === "analysis") {
         loadAnalysisTab();
+      }
+      if (target === "medication") {
+        loadMedicationsTab();
       }
     });
   });
@@ -1980,6 +2288,7 @@ async function init() {
     setupAnalysisDropdown();
     setupDeeperAnalysis();
     setupTimeSeries();
+    setupMedicationsTab();
 
     // Initialize captions
     initializeCaptions();

@@ -27,6 +27,7 @@
       <button class="tab active" data-tab="allergen">Log Allergen</button>
       <button class="tab" data-tab="symptom">Log Symptom</button>
       <button class="tab" data-tab="analysis">Analysis</button>
+      <button class="tab" data-tab="medication">Medications</button>
     </div>
 
     <!-- Allergen tab -->
@@ -761,6 +762,59 @@
 
     </form>
 
+
+    <!-- Medications tab -->
+    <form id="medication-form" class="form">
+      <p>Track your daily medication regimen and log dose changes over time.</p>
+
+      <!-- Current regimen cards -->
+      <section class="med-section">
+        <h3>Current medications</h3>
+        <div id="med-current-list" class="med-current-list">
+          <p class="logs-loading">Loading…</p>
+        </div>
+      </section>
+
+      <!-- Add medication -->
+      <section class="med-section">
+        <button type="button" id="med-add-toggle" class="secondary" style="width:auto">+ Add medication</button>
+        <div id="med-add-panel" style="display:none; margin-top:1rem">
+          <div class="form-row">
+            <label for="med-name-input">Medication</label>
+            <input type="text" id="med-name-input" list="med-name-list" placeholder="e.g. Propranolol" autocomplete="off" />
+            <datalist id="med-name-list"></datalist>
+          </div>
+          <div class="form-row">
+            <label>Dose</label>
+            <div class="inline-fields">
+              <input type="number" id="med-dose-input" step="any" placeholder="0" style="width:80px" />
+              <input type="text" id="med-unit-input" placeholder="mg" style="width:60px" />
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="med-note-input">Note</label>
+            <input type="text" id="med-note-input" placeholder="e.g. morning dose" />
+          </div>
+          <div class="form-row">
+            <label for="med-start-input">Start date</label>
+            <input type="date" id="med-start-input" />
+          </div>
+          <div class="form-row">
+            <label></label>
+            <button type="button" id="med-add-submit" class="primary" style="width:auto;margin:0">Save</button>
+          </div>
+          <p id="med-add-error" class="error"></p>
+        </div>
+      </section>
+
+      <!-- Dose history -->
+      <section class="med-section recent-logs-section">
+        <h4 class="recent-logs-title">Dose history</h4>
+        <div id="med-history-list">
+          <p class="logs-loading">Loading…</p>
+        </div>
+      </section>
+    </form>
 
   </main>
 
