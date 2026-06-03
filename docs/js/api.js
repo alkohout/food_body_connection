@@ -1,7 +1,7 @@
 // docs/js/api.js
 
 // Base URL for all API requests
-export const API_URL = "https://foodbodyconnection.54.253.73.35.nip.io";
+export const API_URL = "https://food-body-connection.onrender.com";
 
 // Generic helper function for making authenticated API requests
 export async function apiFetch(endpoint, options = {}) {

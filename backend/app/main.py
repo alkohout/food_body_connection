@@ -27,7 +27,8 @@ app = FastAPI(title="Food–Body Connection API")
 
 origins = [
     "https://alkohout.github.io",
-    "http://localhost:5500", 
+    "http://localhost:5500",
+    "https://food-body-connection.onrender.com",
 ]
 
 app.add_middleware(
