@@ -1,0 +1,26 @@
+# fly.toml app configuration file generated for foodbodyconnection on 2026-06-04T06:34:02+12:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'foodbodyconnection'
+primary_region = 'syd'
+
+[build]
+
+[env]
+  ACCESS_TOKEN_EXPIRE_MINUTES = '1440'
+  ALGORITHM = 'HS256'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 512

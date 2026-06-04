@@ -16,3 +16,4 @@ scikit-learn
 statsmodels
 python-multipart
 typing_extensions
+anthropic

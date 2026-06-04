@@ -1535,6 +1535,33 @@ function renderSummaryText(text) {
   setSummaryState(text?.trim() || "No summary available.");
 }
 
+async function fetchAISummary() {
+  const btn = getElement("ai-summary-btn");
+  const status = getElement("ai-summary-status");
+
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = "Generating… this may take a few seconds.";
+  setSummaryState("");
+
+  try {
+    const res = await fetch(`${API_URL}/analysis/generate_summary_text`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+    });
+
+    if (!res.ok) throw new Error(`Server returned ${res.status}`);
+
+    const text = await res.text();
+    renderSummaryText(text);
+    if (status) status.textContent = "";
+  } catch (err) {
+    console.error("AI summary failed:", err);
+    setSummaryState("Could not generate summary. Please try again.");
+    if (status) status.textContent = "";
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 function setAnalysisStatus(message) {
   const el = getElement("analysis-status");
   if (el) el.textContent = message;
