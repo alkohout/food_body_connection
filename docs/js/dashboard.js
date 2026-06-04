@@ -2320,6 +2320,9 @@ async function init() {
     // Initialize captions
     initializeCaptions();
 
+    const aiBtn = getElement("ai-summary-btn");
+    if (aiBtn) aiBtn.addEventListener("click", fetchAISummary);
+
     console.log("✅ init() completed successfully");
 
   } catch (err) {
