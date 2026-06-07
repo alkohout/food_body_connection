@@ -29,6 +29,7 @@ origins = [
     "https://alkohout.github.io",
     "http://localhost:5500",
     "https://food-body-connection.onrender.com",
+    "https://foodbodyconnection.159.13.61.101.nip.io",
 ]
 
 app.add_middleware(
