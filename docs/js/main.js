@@ -1,8 +1,8 @@
 // docs/js/main.js
 
 // Import API helper functions for authentication
-import { login } from "./api.js";
-import { register } from "./api.js";
+import { login, register } from "./api.js";
+import { API_URL } from "./api.js";
 
 // =========================================================
 // Login Form Handler
@@ -40,6 +40,46 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
     // Display generic error message if login fails
     document.getElementById("login-error").textContent =
       "❌ Login failed. Please check your details.";
+  }
+});
+
+// =========================================================
+// Forgot Password Toggle
+// =========================================================
+
+document.getElementById("forgot-password-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  document.getElementById("login-form").style.display = "none";
+  document.getElementById("forgot-form").style.display = "block";
+});
+
+document.getElementById("back-to-login-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  document.getElementById("forgot-form").style.display = "none";
+  document.getElementById("login-form").style.display = "block";
+});
+
+document.getElementById("forgot-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("forgot_email").value;
+
+  document.getElementById("login-error").textContent = "";
+  document.getElementById("login-success").textContent = "";
+
+  try {
+    const res = await fetch(`${API_URL}/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await res.json();
+    document.getElementById("login-success").textContent = `✅ ${data.message}`;
+    document.getElementById("forgot-form").style.display = "none";
+    document.getElementById("login-form").style.display = "block";
+  } catch {
+    document.getElementById("login-error").textContent =
+      "❌ Something went wrong. Please try again.";
   }
 });
 

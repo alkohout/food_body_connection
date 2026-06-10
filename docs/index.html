@@ -65,6 +65,24 @@
 
         <!-- Submit button -->
         <button type="submit" class="primary">Log in</button>
+
+        <!-- Forgot password link -->
+        <p style="text-align:center; margin-top: 0.5rem;">
+          <a href="#" id="forgot-password-link" style="font-size:0.85em;">Forgot password?</a>
+        </p>
+      </form>
+
+      <!-- Forgot password inline form (hidden by default) -->
+      <form id="forgot-form" class="form" style="display:none;">
+        <p style="margin-bottom:0.75rem; font-size:0.9em;">Enter your email and we'll send you a reset link.</p>
+        <label>
+          Email
+          <input type="email" id="forgot_email" required />
+        </label>
+        <button type="submit" class="primary">Send reset link</button>
+        <p style="text-align:center; margin-top:0.5rem;">
+          <a href="#" id="back-to-login-link" style="font-size:0.85em;">Back to login</a>
+        </p>
       </form>
 
       <!-- ========================================================= -->

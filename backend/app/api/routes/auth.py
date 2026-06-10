@@ -1,14 +1,19 @@
 # app/api/routes/auth.py
+import secrets
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models.table_class import User
+from app.models.table_class import User, Allergen, Symptom, PasswordResetToken
 from app.schemas.user import UserCreate, UserOut
 from app.core.security import hash_password, verify_password
+from app.core.email import send_reset_email
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from app.core.jwt import create_access_token, SECRET_KEY, ALGORITHM
-from app.models.table_class import User, Allergen, Symptom
 from jose import JWTError, jwt
+from datetime import datetime, timezone
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -208,6 +213,62 @@ def read_users_me(current_user: User = Depends(get_current_user)):
         Current user's public information.
     """
     return current_user
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/forgot-password")
+def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == body.email).first()
+
+    # Always return the same response to avoid exposing whether an email exists
+    if user:
+        token = secrets.token_urlsafe(32)
+        expires = datetime.now(timezone.utc) + timedelta(hours=1)
+
+        db.add(PasswordResetToken(
+            user_id=user.user_id,
+            token=token,
+            expires_at=expires,
+        ))
+        db.commit()
+
+        reset_link = f"https://alkohout.github.io/food_body_connection/reset-password.html?token={token}"
+        try:
+            send_reset_email(user.email, reset_link)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to send email: {e}")
+
+    return {"message": "If your email is registered you will receive a reset link shortly."}
+
+
+@router.post("/reset-password")
+def reset_password(body: ResetPasswordRequest, db: Session = Depends(get_db)):
+    record = (
+        db.query(PasswordResetToken)
+        .filter(PasswordResetToken.token == body.token)
+        .first()
+    )
+
+    if not record or record.used or record.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Reset link is invalid or has expired.")
+
+    user = db.query(User).filter(User.user_id == record.user_id).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="User not found.")
+
+    user.password_hash = hash_password(body.new_password)
+    record.used = True
+    db.commit()
+
+    return {"message": "Password updated successfully."}
 
 
 

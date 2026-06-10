@@ -1,6 +1,6 @@
 # backend/app/models/table_class.py
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, Date, ForeignKey, CheckConstraint
+from sqlalchemy import Column, Integer, String, Float, DateTime, Date, ForeignKey, CheckConstraint, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy import UniqueConstraint
 from datetime import datetime, timezone
@@ -129,3 +129,13 @@ class MedicationRegimen(Base):
 
     user = relationship("User", back_populates="medication_regimen")
     medication = relationship("Medication", back_populates="regimens")
+
+
+class PasswordResetToken(Base):
+    __tablename__ = 'password_reset_token'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False)
+    token = Column(String(64), unique=True, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used = Column(Boolean, default=False, nullable=False)
