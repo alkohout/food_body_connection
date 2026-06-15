@@ -37,7 +37,13 @@ def _extract_text(file_bytes: bytes, filename: str) -> str:
         try:
             from docx import Document
             doc = Document(io.BytesIO(file_bytes))
-            return "\n".join(p.text for p in doc.paragraphs if p.text).strip()
+            texts = [p.text for p in doc.paragraphs if p.text]
+            for table in doc.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        if cell.text and cell.text not in texts:
+                            texts.append(cell.text)
+            return "\n".join(texts).strip()
         except Exception as exc:
             logger.warning("python-docx failed for %s: %s", filename, exc)
             return ""
