@@ -2323,6 +2323,8 @@ async function init() {
     const aiBtn = getElement("ai-summary-btn");
     if (aiBtn) aiBtn.addEventListener("click", fetchAISummary);
 
+    setupDocumentsTab();
+
     console.log("✅ init() completed successfully");
 
   } catch (err) {
@@ -2330,6 +2332,114 @@ async function init() {
     localStorage.removeItem("access_token");
     window.location.href = "index.html";
   }
+}
+
+// =========================================================
+// Documents tab
+// =========================================================
+
+async function fetchDocumentList() {
+  const container = getElement("doc-list");
+  if (!container) return;
+
+  try {
+    const res = await fetch(`${API_URL}/documents`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+    });
+    if (!res.ok) throw new Error(`${res.status}`);
+    const docs = await res.json();
+
+    if (!docs.length) {
+      container.innerHTML = '<p class="subtle">No documents uploaded yet.</p>';
+      return;
+    }
+
+    container.innerHTML = docs.map(doc => `
+      <div class="log-item" data-doc-id="${doc.document_id}" style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0; border-bottom:1px solid #e5e7eb;">
+        <div>
+          <strong>${doc.filename}</strong>
+          ${doc.description ? `<span class="subtle" style="margin-left:0.5rem;">— ${doc.description}</span>` : ""}
+          <br>
+          <span class="subtle" style="font-size:0.8em;">
+            Uploaded ${new Date(doc.uploaded_at).toLocaleDateString()}
+            ${doc.has_text ? " · text extracted" : " · no text extracted"}
+          </span>
+        </div>
+        <button class="delete-doc-btn secondary" data-doc-id="${doc.document_id}" style="padding:0.3rem 0.7rem; font-size:0.85em;">Delete</button>
+      </div>
+    `).join("");
+
+    container.querySelectorAll(".delete-doc-btn").forEach(btn => {
+      btn.addEventListener("click", () => deleteDocument(Number(btn.dataset.docId)));
+    });
+  } catch (err) {
+    console.error("fetchDocumentList failed:", err);
+    if (container) container.innerHTML = '<p class="subtle">Could not load documents.</p>';
+  }
+}
+
+async function deleteDocument(docId) {
+  if (!confirm("Delete this document? The AI will no longer reference it.")) return;
+  try {
+    const res = await fetch(`${API_URL}/documents/${docId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+    });
+    if (!res.ok) throw new Error(`${res.status}`);
+    await fetchDocumentList();
+  } catch (err) {
+    console.error("deleteDocument failed:", err);
+    alert("Could not delete document. Please try again.");
+  }
+}
+
+function setupDocumentsTab() {
+  const uploadBtn = getElement("doc-upload-btn");
+  if (!uploadBtn) return;
+
+  fetchDocumentList();
+
+  uploadBtn.addEventListener("click", async () => {
+    const fileInput = getElement("doc-file");
+    const descInput = getElement("doc-description");
+    const status = getElement("doc-upload-status");
+
+    if (!fileInput.files.length) {
+      if (status) status.textContent = "Please select a file first.";
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+    if (descInput.value.trim()) formData.append("description", descInput.value.trim());
+
+    uploadBtn.disabled = true;
+    if (status) status.textContent = "Uploading…";
+
+    try {
+      const res = await fetch(`${API_URL}/documents/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || res.status);
+      }
+
+      fileInput.value = "";
+      descInput.value = "";
+      if (status) status.textContent = "Uploaded successfully.";
+      setTimeout(() => { if (status) status.textContent = ""; }, 3000);
+      await fetchDocumentList();
+    } catch (err) {
+      console.error("upload failed:", err);
+      if (status) status.textContent = `Upload failed: ${err.message}`;
+    } finally {
+      uploadBtn.disabled = false;
+    }
+  });
 }
 
 function initializeCaptions() {

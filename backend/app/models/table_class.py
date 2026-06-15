@@ -1,6 +1,6 @@
 # backend/app/models/table_class.py
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, Date, ForeignKey, CheckConstraint, Boolean
+from sqlalchemy import Column, Integer, String, Float, DateTime, Date, ForeignKey, CheckConstraint, Boolean, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy import UniqueConstraint
 from datetime import datetime, timezone
@@ -21,6 +21,7 @@ class User(Base):
     symptom = relationship("Symptom",back_populates="user", cascade="all, delete-orphan")
     medication = relationship("Medication", back_populates="user", cascade="all, delete-orphan")
     medication_regimen = relationship("MedicationRegimen", back_populates="user", cascade="all, delete-orphan")
+    documents = relationship("UserDocument", back_populates="user", cascade="all, delete-orphan")
 
 class Allergen(Base):
     __tablename__ = 'allergen'
@@ -139,3 +140,17 @@ class PasswordResetToken(Base):
     token = Column(String(64), unique=True, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     used = Column(Boolean, default=False, nullable=False)
+
+
+class UserDocument(Base):
+    __tablename__ = 'user_document'
+
+    document_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False)
+    filename = Column(String(255), nullable=False)
+    description = Column(String(500), nullable=True)
+    file_path = Column(String(500), nullable=False)
+    extracted_text = Column(Text, nullable=True)
+    uploaded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="documents")

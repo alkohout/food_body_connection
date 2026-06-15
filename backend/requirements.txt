@@ -17,3 +17,5 @@ statsmodels
 python-multipart
 typing_extensions
 anthropic
+pdfplumber
+python-docx

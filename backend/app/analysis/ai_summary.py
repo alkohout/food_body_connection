@@ -8,6 +8,7 @@ from scipy.stats import binomtest
 
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
 from app.analysis.model import model_classification
+from app.models.table_class import UserDocument
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +141,33 @@ def build_analysis_context(db, user_id: int) -> dict | None:
     }
 
 
+_DOC_CHAR_LIMIT = 3000
+
+
+def _get_document_context(db, user_id: int) -> str:
+    docs = (
+        db.query(UserDocument)
+        .filter(
+            UserDocument.user_id == user_id,
+            UserDocument.extracted_text.isnot(None),
+        )
+        .order_by(UserDocument.uploaded_at.desc())
+        .all()
+    )
+    if not docs:
+        return ""
+
+    parts = []
+    for doc in docs:
+        text = doc.extracted_text or ""
+        truncated = len(text) > _DOC_CHAR_LIMIT
+        snippet = text[:_DOC_CHAR_LIMIT] + (" [truncated]" if truncated else "")
+        label = doc.description or doc.filename
+        parts.append(f"### {label}\n{snippet}")
+
+    return "\n\n".join(parts)
+
+
 def generate_ai_summary(db, user_id: int) -> str:
     context = build_analysis_context(db, user_id)
 
@@ -157,6 +185,13 @@ def generate_ai_summary(db, user_id: int) -> str:
         except Exception:
             return "Summary unavailable: ANTHROPIC_API_KEY is not configured."
 
+    doc_context = _get_document_context(db, user_id)
+    doc_section = (
+        f"\n\n--- USER HEALTH DOCUMENTS ---\n{doc_context}\n"
+        if doc_context
+        else ""
+    )
+
     client = anthropic.Anthropic(api_key=api_key)
 
     prompt = f"""You are a health data analyst helping a user understand patterns in their personal food and symptom tracking data. Based on the structured analysis below, write a clear, empathetic, and insightful summary (3–4 paragraphs) that:
@@ -165,16 +200,16 @@ def generate_ai_summary(db, user_id: int) -> str:
 2. Explains the statistical evidence in plain English (e.g. "strong evidence" not "p < 0.01")
 3. Notes any interesting temporal or behavioural patterns (time of day, day of week, most logged items)
 4. Gives 1–2 practical, specific observations the user might act on
+5. If health documents are provided below, reference any relevant context from them (e.g. diagnosed conditions, test results, medications) to personalise the analysis — but do not repeat their full content
 
 Write in second person ("Your data shows..."). Use specific numbers where helpful. Where evidence is weak or data is limited, say so honestly. Do not make medical diagnoses or treatment recommendations.
 
---- DATA ---
-{json.dumps(context, indent=2, default=str)}
-"""
+--- TRACKING DATA ---
+{json.dumps(context, indent=2, default=str)}{doc_section}"""
 
     message = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=900,
+        max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
     )
 
