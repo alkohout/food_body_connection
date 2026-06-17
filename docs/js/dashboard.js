@@ -2359,6 +2359,7 @@ async function init() {
     const aiBtn = getElement("ai-summary-btn");
     if (aiBtn) aiBtn.addEventListener("click", fetchAISummary);
 
+    setupChat();
     setupDocumentsTab();
 
     console.log("✅ init() completed successfully");
@@ -2367,6 +2368,117 @@ async function init() {
     console.error("❌ init() failed:", err);
     localStorage.removeItem("access_token");
     window.location.href = "index.html";
+  }
+}
+
+// =========================================================
+// AI Chat
+// =========================================================
+
+let chatHistory = [];
+
+function appendChatMessage(role, text) {
+  const container = getElement("chat-messages");
+  if (!container) return;
+
+  const placeholder = getElement("chat-placeholder");
+  if (placeholder) placeholder.style.display = "none";
+
+  const bubble = document.createElement("div");
+  bubble.style.cssText = `
+    max-width: 85%;
+    padding: 0.55rem 0.85rem;
+    border-radius: 10px;
+    font-size: 0.92em;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    ${role === "user"
+      ? "align-self: flex-end; background: #3b82f6; color: #fff;"
+      : "align-self: flex-start; background: #f3f4f6; color: #111827;"}
+  `;
+  bubble.textContent = text;
+  container.appendChild(bubble);
+  container.scrollTop = container.scrollHeight;
+}
+
+async function sendChatMessage() {
+  const input = getElement("chat-input");
+  const sendBtn = getElement("chat-send-btn");
+  const text = input?.value.trim();
+  if (!text) return;
+
+  input.value = "";
+  appendChatMessage("user", text);
+  chatHistory.push({ role: "user", content: text });
+
+  if (sendBtn) sendBtn.disabled = true;
+
+  // Typing indicator
+  const container = getElement("chat-messages");
+  const typingEl = document.createElement("div");
+  typingEl.id = "chat-typing";
+  typingEl.style.cssText = "align-self: flex-start; color: #9ca3af; font-size: 0.85em;";
+  typingEl.textContent = "Thinking…";
+  if (container) container.appendChild(typingEl);
+  if (container) container.scrollTop = container.scrollHeight;
+
+  try {
+    const res = await fetch(`${API_URL}/analysis/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      },
+      body: JSON.stringify({ messages: chatHistory }),
+    });
+
+    typingEl.remove();
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || res.status);
+    }
+
+    const data = await res.json();
+    chatHistory.push({ role: "assistant", content: data.reply });
+    appendChatMessage("assistant", data.reply);
+  } catch (err) {
+    typingEl.remove();
+    console.error("chat failed:", err);
+    appendChatMessage("assistant", `Sorry, something went wrong: ${err.message}`);
+    // Remove the user message from history so they can retry
+    chatHistory.pop();
+  } finally {
+    if (sendBtn) sendBtn.disabled = false;
+    input?.focus();
+  }
+}
+
+function setupChat() {
+  const sendBtn = getElement("chat-send-btn");
+  const clearBtn = getElement("chat-clear-btn");
+  const input = getElement("chat-input");
+
+  if (sendBtn) sendBtn.addEventListener("click", sendChatMessage);
+
+  if (input) {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendChatMessage();
+      }
+    });
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      chatHistory = [];
+      const container = getElement("chat-messages");
+      if (container) {
+        container.innerHTML = '<p id="chat-placeholder" style="color: #9ca3af; font-size: 0.9em; margin: 0;">Your conversation will appear here.</p>';
+      }
+    });
   }
 }
 
