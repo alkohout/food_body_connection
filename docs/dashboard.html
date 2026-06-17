@@ -446,10 +446,13 @@
               </figure>
             </div>
 
+          </div> <!-- /analysis-display-container -->
+        </div> <!-- /analysis-picker-container -->
+
         <!-- ===================== -->
         <!-- Analysis Summary -->
         <!-- ===================== -->
-        <h3>Analysis Summary</h3>
+        <h3 style="margin-top: 1.5rem;">Analysis Summary</h3>
         <div style="margin-bottom: 12px;">
           <button id="ai-summary-btn" type="button" class="primary" style="width: auto; padding: 0.5rem 1.2rem;">
             Generate AI Summary
@@ -461,14 +464,14 @@
         <!-- ===================== -->
         <!-- AI Chat -->
         <!-- ===================== -->
-        <h3 style="margin-top: 2rem;">Ask the AI</h3>
+        <h3 style="margin-top: 2rem;">Discuss</h3>
         <p style="margin-bottom: 0.75rem; color: #6b7280; font-size: 0.9em;">Ask questions about your data — the AI has access to the same context as the summary above.</p>
 
         <div id="chat-messages" style="
           border: 1px solid #e5e7eb;
           border-radius: 8px;
           padding: 1rem;
-          min-height: 80px;
+          min-height: 100px;
           max-height: 420px;
           overflow-y: auto;
           margin-bottom: 0.75rem;
@@ -482,11 +485,11 @@
         <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
           <textarea
             id="chat-input"
-            rows="2"
+            rows="3"
             placeholder="e.g. Which allergen looks most strongly linked to my symptoms?"
-            style="flex: 1; resize: vertical; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95em; font-family: inherit;"
+            style="flex: 1; resize: vertical; padding: 0.6rem 0.85rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95em; font-family: inherit; min-width: 0;"
           ></textarea>
-          <button id="chat-send-btn" type="button" class="primary" style="padding: 0.5rem 1.1rem; white-space: nowrap;">Send</button>
+          <button id="chat-send-btn" type="button" class="primary" style="padding: 0.6rem 1.2rem; white-space: nowrap; align-self: flex-end;">Send</button>
         </div>
         <div style="display: flex; justify-content: flex-end; margin-top: 0.4rem;">
           <button id="chat-clear-btn" type="button" class="secondary" style="font-size: 0.8em; padding: 0.3rem 0.7rem;">Clear chat</button>
