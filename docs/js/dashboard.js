@@ -744,7 +744,8 @@ function hideAllAnalysisPanels() {
     getElement("panel-allergen-importance"),
     getElement("panel-symptom-grouping"),
     getElement("panel-time-series"),
-    getElement("panel-deeper-analysis")
+    getElement("panel-deeper-analysis"),
+    getElement("panel-triptan-monthly"),
   ];
 
   panels.forEach(panel => {
@@ -785,6 +786,13 @@ async function showAnalysisPanel(selected) {
 
   if (selected === "deeper-analysis") {
     if (deeperPanel) deeperPanel.classList.add("visible");
+    return;
+  }
+
+  if (selected === "triptan-monthly") {
+    const panel = getElement("panel-triptan-monthly");
+    if (panel) panel.classList.add("visible");
+    await fetchTriptanMonthlyPlot();
     return;
   }
 }
@@ -1708,6 +1716,31 @@ async function fetchAllergenRankPlot({ force = false } = {}) {
   }
 }
 
+async function fetchTriptanMonthlyPlot() {
+  const statusEl = getElement("triptan-monthly-status");
+  const img = getElement("triptan-monthly-plot");
+
+  if (statusEl) statusEl.textContent = "Loading…";
+  if (img) img.style.display = "none";
+
+  try {
+    const res = await fetch(`${API_URL}/analysis/plot_triptan_monthly`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+    });
+    if (!res.ok) throw new Error(`Server returned ${res.status}`);
+
+    const blob = await res.blob();
+    if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+    img.src = URL.createObjectURL(blob);
+    img.dataset.objectUrl = img.src;
+    img.style.display = "";
+    if (statusEl) statusEl.textContent = "";
+  } catch (err) {
+    console.error("fetchTriptanMonthlyPlot failed:", err);
+    if (statusEl) statusEl.textContent = `Could not load plot: ${err.message}`;
+  }
+}
+
 // =========================================================
 // Analysis tab load
 // =========================================================
@@ -1717,6 +1750,9 @@ function loadAnalysisTab() {
   });
 
   if (currentUser?.user_id === 4) {
+    // Reveal the user-4-only dropdown option
+    document.querySelectorAll(".user4-only").forEach(el => el.style.display = "");
+
     const analysisSelect = getElement("analysis-select");
     if (analysisSelect && !analysisSelect.value) {
       analysisSelect.value = "time-series";

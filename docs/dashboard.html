@@ -212,6 +212,7 @@
               <option value="symptom-grouping">Symptom grouping plot</option>
               <option value="time-series">Time series plot</option>
               <option value="deeper-analysis">Deeper analysis</option>
+              <option value="triptan-monthly" class="user4-only" style="display:none">Triptans per month</option>
             </select>
           </div>
 
@@ -434,6 +435,16 @@
             </div>
           </div>
         </div>
+
+            <!-- Triptans per month (user 4 only) -->
+            <div id="panel-triptan-monthly" class="analysis-panel">
+              <h4>Triptans per month</h4>
+              <p>Monthly count of Triptan doses logged, with the overall average shown as a dashed line.</p>
+              <p id="triptan-monthly-status" class="status"></p>
+              <figure class="img-figure">
+                <img id="triptan-monthly-plot" src="" alt="Triptans per month" />
+              </figure>
+            </div>
 
         <!-- ===================== -->
         <!-- Analysis Summary -->
