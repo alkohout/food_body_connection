@@ -1558,9 +1558,11 @@ async function fetchAISummary() {
 
     if (!res.ok) throw new Error(`Server returned ${res.status}`);
 
-    const text = await res.text();
-    renderSummaryText(text);
-    if (status) status.textContent = "";
+    const data = await res.json();
+    renderSummaryText(data.text);
+
+    const costLabel = formatAICost(data.input_tokens, data.output_tokens);
+    if (status) status.textContent = costLabel ? `Cost: ${costLabel}` : "";
   } catch (err) {
     console.error("AI summary failed:", err);
     setSummaryState("Could not generate summary. Please try again.");
@@ -2375,6 +2377,12 @@ async function init() {
 // AI Chat
 // =========================================================
 
+function formatAICost(inputTokens, outputTokens) {
+  if (inputTokens == null || outputTokens == null) return null;
+  const cost = (inputTokens / 1e6 * 1.00) + (outputTokens / 1e6 * 5.00);
+  return `~$${cost.toFixed(6)}  (${inputTokens.toLocaleString()} in / ${outputTokens.toLocaleString()} out tokens)`;
+}
+
 let chatHistory = [];
 
 function appendChatMessage(role, text) {
@@ -2443,6 +2451,15 @@ async function sendChatMessage() {
     const data = await res.json();
     chatHistory.push({ role: "assistant", content: data.reply });
     appendChatMessage("assistant", data.reply);
+
+    const costLabel = formatAICost(data.input_tokens, data.output_tokens);
+    if (costLabel && container) {
+      const costEl = document.createElement("div");
+      costEl.style.cssText = "align-self: flex-start; color: #9ca3af; font-size: 0.75em; margin-top: -0.3rem; padding-left: 0.2rem;";
+      costEl.textContent = costLabel;
+      container.appendChild(costEl);
+      container.scrollTop = container.scrollHeight;
+    }
   } catch (err) {
     typingEl.remove();
     console.error("chat failed:", err);

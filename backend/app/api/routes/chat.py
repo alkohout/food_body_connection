@@ -68,4 +68,8 @@ Answer questions clearly and concisely. Reference specific numbers from the data
         messages=messages,
     )
 
-    return {"reply": response.content[0].text}
+    return {
+        "reply": response.content[0].text,
+        "input_tokens": response.usage.input_tokens,
+        "output_tokens": response.usage.output_tokens,
+    }

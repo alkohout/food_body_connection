@@ -168,22 +168,27 @@ def _get_document_context(db, user_id: int) -> str:
     return "\n\n".join(parts)
 
 
-def generate_ai_summary(db, user_id: int) -> str:
+def generate_ai_summary(db, user_id: int) -> dict:
     context = build_analysis_context(db, user_id)
 
     if context is None:
-        return (
-            "Not enough data to generate a summary yet. "
-            "Please log more allergen and symptom events to see patterns."
-        )
+        return {
+            "text": (
+                "Not enough data to generate a summary yet. "
+                "Please log more allergen and symptom events to see patterns."
+            ),
+            "input_tokens": None,
+            "output_tokens": None,
+        }
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         logger.warning("ANTHROPIC_API_KEY not set — falling back to model text")
         try:
-            return model_classification(db, user_id, return_type="text")
+            text = model_classification(db, user_id, return_type="text")
         except Exception:
-            return "Summary unavailable: ANTHROPIC_API_KEY is not configured."
+            text = "Summary unavailable: ANTHROPIC_API_KEY is not configured."
+        return {"text": text, "input_tokens": None, "output_tokens": None}
 
     doc_context = _get_document_context(db, user_id)
     doc_section = (
@@ -213,4 +218,8 @@ Write in second person ("Your data shows..."). Use specific numbers where helpfu
         messages=[{"role": "user", "content": prompt}],
     )
 
-    return message.content[0].text
+    return {
+        "text": message.content[0].text,
+        "input_tokens": message.usage.input_tokens,
+        "output_tokens": message.usage.output_tokens,
+    }
