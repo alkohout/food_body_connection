@@ -482,16 +482,14 @@
           <p id="chat-placeholder" style="color: #9ca3af; font-size: 0.9em; margin: 0;">Your conversation will appear here.</p>
         </div>
 
-        <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
-          <textarea
-            id="chat-input"
-            rows="3"
-            placeholder="e.g. Which allergen looks most strongly linked to my symptoms?"
-            style="flex: 1; resize: vertical; padding: 0.6rem 0.85rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95em; font-family: inherit; min-width: 0;"
-          ></textarea>
-          <button id="chat-send-btn" type="button" class="primary" style="padding: 0.6rem 1.2rem; white-space: nowrap; align-self: flex-end;">Send</button>
-        </div>
-        <div style="display: flex; justify-content: flex-end; margin-top: 0.4rem;">
+        <textarea
+          id="chat-input"
+          rows="3"
+          placeholder="e.g. Which allergen looks most strongly linked to my symptoms?"
+          style="width: 100%; box-sizing: border-box; resize: vertical; padding: 0.6rem 0.85rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95em; font-family: inherit;"
+        ></textarea>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.4rem;">
+          <button id="chat-send-btn" type="button" class="primary" style="padding: 0.5rem 1.4rem;">Send</button>
           <button id="chat-clear-btn" type="button" class="secondary" style="font-size: 0.8em; padding: 0.3rem 0.7rem;">Clear chat</button>
         </div>
 
