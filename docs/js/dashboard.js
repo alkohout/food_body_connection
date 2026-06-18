@@ -2580,7 +2580,7 @@ function buildCheckinForm() {
   const container = getElement("checkin-content");
   if (!container) return;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateTimeForInput().slice(0, 10);
 
   container.innerHTML = `
     <div class="checkin-period-toggle">
