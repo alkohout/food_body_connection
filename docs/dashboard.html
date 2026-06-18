@@ -24,16 +24,16 @@
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab active" data-tab="allergen">Log Allergen</button>
+      <button class="tab active" data-tab="checkin">Check-in</button>
+      <button class="tab" data-tab="allergen">Log Allergen</button>
       <button class="tab" data-tab="symptom">Log Symptom</button>
-      <button class="tab" data-tab="checkin">Check-in</button>
       <button class="tab" data-tab="analysis">Analysis</button>
       <button class="tab" data-tab="medication">Medications</button>
       <button class="tab" data-tab="documents">Documents</button>
     </div>
 
     <!-- Allergen tab -->
-     <form id="allergen-form" class="form active">
+     <form id="allergen-form" class="form">
 
       <div class="form-row">
         <label for="allergen-select">Allergen</label>
@@ -158,7 +158,7 @@
     </form>
 
     <!-- Check-in tab -->
-    <form id="checkin-form" class="form">
+    <form id="checkin-form" class="form active">
       <p>A quick daily check-in to track how you feel over time.</p>
       <div id="checkin-content">
         <!-- Populated by JS once user is known -->
