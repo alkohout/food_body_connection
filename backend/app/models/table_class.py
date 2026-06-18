@@ -173,10 +173,11 @@ class DailyCheckin(Base):
     stress  = Column(SmallInteger, nullable=True)
 
     # Extended variables (user 4)
-    headache           = Column(SmallInteger, nullable=True)
-    brain_fog          = Column(SmallInteger, nullable=True)
-    tinnitus           = Column(SmallInteger, nullable=True)
-    visual_disturbance = Column(SmallInteger, nullable=True)
+    headache             = Column(SmallInteger, nullable=True)
+    headache_overnight   = Column(SmallInteger, nullable=True)  # morning only
+    brain_fog            = Column(SmallInteger, nullable=True)
+    tinnitus             = Column(SmallInteger, nullable=True)
+    visual_disturbance   = Column(SmallInteger, nullable=True)
 
     recorded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 

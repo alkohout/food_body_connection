@@ -2521,6 +2521,7 @@ const CHECKIN_VARS_GENERAL = [
 
 const CHECKIN_VARS_EXTRA = [
   { key: "headache",           label: "Headache",           options: ["None", "Mild", "Bad"], morningOnly: false },
+  { key: "headache_overnight", label: "Headache overnight", options: ["None", "Mild", "Bad"], morningOnly: true  },
   { key: "brain_fog",          label: "Brain fog",          options: ["None", "Mild", "Bad"], morningOnly: false },
   { key: "tinnitus",           label: "Tinnitus",           options: ["None", "Mild", "Bad"], morningOnly: false },
   { key: "visual_disturbance", label: "Visual disturbance", options: ["None", "Mild", "Bad"], morningOnly: false },

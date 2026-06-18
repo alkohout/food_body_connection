@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/checkin", tags=["checkin"])
 
 _ALL_VARS = ("mood", "sleep", "fatigue", "gut", "stress",
-             "headache", "brain_fog", "tinnitus", "visual_disturbance")
+             "headache", "headache_overnight", "brain_fog", "tinnitus", "visual_disturbance")
 
 
 class CheckinPayload(BaseModel):
@@ -26,8 +26,9 @@ class CheckinPayload(BaseModel):
     fatigue:            Optional[int] = None
     gut:                Optional[int] = None
     stress:             Optional[int] = None
-    headache:           Optional[int] = None
-    brain_fog:          Optional[int] = None
+    headache:             Optional[int] = None
+    headache_overnight:   Optional[int] = None
+    brain_fog:            Optional[int] = None
     tinnitus:           Optional[int] = None
     visual_disturbance: Optional[int] = None
 
