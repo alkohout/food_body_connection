@@ -2529,6 +2529,7 @@ const CHECKIN_VARS_EXTRA = [
 let checkinPeriod = new Date().getHours() < 13 ? "morning" : "evening";
 let checkinValues = {};
 let checkinFormBuilt = false;
+let checkinExistsOnServer = false;
 
 function getCheckinVars() {
   return currentUser?.user_id === 4
@@ -2628,6 +2629,7 @@ async function loadCheckinForDate() {
   const date = getElement("checkin-date")?.value;
   if (!date) return;
 
+  checkinExistsOnServer = false;
   try {
     const res = await fetch(
       `${API_URL}/checkin?date=${date}&period=${checkinPeriod}`,
@@ -2637,6 +2639,7 @@ async function loadCheckinForDate() {
     const data = await res.json();
     if (!data.exists) return;
 
+    checkinExistsOnServer = true;
     checkinValues = {};
     getCheckinVars().forEach(v => {
       if (data[v.key] != null) checkinValues[v.key] = data[v.key];
@@ -2653,20 +2656,17 @@ async function submitCheckin() {
   const submitBtn = getElement("checkin-submit-btn");
   if (!date) return;
 
-  // Check for existing and warn
-  try {
-    const res = await fetch(
-      `${API_URL}/checkin?date=${date}&period=${checkinPeriod}`,
-      { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
-    );
-    if (res.ok) {
-      const data = await res.json();
-      if (data.exists) {
-        const ok = confirm(`You already have a ${checkinPeriod} check-in for ${date}. Update it?`);
-        if (!ok) return;
-      }
+  // Disable immediately to prevent double-submit
+  if (submitBtn) submitBtn.disabled = true;
+
+  // Warn if a check-in already exists (use cached flag — no extra request needed)
+  if (checkinExistsOnServer) {
+    const ok = confirm(`You already have a ${checkinPeriod} check-in for ${date}. Update it?`);
+    if (!ok) {
+      if (submitBtn) submitBtn.disabled = false;
+      return;
     }
-  } catch (_) {}
+  }
 
   const payload = { checkin_date: date, period: checkinPeriod };
   getCheckinVars().forEach(v => {
@@ -2674,7 +2674,6 @@ async function submitCheckin() {
     if (checkinValues[v.key] !== undefined) payload[v.key] = checkinValues[v.key];
   });
 
-  if (submitBtn) submitBtn.disabled = true;
   if (status) status.textContent = "Saving…";
 
   try {
@@ -2687,6 +2686,7 @@ async function submitCheckin() {
       body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error(await res.text());
+    checkinExistsOnServer = true;
     if (status) status.textContent = "Saved!";
     setTimeout(() => { if (status) status.textContent = ""; }, 2500);
   } catch (err) {
