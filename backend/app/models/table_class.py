@@ -1,6 +1,6 @@
 # backend/app/models/table_class.py
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, Date, ForeignKey, CheckConstraint, Boolean, Text
+from sqlalchemy import Column, Integer, SmallInteger, String, Float, DateTime, Date, ForeignKey, CheckConstraint, Boolean, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy import UniqueConstraint
 from datetime import datetime, timezone
@@ -22,6 +22,7 @@ class User(Base):
     medication = relationship("Medication", back_populates="user", cascade="all, delete-orphan")
     medication_regimen = relationship("MedicationRegimen", back_populates="user", cascade="all, delete-orphan")
     documents = relationship("UserDocument", back_populates="user", cascade="all, delete-orphan")
+    checkins = relationship("DailyCheckin", back_populates="user", cascade="all, delete-orphan")
 
 class Allergen(Base):
     __tablename__ = 'allergen'
@@ -154,3 +155,34 @@ class UserDocument(Base):
     uploaded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="documents")
+
+
+class DailyCheckin(Base):
+    __tablename__ = 'daily_checkin'
+
+    checkin_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False)
+    checkin_date = Column(Date, nullable=False)
+    period = Column(String(10), nullable=False)  # 'morning' or 'evening'
+
+    # General variables (all users)
+    mood    = Column(SmallInteger, nullable=True)
+    sleep   = Column(SmallInteger, nullable=True)   # morning only
+    fatigue = Column(SmallInteger, nullable=True)
+    gut     = Column(SmallInteger, nullable=True)
+    stress  = Column(SmallInteger, nullable=True)
+
+    # Extended variables (user 4)
+    headache           = Column(SmallInteger, nullable=True)
+    brain_fog          = Column(SmallInteger, nullable=True)
+    tinnitus           = Column(SmallInteger, nullable=True)
+    visual_disturbance = Column(SmallInteger, nullable=True)
+
+    recorded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="checkins")
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'checkin_date', 'period', name='uq_user_checkin_date_period'),
+        CheckConstraint("period IN ('morning', 'evening')", name='check_checkin_period'),
+    )

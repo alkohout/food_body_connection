@@ -819,6 +819,16 @@ function setupTimeSeries() {
     const val = typeEl.value;
     if (!val) { nameEl.innerHTML = '<option value="">Select…</option>'; nameEl.disabled = true; return; }
     nameEl.innerHTML = '<option value="">Select…</option>';
+
+    if (val === "checkin") {
+      const vars = currentUser?.user_id === 4
+        ? [...CHECKIN_VARS_GENERAL, ...CHECKIN_VARS_EXTRA]
+        : CHECKIN_VARS_GENERAL;
+      vars.forEach(v => nameEl.appendChild(new Option(v.label, v.key)));
+      nameEl.disabled = false;
+      return;
+    }
+
     let items, labelKey;
     if (val === "allergen")        { items = cachedAllergens;   labelKey = "allergen_name"; }
     else if (val === "symptom")    { items = cachedSymptoms;    labelKey = "symptom_name"; }
@@ -1780,12 +1790,9 @@ const setupTabs = () => {
       const targetForm = getElement(`${target}-form`);
       if (targetForm) targetForm.classList.add("active");
 
-      if (target === "analysis") {
-        loadAnalysisTab();
-      }
-      if (target === "medication") {
-        loadMedicationsTab();
-      }
+      if (target === "analysis") loadAnalysisTab();
+      if (target === "medication") loadMedicationsTab();
+      if (target === "checkin") setupCheckinTab();
     });
   });
 };
@@ -2363,6 +2370,7 @@ async function init() {
 
     setupChat();
     setupDocumentsTab();
+    setupCheckinTab();
 
     console.log("✅ init() completed successfully");
 
@@ -2497,6 +2505,201 @@ function setupChat() {
       }
     });
   }
+}
+
+// =========================================================
+// Daily Check-in
+// =========================================================
+
+const CHECKIN_VARS_GENERAL = [
+  { key: "mood",    label: "Mood",             options: ["Poor", "Okay", "Good"], morningOnly: false },
+  { key: "sleep",   label: "Sleep last night", options: ["Poor", "Okay", "Good"], morningOnly: true  },
+  { key: "fatigue", label: "Fatigue",           options: ["None", "Mild", "Bad"],  morningOnly: false },
+  { key: "gut",     label: "Gut / Digestion",   options: ["None", "Mild", "Bad"],  morningOnly: false },
+  { key: "stress",  label: "Stress",            options: ["None", "Mild", "Bad"],  morningOnly: false },
+];
+
+const CHECKIN_VARS_EXTRA = [
+  { key: "headache",           label: "Headache",           options: ["None", "Mild", "Bad"], morningOnly: false },
+  { key: "brain_fog",          label: "Brain fog",          options: ["None", "Mild", "Bad"], morningOnly: false },
+  { key: "tinnitus",           label: "Tinnitus",           options: ["None", "Mild", "Bad"], morningOnly: false },
+  { key: "visual_disturbance", label: "Visual disturbance", options: ["None", "Mild", "Bad"], morningOnly: false },
+];
+
+let checkinPeriod = new Date().getHours() < 13 ? "morning" : "evening";
+let checkinValues = {};
+let checkinFormBuilt = false;
+
+function getCheckinVars() {
+  return currentUser?.user_id === 4
+    ? [...CHECKIN_VARS_GENERAL, ...CHECKIN_VARS_EXTRA]
+    : CHECKIN_VARS_GENERAL;
+}
+
+function renderCheckinVarRows() {
+  const varsContainer = getElement("checkin-vars");
+  if (!varsContainer) return;
+
+  varsContainer.innerHTML = "";
+  getCheckinVars().forEach(v => {
+    if (v.morningOnly && checkinPeriod === "evening") return;
+
+    const row = document.createElement("div");
+    row.className = "checkin-row";
+
+    const label = document.createElement("span");
+    label.className = "checkin-label";
+    label.textContent = v.label;
+
+    const group = document.createElement("div");
+    group.className = "checkin-btn-group";
+
+    v.options.forEach((optLabel, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.dataset.val = i;
+      btn.textContent = optLabel;
+      if (checkinValues[v.key] === i) btn.classList.add("selected");
+      btn.addEventListener("click", () => {
+        group.querySelectorAll("button").forEach(b => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        checkinValues[v.key] = i;
+      });
+      group.appendChild(btn);
+    });
+
+    row.appendChild(label);
+    row.appendChild(group);
+    varsContainer.appendChild(row);
+  });
+}
+
+function buildCheckinForm() {
+  const container = getElement("checkin-content");
+  if (!container) return;
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  container.innerHTML = `
+    <div class="checkin-period-toggle">
+      <button type="button" class="checkin-period-btn ${checkinPeriod === "morning" ? "active" : ""}" data-period="morning">Morning</button>
+      <button type="button" class="checkin-period-btn ${checkinPeriod === "evening" ? "active" : ""}" data-period="evening">Evening</button>
+    </div>
+
+    <div class="form-row" style="margin-bottom:1rem;">
+      <label for="checkin-date">Date</label>
+      <input type="date" id="checkin-date" value="${today}" style="width:auto;" />
+    </div>
+
+    <p class="checkin-section-label">How are you feeling?</p>
+    <div id="checkin-vars"></div>
+
+    <div style="margin-top:1.25rem; display:flex; align-items:center; gap:1rem;">
+      <button type="button" id="checkin-submit-btn" class="primary" style="width:auto; padding:0.5rem 1.5rem;">Save Check-in</button>
+      <span id="checkin-status" style="font-size:0.9em; color:#6b7280;"></span>
+    </div>
+  `;
+
+  renderCheckinVarRows();
+
+  container.querySelectorAll(".checkin-period-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      checkinPeriod = btn.dataset.period;
+      container.querySelectorAll(".checkin-period-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      checkinValues = {};
+      renderCheckinVarRows();
+      loadCheckinForDate();
+    });
+  });
+
+  getElement("checkin-date")?.addEventListener("change", () => {
+    checkinValues = {};
+    renderCheckinVarRows();
+    loadCheckinForDate();
+  });
+
+  getElement("checkin-submit-btn")?.addEventListener("click", submitCheckin);
+
+  checkinFormBuilt = true;
+}
+
+async function loadCheckinForDate() {
+  const date = getElement("checkin-date")?.value;
+  if (!date) return;
+
+  try {
+    const res = await fetch(
+      `${API_URL}/checkin?date=${date}&period=${checkinPeriod}`,
+      { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
+    );
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.exists) return;
+
+    checkinValues = {};
+    getCheckinVars().forEach(v => {
+      if (data[v.key] != null) checkinValues[v.key] = data[v.key];
+    });
+    renderCheckinVarRows();
+  } catch (err) {
+    console.error("loadCheckinForDate failed:", err);
+  }
+}
+
+async function submitCheckin() {
+  const date = getElement("checkin-date")?.value;
+  const status = getElement("checkin-status");
+  const submitBtn = getElement("checkin-submit-btn");
+  if (!date) return;
+
+  // Check for existing and warn
+  try {
+    const res = await fetch(
+      `${API_URL}/checkin?date=${date}&period=${checkinPeriod}`,
+      { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data.exists) {
+        const ok = confirm(`You already have a ${checkinPeriod} check-in for ${date}. Update it?`);
+        if (!ok) return;
+      }
+    }
+  } catch (_) {}
+
+  const payload = { checkin_date: date, period: checkinPeriod };
+  getCheckinVars().forEach(v => {
+    if (v.morningOnly && checkinPeriod === "evening") return;
+    if (checkinValues[v.key] !== undefined) payload[v.key] = checkinValues[v.key];
+  });
+
+  if (submitBtn) submitBtn.disabled = true;
+  if (status) status.textContent = "Saving…";
+
+  try {
+    const res = await fetch(`${API_URL}/checkin`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    if (status) status.textContent = "Saved!";
+    setTimeout(() => { if (status) status.textContent = ""; }, 2500);
+  } catch (err) {
+    console.error("submitCheckin failed:", err);
+    if (status) status.textContent = `Error: ${err.message}`;
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
+}
+
+function setupCheckinTab() {
+  if (!checkinFormBuilt) buildCheckinForm();
+  loadCheckinForDate();
 }
 
 // =========================================================

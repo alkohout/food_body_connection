@@ -26,6 +26,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="allergen">Log Allergen</button>
       <button class="tab" data-tab="symptom">Log Symptom</button>
+      <button class="tab" data-tab="checkin">Check-in</button>
       <button class="tab" data-tab="analysis">Analysis</button>
       <button class="tab" data-tab="medication">Medications</button>
       <button class="tab" data-tab="documents">Documents</button>
@@ -156,6 +157,14 @@
 
     </form>
 
+    <!-- Check-in tab -->
+    <form id="checkin-form" class="form">
+      <p>A quick daily check-in to track how you feel over time.</p>
+      <div id="checkin-content">
+        <!-- Populated by JS once user is known -->
+      </div>
+    </form>
+
     <!-- Analysis tab -->
     <form id="analysis-form" class="form">
       <p>Explore your logged data to identify potential food–symptom relationships.</p>
@@ -284,6 +293,7 @@
                     <option value="allergen">Allergen</option>
                     <option value="symptom">Symptom</option>
                     <option value="medication">Medication</option>
+                    <option value="checkin">Daily Check-in</option>
                   </select>
                   <select id="ts-name-select" class="ts-name-sel">
                     <option value="">Select…</option>
@@ -299,6 +309,7 @@
                     <option value="allergen">Allergen</option>
                     <option value="symptom">Symptom</option>
                     <option value="medication">Medication</option>
+                    <option value="checkin">Daily Check-in</option>
                   </select>
                   <select id="ts-name2-select" class="ts-name-sel" disabled>
                     <option value="">Select…</option>

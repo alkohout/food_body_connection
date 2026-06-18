@@ -535,6 +535,84 @@ select:focus {
 .log-row--saved td   { background: #dcfce7; transition: background 0.8s ease; }
 .log-row--error td   { background: #fee2e2; transition: background 0.8s ease; }
 
+/* =========================
+   Daily Check-in
+   ========================= */
+
+.checkin-period-toggle {
+  display: flex;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  overflow: hidden;
+  width: fit-content;
+  margin-bottom: 1.5rem;
+}
+
+.checkin-period-btn {
+  padding: 0.5rem 1.6rem;
+  border: none;
+  border-right: 1px solid #d1d5db;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.95em;
+  color: #6b7280;
+}
+
+.checkin-period-btn:last-child { border-right: none; }
+
+.checkin-period-btn.active {
+  background: #3b82f6;
+  color: #fff;
+  font-weight: 600;
+}
+
+.checkin-section-label {
+  font-size: 0.78em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+  margin: 1.2rem 0 0.6rem;
+}
+
+.checkin-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.65rem;
+}
+
+.checkin-label {
+  min-width: 155px;
+  font-size: 0.9em;
+  color: #374151;
+}
+
+.checkin-btn-group {
+  display: flex;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.checkin-btn-group button {
+  padding: 0.35rem 0.9rem;
+  border: none;
+  border-right: 1px solid #d1d5db;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85em;
+  color: #6b7280;
+}
+
+.checkin-btn-group button:last-child { border-right: none; }
+
+.checkin-btn-group button.selected {
+  background: #3b82f6;
+  color: #fff;
+  font-weight: 600;
+}
+
 
 /* =========================
    Time series – controls
