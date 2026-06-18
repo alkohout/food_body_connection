@@ -15,12 +15,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/checkin", tags=["checkin"])
 
 _ALL_VARS = ("mood", "sleep", "fatigue", "gut", "stress",
-             "headache", "headache_overnight", "brain_fog", "tinnitus", "visual_disturbance")
+             "headache", "headache_overnight", "brain_fog", "tinnitus", "visual_disturbance",
+             "training")
 
 
 class CheckinPayload(BaseModel):
-    checkin_date: str
-    period: str
+    checkin_date:     str
+    period:           str
+    checkin_datetime: Optional[str] = None   # ISO string from frontend local time
     mood:               Optional[int] = None
     sleep:              Optional[int] = None
     fatigue:            Optional[int] = None
@@ -31,6 +33,7 @@ class CheckinPayload(BaseModel):
     brain_fog:            Optional[int] = None
     tinnitus:           Optional[int] = None
     visual_disturbance: Optional[int] = None
+    training:           Optional[int] = None
 
 
 def _checkin_dict(c: DailyCheckin) -> dict:
@@ -85,11 +88,20 @@ def submit_checkin(
         DailyCheckin.period == body.period,
     ).first()
 
+    parsed_dt = None
+    if body.checkin_datetime:
+        try:
+            parsed_dt = datetime.fromisoformat(body.checkin_datetime.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+
     if existing:
         for v in _ALL_VARS:
             val = getattr(body, v)
             if val is not None:
                 setattr(existing, v, val)
+        if parsed_dt:
+            existing.checkin_datetime = parsed_dt
         existing.recorded_at = datetime.now(timezone.utc)
         db.commit()
         return {"status": "updated", "checkin_id": existing.checkin_id}
@@ -98,6 +110,7 @@ def submit_checkin(
         user_id=current_user.user_id,
         checkin_date=checkin_date,
         period=body.period,
+        checkin_datetime=parsed_dt,
         **{v: getattr(body, v) for v in _ALL_VARS},
     )
     db.add(row)

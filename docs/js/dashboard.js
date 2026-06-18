@@ -843,9 +843,10 @@ function setupTimeSeries() {
   function getDateRange() {
     const active = document.querySelector(".ts-range-btn.active");
     const range = active?.dataset.range ?? "all";
+    const tzOffset = new Date().getTimezoneOffset(); // minutes; negative east of UTC (e.g. NZ = -720)
     if (range === "all") return {};
     if (range === "custom") {
-      const params = {};
+      const params = { tz_offset: tzOffset };
       if (dateFrom?.value) params.date_from = dateFrom.value;
       if (dateTo?.value)   params.date_to   = dateTo.value;
       return params;
@@ -854,8 +855,9 @@ function setupTimeSeries() {
     const from = new Date();
     from.setMonth(from.getMonth() - months);
     return {
-      date_from: from.toISOString().slice(0, 10),
-      date_to:   new Date().toISOString().slice(0, 10),
+      date_from: localDateTimeForInput(from).slice(0, 10),
+      date_to:   localDateTimeForInput().slice(0, 10),
+      tz_offset: tzOffset,
     };
   }
 
@@ -1248,7 +1250,7 @@ function buildMedCard(r) {
       </div>
       <div class="form-row">
         <label>Effective from</label>
-        <input type="date" class="med-change-date" value="${new Date().toISOString().slice(0, 10)}" />
+        <input type="date" class="med-change-date" value="${localDateTimeForInput().slice(0, 10)}" />
       </div>
       <div class="form-row">
         <label></label>
@@ -1389,7 +1391,7 @@ function setupMedicationsTab() {
 
   if (!addToggle) return;
 
-  if (startInput) startInput.value = new Date().toISOString().slice(0, 10);
+  if (startInput) startInput.value = localDateTimeForInput().slice(0, 10);
   if (unitInput)  unitInput.value  = "mg";
 
   addToggle.addEventListener("click", () => {
@@ -1438,7 +1440,7 @@ function setupMedicationsTab() {
       doseInput.value  = "";
       unitInput.value  = "mg";
       noteInput.value  = "";
-      startInput.value = new Date().toISOString().slice(0, 10);
+      startInput.value = localDateTimeForInput().slice(0, 10);
       addPanel.style.display = "none";
       addToggle.textContent  = "+ Add medication";
 
@@ -2520,11 +2522,12 @@ const CHECKIN_VARS_GENERAL = [
 ];
 
 const CHECKIN_VARS_EXTRA = [
-  { key: "headache",           label: "Headache",           options: ["None", "Mild", "Bad"], morningOnly: false },
-  { key: "headache_overnight", label: "Headache overnight", options: ["None", "Mild", "Bad"], morningOnly: true  },
-  { key: "brain_fog",          label: "Brain fog",          options: ["None", "Mild", "Bad"], morningOnly: false },
-  { key: "tinnitus",           label: "Tinnitus",           options: ["None", "Mild", "Bad"], morningOnly: false },
-  { key: "visual_disturbance", label: "Visual disturbance", options: ["None", "Mild", "Bad"], morningOnly: false },
+  { key: "headache",           label: "Headache",           options: ["None", "Mild", "Bad"],             morningOnly: false },
+  { key: "headache_overnight", label: "Headache overnight", options: ["None", "Mild", "Bad"],             morningOnly: true  },
+  { key: "brain_fog",          label: "Brain fog",          options: ["None", "Mild", "Bad"],             morningOnly: false },
+  { key: "tinnitus",           label: "Tinnitus",           options: ["None", "Mild", "Bad"],             morningOnly: false },
+  { key: "visual_disturbance", label: "Visual disturbance", options: ["None", "Mild", "Bad"],             morningOnly: false },
+  { key: "training",           label: "Training",           options: ["None", "Partial", "Full"],         morningOnly: true  },
 ];
 
 let checkinPeriod = new Date().getHours() < 13 ? "morning" : "evening";
@@ -2669,7 +2672,16 @@ async function submitCheckin() {
     }
   }
 
-  const payload = { checkin_date: date, period: checkinPeriod };
+  // Build a local datetime for the check-in (8am morning, 8pm evening) so the
+  // plot aligns with allergen/symptom events on the same local day.
+  const hour = checkinPeriod === "morning" ? 8 : 20;
+  const localDt = new Date(`${date}T${String(hour).padStart(2, "0")}:00:00`);
+
+  const payload = {
+    checkin_date: date,
+    period: checkinPeriod,
+    checkin_datetime: localDt.toISOString(),
+  };
   getCheckinVars().forEach(v => {
     if (v.morningOnly && checkinPeriod === "evening") return;
     if (checkinValues[v.key] !== undefined) payload[v.key] = checkinValues[v.key];

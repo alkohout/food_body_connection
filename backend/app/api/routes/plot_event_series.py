@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.lines import Line2D
 from io import BytesIO
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -27,7 +27,8 @@ _COL1 = "#2563eb"   # blue  – variable 1
 _COL2 = "#ea580c"   # orange – variable 2
 
 _CHECKIN_VARS = {"sleep", "mood", "fatigue", "gut", "stress",
-                 "headache", "headache_overnight", "brain_fog", "tinnitus", "visual_disturbance"}
+                 "headache", "headache_overnight", "brain_fog", "tinnitus", "visual_disturbance",
+                 "training"}
 _CHECKIN_POINT_COLORS = {0: "#4caf50", 1: "#f59e0b", 2: "#ef4444"}
 _CHECKIN_YTICK_LABELS = ["Low", "Med", "High"]
 
@@ -36,14 +37,20 @@ _CHECKIN_YTICK_LABELS = ["Low", "Med", "High"]
 # Data helpers
 # ──────────────────────────────────────────────
 
-def _parse_date(date_str: Optional[str], end_of_day: bool = False) -> Optional[datetime]:
+def _parse_date(date_str: Optional[str], end_of_day: bool = False, tz_offset_minutes: int = 0) -> Optional[datetime]:
+    """Parse a YYYY-MM-DD string as local midnight (or end-of-day) in UTC.
+
+    tz_offset_minutes is the value of JS Date.getTimezoneOffset() — the number of
+    minutes that must be added to local time to get UTC (negative for east-of-UTC
+    zones, e.g. NZ UTC+12 → -720).  Adding it converts local midnight to UTC.
+    """
     if not date_str:
         return None
     try:
         d = datetime.strptime(date_str, "%Y-%m-%d")
         if end_of_day:
             d = d.replace(hour=23, minute=59, second=59)
-        return d.replace(tzinfo=timezone.utc)
+        return (d + timedelta(minutes=tz_offset_minutes)).replace(tzinfo=timezone.utc)
     except ValueError:
         return None
 
@@ -167,9 +174,13 @@ def _get_checkin_data(db, user_id, variable_name, from_dt, to_dt):
         val = getattr(r, variable_name)
         if val is None:
             continue
-        hour = 7 if r.period == "morning" else 19
-        dt = datetime(r.checkin_date.year, r.checkin_date.month, r.checkin_date.day,
-                      hour, 0, 0, tzinfo=timezone.utc)
+        # Use stored local datetime if available, else fall back to reconstructed UTC
+        if r.checkin_datetime:
+            dt = r.checkin_datetime
+        else:
+            hour = 8 if r.period == "morning" else 20
+            dt = datetime(r.checkin_date.year, r.checkin_date.month, r.checkin_date.day,
+                          hour, 0, 0, tzinfo=timezone.utc)
         dates.append(dt)
         values.append(val)
 
@@ -290,6 +301,7 @@ def plot_event_series(
     name2: Optional[str] = Query(None),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
+    tz_offset: int = Query(0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -306,8 +318,8 @@ def plot_event_series(
     if type2 and type2 not in _VALID:
         raise HTTPException(400, f"type2 must be one of {_VALID}")
 
-    from_dt = _parse_date(date_from)
-    to_dt   = _parse_date(date_to, end_of_day=True)
+    from_dt = _parse_date(date_from, tz_offset_minutes=tz_offset)
+    to_dt   = _parse_date(date_to, end_of_day=True, tz_offset_minutes=tz_offset)
 
     try:
         def _fetch(t, n):
