@@ -52,34 +52,21 @@ h1 {
   margin-bottom: 0.5rem;
 }
 
-.dashboard-header {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.dashboard-heading-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
 .user-count-badge {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  padding: 0.4rem 0.65rem;
-  background: rgba(37, 99, 235, 0.15);
-  color: #1e3a8a;
-  font-size: 0.85rem;
-  font-weight: 700;
-  border: 1px solid rgba(37, 99, 235, 0.25);
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  padding: 0.35rem 0.6rem;
+  background: rgba(255, 255, 255, 0.78);
+  color: #1f3a5f;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid rgba(31, 58, 95, 0.2);
   border-radius: 999px;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(4px);
   white-space: nowrap;
-  z-index: 10;
+  z-index: 30;
+  pointer-events: none;
 }
 
 /* Subtitle or tagline text */
