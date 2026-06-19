@@ -215,6 +215,17 @@ def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+@router.get("/user-count")
+def get_user_count(db: Session = Depends(get_db)):
+    """
+    Return the total number of registered users.
+
+    This endpoint is protected by the same authentication middleware
+    as the dashboard and may be shown only for user 4.
+    """
+    return {"user_count": db.query(User).count()}
+
+
 class ForgotPasswordRequest(BaseModel):
     email: str
 

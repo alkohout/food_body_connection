@@ -86,3 +86,8 @@ export async function register(email, password) {
 export async function getCurrentUser() {
   return apiFetch("/auth/me");
 }
+
+// Fetch the total number of registered users
+export async function getUserCount() {
+  return apiFetch("/auth/user-count");
+}

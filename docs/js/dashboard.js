@@ -1,4 +1,4 @@
-import { getCurrentUser, API_URL } from "./api.js";
+import { getCurrentUser, getUserCount, API_URL } from "./api.js";
 
 console.log("Dashboard module loading...");
 
@@ -81,6 +81,19 @@ function setupLogout() {
     localStorage.removeItem("access_token");
     window.location.href = "index.html";
   });
+}
+
+async function loadUserCountBadge() {
+  try {
+    const data = await getUserCount();
+    const badge = getElement("user-count-badge");
+    if (!badge) return;
+
+    badge.textContent = `Users: ${data.user_count}`;
+    badge.style.display = "inline-flex";
+  } catch (err) {
+    console.warn("Failed to load user count badge:", err);
+  }
 }
 
 // =========================================================
@@ -2248,6 +2261,10 @@ async function init() {
 
     const userEmailEl = getElement("user-email");
     if (userEmailEl) userEmailEl.textContent = user.email;
+
+    if (currentUser.user_id === 4) {
+      await loadUserCountBadge();
+    }
 
     // Set up UI components
     setupLogout();
