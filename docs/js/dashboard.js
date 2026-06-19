@@ -2528,6 +2528,7 @@ const CHECKIN_VARS_EXTRA = [
   { key: "tinnitus",           label: "Tinnitus",           options: ["None", "Mild", "Bad"],             morningOnly: false },
   { key: "visual_disturbance", label: "Visual disturbance", options: ["None", "Mild", "Bad"],             morningOnly: false },
   { key: "training",           label: "Training",           options: ["None", "Partial", "Full"],         morningOnly: true  },
+  { key: "virus",              label: "Virus / Illness",    options: ["None", "Mild", "Bad"],             morningOnly: false },
 ];
 
 let checkinPeriod = new Date().getHours() < 13 ? "morning" : "evening";

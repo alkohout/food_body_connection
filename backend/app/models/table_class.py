@@ -179,6 +179,7 @@ class DailyCheckin(Base):
     tinnitus             = Column(SmallInteger, nullable=True)
     visual_disturbance   = Column(SmallInteger, nullable=True)
     training             = Column(SmallInteger, nullable=True)  # morning only; 0=none 1=partial 2=full
+    virus                = Column(SmallInteger, nullable=True)  # 0=none 1=mild 2=bad
 
     checkin_datetime = Column(DateTime(timezone=True), nullable=True)
     recorded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

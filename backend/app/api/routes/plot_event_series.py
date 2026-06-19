@@ -28,7 +28,7 @@ _COL2 = "#ea580c"   # orange – variable 2
 
 _CHECKIN_VARS = {"sleep", "mood", "fatigue", "gut", "stress",
                  "headache", "headache_overnight", "brain_fog", "tinnitus", "visual_disturbance",
-                 "training"}
+                 "training", "virus"}
 _CHECKIN_POINT_COLORS = {0: "#4caf50", 1: "#f59e0b", 2: "#ef4444"}
 _CHECKIN_YTICK_LABELS = ["Low", "Med", "High"]
 

@@ -16,7 +16,7 @@ router = APIRouter(prefix="/checkin", tags=["checkin"])
 
 _ALL_VARS = ("mood", "sleep", "fatigue", "gut", "stress",
              "headache", "headache_overnight", "brain_fog", "tinnitus", "visual_disturbance",
-             "training")
+             "training", "virus")
 
 
 class CheckinPayload(BaseModel):
@@ -34,6 +34,7 @@ class CheckinPayload(BaseModel):
     tinnitus:           Optional[int] = None
     visual_disturbance: Optional[int] = None
     training:           Optional[int] = None
+    virus:              Optional[int] = None
 
 
 def _checkin_dict(c: DailyCheckin) -> dict:
