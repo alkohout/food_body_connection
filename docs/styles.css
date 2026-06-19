@@ -109,6 +109,21 @@ h1 {
   border-bottom: 3px solid transparent; /* For active indicator */
 }
 
+@media (max-width: 640px) {
+  .tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    font-size: 0.85rem;
+    padding: 0.6rem 0.75rem;
+  }
+}
+
 /* Active tab styling */
 .tab.active {
   font-weight: 600;
