@@ -223,6 +223,8 @@
               <option value="symptom-grouping">Symptom grouping plot</option>
               <option value="time-series">Time series plot</option>
               <option value="deeper-analysis">Deeper analysis</option>
+              <option value="checkin-trends">Daily wellbeing trends</option>
+              <option value="symptom-calendar">Symptom calendar</option>
               <option value="triptan-monthly" class="user4-only" style="display:none">Triptans per month</option>
             </select>
           </div>
@@ -448,6 +450,26 @@
             </div>
           </div>
         </div>
+
+            <!-- Check-in trends -->
+            <div id="panel-checkin-trends" class="analysis-panel">
+              <h4>Daily Wellbeing Trends</h4>
+              <p>Mood, sleep, fatigue, gut, and stress scores over time (7-day rolling average).</p>
+              <p id="checkin-trends-status" class="status"></p>
+              <figure class="img-figure">
+                <img id="checkin-trends-plot" src="" alt="Daily wellbeing trends" style="width:100%" />
+              </figure>
+            </div>
+
+            <!-- Symptom calendar -->
+            <div id="panel-symptom-calendar" class="analysis-panel">
+              <h4>Symptom Calendar</h4>
+              <p>A heatmap showing your worst symptom intensity each day over the past 52 weeks.</p>
+              <p id="symptom-calendar-status" class="status"></p>
+              <figure class="img-figure">
+                <img id="symptom-calendar-plot" src="" alt="Symptom calendar heatmap" style="width:100%" />
+              </figure>
+            </div>
 
             <!-- Triptans per month (user 4 only) -->
             <div id="panel-triptan-monthly" class="analysis-panel">

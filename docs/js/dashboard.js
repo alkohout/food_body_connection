@@ -758,6 +758,8 @@ function hideAllAnalysisPanels() {
     getElement("panel-symptom-grouping"),
     getElement("panel-time-series"),
     getElement("panel-deeper-analysis"),
+    getElement("panel-checkin-trends"),
+    getElement("panel-symptom-calendar"),
     getElement("panel-triptan-monthly"),
   ];
 
@@ -799,6 +801,20 @@ async function showAnalysisPanel(selected) {
 
   if (selected === "deeper-analysis") {
     if (deeperPanel) deeperPanel.classList.add("visible");
+    return;
+  }
+
+  if (selected === "checkin-trends") {
+    const panel = getElement("panel-checkin-trends");
+    if (panel) panel.classList.add("visible");
+    await fetchCheckinTrendsPlot();
+    return;
+  }
+
+  if (selected === "symptom-calendar") {
+    const panel = getElement("panel-symptom-calendar");
+    if (panel) panel.classList.add("visible");
+    await fetchSymptomCalendarPlot();
     return;
   }
 
@@ -1768,6 +1784,56 @@ async function fetchTriptanMonthlyPlot() {
   }
 }
 
+async function fetchCheckinTrendsPlot() {
+  const statusEl = getElement("checkin-trends-status");
+  const img = getElement("checkin-trends-plot");
+
+  if (statusEl) statusEl.textContent = "Loading…";
+  if (img) img.style.display = "none";
+
+  try {
+    const res = await fetch(`${API_URL}/analysis/plot_checkin_trends`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+    });
+    if (!res.ok) throw new Error(`Server returned ${res.status}`);
+
+    const blob = await res.blob();
+    if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+    img.src = URL.createObjectURL(blob);
+    img.dataset.objectUrl = img.src;
+    img.style.display = "";
+    if (statusEl) statusEl.textContent = "";
+  } catch (err) {
+    console.error("fetchCheckinTrendsPlot failed:", err);
+    if (statusEl) statusEl.textContent = `Could not load plot: ${err.message}`;
+  }
+}
+
+async function fetchSymptomCalendarPlot() {
+  const statusEl = getElement("symptom-calendar-status");
+  const img = getElement("symptom-calendar-plot");
+
+  if (statusEl) statusEl.textContent = "Loading…";
+  if (img) img.style.display = "none";
+
+  try {
+    const res = await fetch(`${API_URL}/analysis/plot_symptom_calendar`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+    });
+    if (!res.ok) throw new Error(`Server returned ${res.status}`);
+
+    const blob = await res.blob();
+    if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+    img.src = URL.createObjectURL(blob);
+    img.dataset.objectUrl = img.src;
+    img.style.display = "";
+    if (statusEl) statusEl.textContent = "";
+  } catch (err) {
+    console.error("fetchSymptomCalendarPlot failed:", err);
+    if (statusEl) statusEl.textContent = `Could not load plot: ${err.message}`;
+  }
+}
+
 // =========================================================
 // Analysis tab load
 // =========================================================
@@ -1777,14 +1843,14 @@ function loadAnalysisTab() {
   });
 
   if (currentUser?.user_id === 4) {
-    // Reveal the user-4-only dropdown option
     document.querySelectorAll(".user4-only").forEach(el => el.style.display = "");
+  }
 
-    const analysisSelect = getElement("analysis-select");
-    if (analysisSelect && !analysisSelect.value) {
-      analysisSelect.value = "time-series";
-      showAnalysisPanel("time-series");
-    }
+  const analysisSelect = getElement("analysis-select");
+  if (analysisSelect && !analysisSelect.value) {
+    const defaultPanel = currentUser?.user_id === 4 ? "time-series" : "allergen-importance";
+    analysisSelect.value = defaultPanel;
+    showAnalysisPanel(defaultPanel);
   }
 }
 

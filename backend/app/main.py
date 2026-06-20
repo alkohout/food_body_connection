@@ -26,6 +26,8 @@ import app.api.routes.documents as documents
 import app.api.routes.plot_triptan_monthly as plot_triptan_monthly
 import app.api.routes.chat as chat
 import app.api.routes.checkin as checkin
+import app.api.routes.plot_checkin_trends as plot_checkin_trends
+import app.api.routes.plot_symptom_calendar as plot_symptom_calendar
 
 app = FastAPI(title="Food–Body Connection API")
 
@@ -68,6 +70,8 @@ app.include_router(documents.router)
 app.include_router(plot_triptan_monthly.router)
 app.include_router(chat.router)
 app.include_router(checkin.router)
+app.include_router(plot_checkin_trends.router)
+app.include_router(plot_symptom_calendar.router)
 
 # Create tables (temporary — later use migrations)
 Base.metadata.create_all(bind=engine)
