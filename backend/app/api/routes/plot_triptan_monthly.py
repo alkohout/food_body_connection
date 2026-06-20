@@ -8,7 +8,6 @@ import matplotlib.ticker as mticker
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -28,24 +27,32 @@ def plot_triptan_monthly(
     if current_user.user_id != 4:
         raise HTTPException(status_code=403, detail="Not available for this user.")
 
-    rows = db.execute(text("""
-        SELECT DATE_TRUNC('month', al.date_time) AS month_start,
-               COUNT(*) AS count
-        FROM allergen_log al
-        JOIN allergen a ON a.allergen_id = al.allergen_id
-        WHERE al.user_id = :uid
-          AND a.user_id  = :uid
-          AND a.allergen_name = 'Triptan'
-          AND al.date_time IS NOT NULL
-        GROUP BY DATE_TRUNC('month', al.date_time)
-        ORDER BY month_start
-    """), {"uid": current_user.user_id}).fetchall()
+    from app.models.table_class import Allergen, AllergenLog
 
-    if not rows:
+    # Find triptan allergen_id in Python (name is encrypted, can't filter in SQL)
+    allergens = db.query(Allergen).filter(Allergen.user_id == current_user.user_id).all()
+    triptan = next((a for a in allergens if a.allergen_name.lower() == "triptan"), None)
+    if not triptan:
         raise HTTPException(status_code=404, detail="No Triptan data found.")
 
-    df = pd.DataFrame(rows, columns=["month_start", "count"])
-    df["month_start"] = pd.to_datetime(df["month_start"])
+    log_rows = (
+        db.query(AllergenLog.date_time)
+        .filter(
+            AllergenLog.user_id == current_user.user_id,
+            AllergenLog.allergen_id == triptan.allergen_id,
+            AllergenLog.date_time.isnot(None),
+        )
+        .all()
+    )
+
+    if not log_rows:
+        raise HTTPException(status_code=404, detail="No Triptan data found.")
+
+    df = pd.DataFrame(log_rows, columns=["date_time"])
+    df["date_time"] = pd.to_datetime(df["date_time"])
+    df["month_start"] = df["date_time"].dt.to_period("M").dt.to_timestamp()
+    df = df.groupby("month_start").size().reset_index(name="count").sort_values("month_start")
+
     df["label"] = df["month_start"].dt.strftime("%b %Y")
 
     avg = df["count"].mean()
