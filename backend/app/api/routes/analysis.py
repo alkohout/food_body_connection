@@ -117,47 +117,51 @@ from datetime import timedelta, datetime
 def get_special_user_stats(db: Session, user_id: int) -> dict:
     avg_length_historic = 31.0
 
-    count_last28 = db.execute(text("""
-        SELECT COUNT(*)
-        FROM allergen_log al
-        JOIN allergen a ON a.allergen_id = al.allergen_id
-        WHERE al.user_id = :user_id
-          AND a.user_id = :user_id
-          AND a.allergen_name = 'Triptan'
-          AND al.date_time IS NOT NULL
-          AND al.date_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '28 days'
-    """), {"user_id": user_id}).scalar() or 0
+    # Resolve allergen IDs in Python — names are encrypted, can't compare in SQL
+    all_allergens = db.query(Allergen).filter(Allergen.user_id == user_id).all()
+    triptan = next((a for a in all_allergens if a.allergen_name.lower() == "triptan"), None)
+    period  = next((a for a in all_allergens if a.allergen_name.lower() == "period"),  None)
 
-    monthly_rows = db.execute(text("""
-        SELECT DATE_TRUNC('month', al.date_time) AS month_start,
-               COUNT(*) AS monthly_count
-        FROM allergen_log al
-        JOIN allergen a ON a.allergen_id = al.allergen_id
-        WHERE al.user_id = :user_id
-          AND a.user_id = :user_id
-          AND a.allergen_name = 'Triptan'
-          AND al.date_time IS NOT NULL
-          AND DATE_TRUNC('month', al.date_time) <> DATE_TRUNC('month', NOW() AT TIME ZONE 'UTC')
-          AND DATE_TRUNC('month', al.date_time) <> DATE '2025-12-01'
-        GROUP BY DATE_TRUNC('month', al.date_time)
-        ORDER BY month_start
-    """), {"user_id": user_id}).fetchall()
+    # Triptan stats
+    if triptan:
+        count_last28 = db.execute(text("""
+            SELECT COUNT(*) FROM allergen_log
+            WHERE user_id = :uid AND allergen_id = :aid
+              AND date_time IS NOT NULL
+              AND date_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '28 days'
+        """), {"uid": user_id, "aid": triptan.allergen_id}).scalar() or 0
+
+        monthly_rows = db.execute(text("""
+            SELECT DATE_TRUNC('month', date_time) AS month_start,
+                   COUNT(*) AS monthly_count
+            FROM allergen_log
+            WHERE user_id = :uid AND allergen_id = :aid
+              AND date_time IS NOT NULL
+              AND DATE_TRUNC('month', date_time) <> DATE_TRUNC('month', NOW() AT TIME ZONE 'UTC')
+              AND DATE_TRUNC('month', date_time) <> DATE '2025-12-01'
+            GROUP BY DATE_TRUNC('month', date_time)
+            ORDER BY month_start
+        """), {"uid": user_id, "aid": triptan.allergen_id}).fetchall()
+    else:
+        count_last28 = 0
+        monthly_rows = []
 
     average_per_month = (
         sum(row.monthly_count for row in monthly_rows) / len(monthly_rows)
         if monthly_rows else 0.0
     )
 
-    cycle_rows = db.execute(text("""
-        SELECT DISTINCT DATE(al.date_time) AS cycle_day
-        FROM allergen_log al
-        JOIN allergen a ON a.allergen_id = al.allergen_id
-        WHERE al.user_id = :user_id
-          AND a.user_id = :user_id
-          AND a.allergen_name = 'Period'
-          AND al.date_time IS NOT NULL
-        ORDER BY cycle_day
-    """), {"user_id": user_id}).fetchall()
+    # Period/cycle stats
+    if period:
+        cycle_rows = db.execute(text("""
+            SELECT DISTINCT DATE(date_time) AS cycle_day
+            FROM allergen_log
+            WHERE user_id = :uid AND allergen_id = :aid
+              AND date_time IS NOT NULL
+            ORDER BY cycle_day
+        """), {"uid": user_id, "aid": period.allergen_id}).fetchall()
+    else:
+        cycle_rows = []
 
     cycle_dates = [row.cycle_day for row in cycle_rows if row.cycle_day is not None]
 
@@ -229,23 +233,28 @@ def plot_data(
     # --------------------------------------------------
     # Query allergen events
     # --------------------------------------------------
-    allergen_q = (
-        db.query(AllergenLog.date_time)
-        .join(Allergen)
-        .filter(AllergenLog.user_id == current_user.user_id)
-        .filter(Allergen.user_id == current_user.user_id)
-        .filter(Allergen.allergen_name == allergen)
+    # Resolve IDs in Python — names are encrypted, can't compare in SQL
+    allergen_obj = next(
+        (a for a in db.query(Allergen).filter(Allergen.user_id == current_user.user_id).all()
+         if a.allergen_name == allergen),
+        None,
+    )
+    symptom_obj = next(
+        (s for s in db.query(Symptom).filter(Symptom.user_id == current_user.user_id).all()
+         if s.symptom_name == symptom),
+        None,
     )
 
-    # --------------------------------------------------
-    # Query symptom events
-    # --------------------------------------------------
+    allergen_q = (
+        db.query(AllergenLog.date_time)
+        .filter(AllergenLog.user_id == current_user.user_id)
+        .filter(AllergenLog.allergen_id == (allergen_obj.allergen_id if allergen_obj else -1))
+    )
+
     symptom_q = (
         db.query(SymptomLog.date_time)
-        .join(Symptom)
         .filter(SymptomLog.user_id == current_user.user_id)
-        .filter(Symptom.user_id == current_user.user_id)
-        .filter(Symptom.symptom_name == symptom)
+        .filter(SymptomLog.symptom_id == (symptom_obj.symptom_id if symptom_obj else -1))
     )
 
     # Apply date filters
