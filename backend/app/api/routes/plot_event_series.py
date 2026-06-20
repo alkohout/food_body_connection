@@ -56,9 +56,11 @@ def _parse_date(date_str: Optional[str], end_of_day: bool = False, tz_offset_min
 
 
 def _get_allergen_data(db, user_id, name, from_dt, to_dt):
-    allergen = db.query(Allergen).filter(
-        Allergen.user_id == user_id, Allergen.allergen_name == name
-    ).first()
+    allergen = next(
+        (a for a in db.query(Allergen).filter(Allergen.user_id == user_id).all()
+         if a.allergen_name == name),
+        None,
+    )
     if not allergen:
         raise HTTPException(404, f"Allergen '{name}' not found")
 
@@ -79,10 +81,11 @@ def _get_allergen_data(db, user_id, name, from_dt, to_dt):
 
 def _get_medication_data(db, user_id, name, from_dt, to_dt):
     """Return a step-function (dates, doses) representing total daily dose over time."""
-    med = db.query(Medication).filter(
-        Medication.user_id == user_id,
-        Medication.medication_name == name,
-    ).first()
+    med = next(
+        (m for m in db.query(Medication).filter(Medication.user_id == user_id).all()
+         if m.medication_name == name),
+        None,
+    )
     if not med:
         raise HTTPException(404, f"Medication '{name}' not found")
 
@@ -136,9 +139,11 @@ def _get_medication_data(db, user_id, name, from_dt, to_dt):
 
 
 def _get_symptom_data(db, user_id, name, from_dt, to_dt):
-    symptom = db.query(Symptom).filter(
-        Symptom.user_id == user_id, Symptom.symptom_name == name
-    ).first()
+    symptom = next(
+        (s for s in db.query(Symptom).filter(Symptom.user_id == user_id).all()
+         if s.symptom_name == name),
+        None,
+    )
     if not symptom:
         raise HTTPException(404, f"Symptom '{name}' not found")
 
