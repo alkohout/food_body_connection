@@ -51,16 +51,10 @@ def create_allergen(
 
     # --------------------------------------------------
     # Check if allergen already exists for this user
-    # (case-insensitive comparison)
+    # Python-level comparison (encrypted values can't use SQL ilike)
     # --------------------------------------------------
-    existing = (
-        db.query(Allergen)
-        .filter(Allergen.user_id == current_user.user_id)
-        .filter(Allergen.allergen_name.ilike(name))
-        .first()
-    )
-
-    if existing:
+    all_allergens = db.query(Allergen).filter(Allergen.user_id == current_user.user_id).all()
+    if any(a.allergen_name.lower() == name.lower() for a in all_allergens):
         raise HTTPException(400, "Allergen already exists for this user")
 
     # --------------------------------------------------

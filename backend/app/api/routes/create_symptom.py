@@ -57,16 +57,10 @@ def create_symptom(
 
     # --------------------------------------------------
     # Check if symptom already exists for this user
-    # (case-insensitive comparison)
+    # Python-level comparison (encrypted values can't use SQL ilike)
     # --------------------------------------------------
-    existing = (
-        db.query(Symptom)
-        .filter(Symptom.user_id == current_user.user_id)
-        .filter(Symptom.symptom_name.ilike(name))
-        .first()
-    )
-
-    if existing:
+    all_symptoms = db.query(Symptom).filter(Symptom.user_id == current_user.user_id).all()
+    if any(s.symptom_name.lower() == name.lower() for s in all_symptoms):
         raise HTTPException(400, "Symptom already exists for this user")
 
     # --------------------------------------------------

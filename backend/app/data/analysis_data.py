@@ -28,13 +28,9 @@ def get_allergen_events(db: Session, user_id: int, allergen_name: str, start_dt=
         Returns empty list if allergen does not exist.
     """
 
-    # Fetch allergen object for user
-    allergen = (
-        db.query(Allergen)
-        .filter(Allergen.user_id == user_id)
-        .filter(Allergen.allergen_name == allergen_name)
-        .first()
-    )
+    # Fetch allergen by name in Python (encrypted values can't be compared in SQL)
+    all_allergens = db.query(Allergen).filter(Allergen.user_id == user_id).all()
+    allergen = next((a for a in all_allergens if a.allergen_name == allergen_name), None)
 
     if not allergen:
         return []
@@ -160,14 +156,10 @@ def get_symptom_events(
     """
 
     # --------------------------------------------------
-    # Fetch symptom object for this user
+    # Fetch symptom by name in Python (encrypted values can't be compared in SQL)
     # --------------------------------------------------
-    symptom = (
-        db.query(Symptom)
-        .filter(Symptom.user_id == user_id)
-        .filter(Symptom.symptom_name == symptom_name)
-        .first()
-    )
+    all_symptoms = db.query(Symptom).filter(Symptom.user_id == user_id).all()
+    symptom = next((s for s in all_symptoms if s.symptom_name == symptom_name), None)
 
     # If symptom does not exist, return empty list
     if not symptom:
@@ -266,11 +258,6 @@ def get_all_symptom_events_df(
         q = q.filter(SymptomLog.date_time >= start_dt)
     if end_dt:
         q = q.filter(SymptomLog.date_time <= end_dt + timedelta(hours=24))
-    if symptom_name is not None:
-        q = q.filter(Symptom.symptom_name == symptom_name)
-    if symptom_group is not None:
-        q = q.filter(Symptom.symptom_group == symptom_group)
-
     rows = [
         {
             "date_time": log.date_time,
@@ -281,6 +268,12 @@ def get_all_symptom_events_df(
         }
         for log, symptom in q.all()
     ]
+
+    # Python-level name filtering (encrypted values can't be compared in SQL)
+    if symptom_name is not None:
+        rows = [r for r in rows if r["symptom_name"] == symptom_name]
+    if symptom_group is not None:
+        rows = [r for r in rows if r["symptom_group"] == symptom_group]
 
     df = pd.DataFrame(rows)
     if df.empty:
@@ -357,9 +350,6 @@ def get_all_allergen_events_df(
         q = q.filter(AllergenLog.date_time >= start_dt)
     if end_dt:
         q = q.filter(AllergenLog.date_time <= end_dt)
-    if allergen_name is not None:
-        q = q.filter(Allergen.allergen_name == allergen_name)
-
     rows = []
     for log, allergen, unit in q.all():
         conversion = unit.unit_conversion if unit else None
@@ -373,18 +363,15 @@ def get_all_allergen_events_df(
             "volume": volume,
         })
 
-    # --------------------------------------------------
-    # Convert rows to DataFrame
-    # --------------------------------------------------
+    # Python-level name filter (encrypted values can't be compared in SQL)
+    if allergen_name is not None:
+        rows = [r for r in rows if r["allergen_name"] == allergen_name]
+
     df = pd.DataFrame(rows)
 
-    # Return early if empty
     if df.empty:
         return df
 
-    # --------------------------------------------------
-    # Ensure datetime column is timezone-aware
-    # --------------------------------------------------
     df["date_time"] = pd.to_datetime(df["date_time"], utc=True)
     return df
 
@@ -463,20 +450,10 @@ def get_allergen(
         Returns None if no match or no identifier provided.
     """
 
-    # --------------------------------------------------
-    # Retrieve allergen by name (priority if provided)
-    # --------------------------------------------------
     if allergen_name:
-        query = (
-            db.query(Allergen)
-            .filter(Allergen.user_id == user_id)
-            .filter(Allergen.allergen_name == allergen_name)
-        )
-        return query.first()
+        all_allergens = db.query(Allergen).filter(Allergen.user_id == user_id).all()
+        return next((a for a in all_allergens if a.allergen_name == allergen_name), None)
 
-    # --------------------------------------------------
-    # Retrieve allergen by ID
-    # --------------------------------------------------
     elif allergen_id:
         query = (
             db.query(Allergen)
@@ -518,20 +495,10 @@ def get_symptom(
         Returns None if no match or no identifier provided.
     """
 
-    # --------------------------------------------------
-    # Retrieve symptom by name (priority if provided)
-    # --------------------------------------------------
     if symptom_name:
-        query = (
-            db.query(Symptom)
-            .filter(Symptom.user_id == user_id)
-            .filter(Symptom.symptom_name == symptom_name)
-        )
-        return query.first()
+        all_symptoms = db.query(Symptom).filter(Symptom.user_id == user_id).all()
+        return next((s for s in all_symptoms if s.symptom_name == symptom_name), None)
 
-    # --------------------------------------------------
-    # Retrieve symptom by ID
-    # --------------------------------------------------
     elif symptom_id:
         query = (
             db.query(Symptom)

@@ -30,12 +30,9 @@ def create_medication(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    existing = (
-        db.query(Medication)
-        .filter(Medication.user_id == current_user.user_id,
-                Medication.medication_name == payload.medication_name)
-        .first()
-    )
+    # Python-level comparison (encrypted values can't be compared in SQL)
+    all_meds = db.query(Medication).filter(Medication.user_id == current_user.user_id).all()
+    existing = next((m for m in all_meds if m.medication_name == payload.medication_name), None)
     if existing:
         return existing
 

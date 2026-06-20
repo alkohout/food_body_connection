@@ -55,41 +55,24 @@ def search_allergens(
     logger.info(f"Query param 'q': {q}")
     logger.info(f"Current user: {current_user}")
 
-    # --------------------------------------------------
-    # Base query: allergens belonging to current user
-    # --------------------------------------------------
-    query = (
+    # Fetch all user allergens — TypeDecorator auto-decrypts names
+    all_allergens = (
         db.query(Allergen)
         .filter(Allergen.user_id == current_user.user_id)
+        .all()
     )
 
-    logger.info(f"Base query: {query}")
-
-    # --------------------------------------------------
-    # Apply search filter if query string provided
-    # --------------------------------------------------
+    # Python-level search and sort (SQL ilike/order won't work on encrypted values)
     if q:
-        query = query.filter(Allergen.allergen_name.ilike(f"%{q}%"))
-        logger.info(f"With search filter: {query}")
-
-        # Limit results for autocomplete-style behaviour
-        results = (
-            query.order_by(Allergen.allergen_name)
-                 .limit(10)
-                 .all()
-        )
+        q_lower = q.lower()
+        results = [a for a in all_allergens if q_lower in a.allergen_name.lower()][:10]
     else:
-        # Return all allergens if no search term
-        results = query.order_by(Allergen.allergen_name).all()
-    
-    # Log raw SQL and result preview for debugging
-    logger.info(
-        f"Raw SQL: {query.statement.compile(compile_kwargs={'literal_binds': True})}"
-    )
+        results = all_allergens
+
+    results = sorted(results, key=lambda a: a.allergen_name.lower())
+
     logger.info(f"Results count: {len(results)}")
-    logger.info(
-        f"Results: {[(r.allergen_id, r.allergen_name) for r in results[:3]]}"
-    )
+    logger.info(f"Results: {[(r.allergen_id, r.allergen_name) for r in results[:3]]}")
 
     # --------------------------------------------------
     # Shape response
@@ -169,7 +152,7 @@ def get_recent_logs(
     seen = set()
     recent_allergens = []
 
-    for log, allergen in logs:
+    for _, allergen in logs:
 
         # Skip if allergen already included
         if allergen.allergen_id in seen:

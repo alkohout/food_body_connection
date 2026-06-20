@@ -46,24 +46,22 @@ def search_symptoms(
         - symptom_name
     """
 
-    query = (
+    # Fetch all user symptoms — TypeDecorator auto-decrypts names
+    all_symptoms = (
         db.query(Symptom)
         .filter(Symptom.user_id == current_user.user_id)
+        .all()
     )
 
-    # Apply search filter if provided
+    # Python-level search and sort (SQL ilike/order won't work on encrypted values)
     if q:
-        query = query.filter(Symptom.symptom_name.ilike(f"%{q}%"))
-        logger.info(f"With search filter: {query}")
-        results = (
-            query.order_by(Symptom.symptom_name)
-                 .limit(10)
-                 .all()
-        )
+        q_lower = q.lower()
+        results = [s for s in all_symptoms if q_lower in s.symptom_name.lower()][:10]
     else:
-        results = query.order_by(Symptom.symptom_name).all()
-    
-    logger.info(f"Raw SQL: {query.statement.compile(compile_kwargs={'literal_binds': True})}")
+        results = all_symptoms
+
+    results = sorted(results, key=lambda s: s.symptom_name.lower())
+
     logger.info(f"Results count: {len(results)}")
     logger.info(f"Results: {[(r.symptom_id, r.symptom_name) for r in results[:3]]}")
 
@@ -133,7 +131,7 @@ def get_recent_logs(
         seen = set()
         recent_symptoms = []
 
-        for log, symptom in logs:
+        for _, symptom in logs:
             if symptom.symptom_id in seen:
                 continue
             seen.add(symptom.symptom_id)

@@ -1,10 +1,11 @@
 # backend/app/models/table_class.py
 
-from sqlalchemy import Column, Integer, SmallInteger, String, Float, DateTime, Date, ForeignKey, CheckConstraint, Boolean, Text
+from sqlalchemy import Column, Integer, SmallInteger, String, Float, DateTime, Date, ForeignKey, CheckConstraint, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy import UniqueConstraint
 from datetime import datetime, timezone
 from app.database import Base
+from app.core.encryption import EncryptedString
 
 class User(Base):
     __tablename__ = 'users'
@@ -29,7 +30,7 @@ class Allergen(Base):
     
     allergen_id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.user_id'),nullable=False)
-    allergen_name = Column(String(255), nullable=False)
+    allergen_name = Column(EncryptedString, nullable=False)
     
     # Relationships
     allergen_log = relationship("AllergenLog", back_populates="allergen", cascade="all, delete-orphan")
@@ -55,8 +56,8 @@ class Symptom(Base):
     
     symptom_id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.user_id'),nullable=False)
-    symptom_name = Column(String(255), nullable=False)
-    symptom_group = Column(String(255), nullable=True)
+    symptom_name = Column(EncryptedString, nullable=False)
+    symptom_group = Column(EncryptedString, nullable=True)
     
     # Relationships
     symptom_log = relationship("SymptomLog", back_populates="symptom", cascade="all, delete-orphan")
@@ -107,7 +108,7 @@ class Medication(Base):
 
     medication_id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False)
-    medication_name = Column(String(255), nullable=False)
+    medication_name = Column(EncryptedString, nullable=False)
 
     user = relationship("User", back_populates="medication")
     regimens = relationship("MedicationRegimen", back_populates="medication", cascade="all, delete-orphan")
@@ -125,7 +126,7 @@ class MedicationRegimen(Base):
     medication_id = Column(Integer, ForeignKey('medication.medication_id'), nullable=False)
     dose = Column(Float, nullable=False)
     unit = Column(String(50), nullable=False, default='mg')
-    note = Column(String(255), nullable=True)   # e.g. "morning dose", "evening dose"
+    note = Column(EncryptedString, nullable=True)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=True)       # null = currently active
 
@@ -148,10 +149,10 @@ class UserDocument(Base):
 
     document_id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False)
-    filename = Column(String(255), nullable=False)
-    description = Column(String(500), nullable=True)
+    filename = Column(EncryptedString, nullable=False)
+    description = Column(EncryptedString, nullable=True)
     file_path = Column(String(500), nullable=False)
-    extracted_text = Column(Text, nullable=True)
+    extracted_text = Column(EncryptedString, nullable=True)
     uploaded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="documents")
