@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
+from app.core.plot_cache import cached_png
 from app.database import get_db
 from app.models.table_class import DailyCheckin, User
 
@@ -32,10 +33,12 @@ def plot_checkin_trends(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
+    uid = current_user.user_id
+
+    def generate() -> BytesIO:
         rows = (
             db.query(DailyCheckin)
-            .filter(DailyCheckin.user_id == current_user.user_id)
+            .filter(DailyCheckin.user_id == uid)
             .order_by(DailyCheckin.checkin_date)
             .all()
         )
@@ -49,7 +52,7 @@ def plot_checkin_trends(
             plt.savefig(buf, format="png", bbox_inches="tight", dpi=120)
             plt.close(fig)
             buf.seek(0)
-            return StreamingResponse(buf, media_type="image/png")
+            return buf
 
         records = [
             {
@@ -118,9 +121,11 @@ def plot_checkin_trends(
         plt.savefig(buf, format="png", bbox_inches="tight", dpi=120)
         plt.close(fig)
         buf.seek(0)
-        return StreamingResponse(buf, media_type="image/png")
+        return buf
 
+    try:
+        return cached_png(f"checkin_trends_{uid}", generate)
     except Exception as e:
         logger.error("plot_checkin_trends failed: %s", e)
         logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail="Failed to generate check-in trends plot")
+        raise HTTPException(status_code=500, detail=str(e))

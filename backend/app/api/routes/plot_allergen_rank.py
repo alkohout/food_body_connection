@@ -10,7 +10,8 @@ from app.models.table_class import User
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
 from datetime import timedelta, datetime
 import traceback
-from app.analysis.model import model_classification 
+from app.analysis.model import model_classification
+from app.core.plot_cache import cached_png
 from io import BytesIO
 import matplotlib
 matplotlib.use("Agg")
@@ -50,26 +51,14 @@ def plot_allergen_rank(
         Generated allergen ranking plot streamed as PNG.
     """
 
-    try: 
+    uid = current_user.user_id
 
-        # --------------------------------------------------
-        # Run classification model and generate plot output
-        # --------------------------------------------------
-        buf = model_classification(
-            db,
-            current_user.user_id
-        )
+    def generate():
+        return model_classification(db, uid)
 
-        # Return as streamed PNG image response
-        return StreamingResponse(buf, media_type="image/png")
-
+    try:
+        return cached_png(f"allergen_rank_{uid}", generate)
     except Exception as e:
-
-        # --------------------------------------------------
-        # Log full error details for debugging
-        # --------------------------------------------------
         logger.error("Error generating plot: %s", e)
         logger.error(traceback.format_exc())
-
-        # Return generic error to client
-        raise HTTPException(status_code=500, detail="Failed to generate plot")
+        raise HTTPException(status_code=500, detail=str(e))

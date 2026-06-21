@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
+from app.core.plot_cache import cached_png
 from app.database import get_db
 from app.models.table_class import SymptomLog, User
 
@@ -34,10 +35,12 @@ def plot_symptom_calendar(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
+    uid = current_user.user_id
+
+    def generate() -> BytesIO:
         rows = (
             db.query(SymptomLog.date_time, SymptomLog.symptom_intensity)
-            .filter(SymptomLog.user_id == current_user.user_id)
+            .filter(SymptomLog.user_id == uid)
             .all()
         )
 
@@ -50,16 +53,17 @@ def plot_symptom_calendar(
             plt.savefig(buf, format="png", bbox_inches="tight", dpi=120)
             plt.close(fig)
             buf.seek(0)
-            return StreamingResponse(buf, media_type="image/png")
+            return buf
 
         df = pd.DataFrame(rows, columns=["date_time", "intensity"])
-        df["date"] = pd.to_datetime(df["date_time"]).dt.normalize()
+        # Strip timezone — convert to UTC then make naive so lookups match all_dates
+        df["date"] = pd.to_datetime(df["date_time"], utc=True).dt.tz_localize(None).dt.normalize()
 
         # Max intensity per day
         daily_max = df.groupby("date")["intensity"].max()
 
-        # Build 52-week grid ending today
-        today = pd.Timestamp.now().normalize()
+        # Build 52-week grid ending today (timezone-naive UTC)
+        today = pd.Timestamp.utcnow().normalize()
         start = today - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)
         # Snap start back to the Monday of that week
         start = start - pd.Timedelta(days=start.dayofweek)
@@ -135,9 +139,11 @@ def plot_symptom_calendar(
         plt.savefig(buf, format="png", bbox_inches="tight", dpi=130)
         plt.close(fig)
         buf.seek(0)
-        return StreamingResponse(buf, media_type="image/png")
+        return buf
 
+    try:
+        return cached_png(f"symptom_calendar_{uid}", generate)
     except Exception as e:
         logger.error("plot_symptom_calendar failed: %s", e)
         logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail="Failed to generate symptom calendar")
+        raise HTTPException(status_code=500, detail=str(e))
