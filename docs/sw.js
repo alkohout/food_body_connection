@@ -1,7 +1,7 @@
 // Network-first service worker: always tries the network, falls back to cache
 // when offline. This ensures the app always loads fresh assets after a deploy.
 
-const CACHE = 'fbc-v1';
+const CACHE = 'fbc-v2';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', () => self.clients.claim());
