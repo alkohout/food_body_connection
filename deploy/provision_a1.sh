@@ -58,7 +58,7 @@ while true; do
         --compartment-id "$COMPARTMENT_ID" \
         --availability-domain "$AD" \
         --shape "VM.Standard.A1.Flex" \
-        --shape-config '{"ocpus": 1, "memoryInGBs": 6}' \
+        --shape-config '{"ocpus": 4, "memoryInGBs": 24}' \
         --image-id "$IMAGE_ID" \
         --subnet-id "$SUBNET_ID" \
         --display-name "$INSTANCE_NAME" \
