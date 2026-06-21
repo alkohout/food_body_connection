@@ -1,6 +1,7 @@
 # app/api/routes/entries.py
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from app.core.plot_cache import invalidate_cache
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.table_class import AllergenLog, SymptomLog, User, Allergen, Symptom, Unit
@@ -77,6 +78,10 @@ def log_allergen(
     db.commit()
     db.refresh(new_entry)
 
+    uid = current_user.user_id
+    invalidate_cache(f"allergen_rank_{uid}")
+    invalidate_cache(f"triptan_monthly_{uid}")
+
     return {
         "message": "Allergen logged",
         "allergen_log_id": new_entry.allergen_log_id
@@ -144,6 +149,8 @@ def log_symptom(
     db.add(new_entry)
     db.commit()
     db.refresh(new_entry)
+
+    invalidate_cache(f"symptom_calendar_{current_user.user_id}")
 
     return {
         "message": "Symptom logged",

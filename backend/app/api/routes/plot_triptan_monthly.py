@@ -6,22 +6,22 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.plot_cache import cached_png
 from app.database import get_db
 from app.api.routes.auth import get_current_user
-from app.models.table_class import Allergen, AllergenLog, User
+from app.models.table_class import Allergen, User
 
 logger = logging.getLogger(__name__)
-
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
 
 @router.get("/plot_triptan_monthly")
 def plot_triptan_monthly(
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -36,36 +36,33 @@ def plot_triptan_monthly(
     if not triptan:
         raise HTTPException(status_code=404, detail="No Triptan data found.")
 
-    log_rows = (
-        db.query(AllergenLog.date_time)
-        .filter(
-            AllergenLog.user_id == uid,
-            AllergenLog.allergen_id == triptan.allergen_id,
-            AllergenLog.date_time.isnot(None),
-        )
-        .all()
-    )
-
-    if not log_rows:
-        raise HTTPException(status_code=404, detail="No Triptan data found.")
+    aid = triptan.allergen_id
 
     def generate() -> BytesIO:
-        df = pd.DataFrame(log_rows, columns=["date_time"])
-        df["date_time"] = pd.to_datetime(df["date_time"])
-        df["month_start"] = df["date_time"].dt.to_period("M").dt.to_timestamp()
-        df = df.groupby("month_start").size().reset_index(name="count").sort_values("month_start")
+        # Push groupby to SQL — returns one row per month instead of every log entry
+        rows = db.execute(text("""
+            SELECT DATE_TRUNC('month', date_time) AS month_start, COUNT(*) AS cnt
+            FROM allergen_log
+            WHERE user_id = :uid AND allergen_id = :aid AND date_time IS NOT NULL
+            GROUP BY DATE_TRUNC('month', date_time)
+            ORDER BY month_start
+        """), {"uid": uid, "aid": aid}).fetchall()
 
+        if not rows:
+            raise HTTPException(status_code=404, detail="No Triptan data found.")
+
+        df = pd.DataFrame([(r.month_start, r.cnt) for r in rows], columns=["month_start", "count"])
+        df["month_start"] = pd.to_datetime(df["month_start"])
         df["label"] = df["month_start"].dt.strftime("%b %Y")
 
         now = pd.Timestamp.now()
         current_month = now.to_period("M").to_timestamp()
         df["is_current"] = df["month_start"] == current_month
 
-        # Alpha for current month bar: fraction of month elapsed (min 0.2)
         days_in_month = (current_month + pd.offsets.MonthEnd(1)).day
         current_alpha = max(0.2, now.day / days_in_month)
 
-        # Average excludes current (incomplete) month and Dec 2025 (partial launch month)
+        # Exclude current (incomplete) month and Dec 2025 (partial launch month)
         exclude = df["is_current"] | (df["month_start"] == pd.Timestamp("2025-12-01"))
         complete = df[~exclude]
         avg = complete["count"].mean() if not complete.empty else 0
@@ -101,4 +98,4 @@ def plot_triptan_monthly(
         buf.seek(0)
         return buf
 
-    return cached_png(f"triptan_monthly_{uid}", generate)
+    return cached_png(f"triptan_monthly_{uid}", generate, background_tasks)

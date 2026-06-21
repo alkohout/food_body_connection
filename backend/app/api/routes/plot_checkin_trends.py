@@ -7,7 +7,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -30,6 +30,7 @@ VARS = {
 
 @router.get("/plot_checkin_trends")
 def plot_checkin_trends(
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -124,7 +125,7 @@ def plot_checkin_trends(
         return buf
 
     try:
-        return cached_png(f"checkin_trends_{uid}", generate)
+        return cached_png(f"checkin_trends_{uid}", generate, background_tasks)
     except Exception as e:
         logger.error("plot_checkin_trends failed: %s", e)
         logger.error(traceback.format_exc())

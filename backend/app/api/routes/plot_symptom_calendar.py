@@ -8,19 +8,18 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
 from app.core.plot_cache import cached_png
 from app.database import get_db
-from app.models.table_class import SymptomLog, User
+from app.models.table_class import User
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
-# Color for each intensity level and "no data"
 COLORS = {
     -1: "#f0f0f0",   # no data
      0: "#c8e6c9",   # logged, no symptoms
@@ -32,17 +31,21 @@ COLORS = {
 
 @router.get("/plot_symptom_calendar")
 def plot_symptom_calendar(
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     uid = current_user.user_id
 
     def generate() -> BytesIO:
-        rows = (
-            db.query(SymptomLog.date_time, SymptomLog.symptom_intensity)
-            .filter(SymptomLog.user_id == uid)
-            .all()
-        )
+        # Push daily-max aggregation to SQL; AT TIME ZONE 'UTC' keeps dates consistent
+        rows = db.execute(text("""
+            SELECT DATE(date_time AT TIME ZONE 'UTC') AS day,
+                   MAX(symptom_intensity) AS max_intensity
+            FROM symptom_log
+            WHERE user_id = :uid AND date_time IS NOT NULL
+            GROUP BY DATE(date_time AT TIME ZONE 'UTC')
+        """), {"uid": uid}).fetchall()
 
         if not rows:
             fig, ax = plt.subplots(figsize=(8, 4))
@@ -55,26 +58,18 @@ def plot_symptom_calendar(
             buf.seek(0)
             return buf
 
-        df = pd.DataFrame(rows, columns=["date_time", "intensity"])
-        # Strip timezone — convert to UTC then make naive so lookups match all_dates
-        df["date"] = pd.to_datetime(df["date_time"], utc=True).dt.tz_localize(None).dt.normalize()
+        # Build intensity map from SQL result (already one row per UTC day)
+        intensity_map = {pd.Timestamp(r.day): int(r.max_intensity) for r in rows}
 
-        # Max intensity per day
-        daily_max = df.groupby("date")["intensity"].max()
-
-        # Build 52-week grid ending today (timezone-naive UTC)
+        # 52-week grid ending today (UTC-based, timezone-naive)
         today = pd.Timestamp.utcnow().normalize()
         start = today - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)
-        # Snap start back to the Monday of that week
-        start = start - pd.Timedelta(days=start.dayofweek)
+        start = start - pd.Timedelta(days=start.dayofweek)  # snap to Monday
         all_dates = pd.date_range(start=start, end=today, freq="D")
 
-        intensity_map = daily_max.to_dict()
         values = [intensity_map.get(d, -1) for d in all_dates]
 
-        # Reshape into (7 rows=days, N cols=weeks)
         n_weeks = len(all_dates) // 7 + (1 if len(all_dates) % 7 else 0)
-        # Pad to full grid
         pad = n_weeks * 7 - len(all_dates)
         padded_dates = [None] * pad + list(all_dates)
         padded_values = [-1] * pad + values
@@ -99,7 +94,6 @@ def plot_symptom_calendar(
                 )
                 ax.add_patch(rect)
 
-        # Month labels along the top
         month_positions = {}
         for week in range(n_weeks):
             d = grid_dates[0, week]
@@ -110,7 +104,6 @@ def plot_symptom_calendar(
             ax.text(week * cell_size + cell_size * 0.44, 7.3 * cell_size,
                     label, ha="center", va="bottom", fontsize=8, color="#555")
 
-        # Day-of-week labels on left
         dow_labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
         for i, lbl in enumerate(dow_labels):
             ax.text(-0.6, (6 - i) * cell_size + cell_size * 0.44,
@@ -123,7 +116,6 @@ def plot_symptom_calendar(
         ax.set_title("Symptom Calendar — last 52 weeks", fontsize=13,
                      fontweight="bold", pad=20, color="#222")
 
-        # Legend
         legend_items = [
             mpatches.Patch(facecolor=COLORS[-1], edgecolor="#ccc", label="No data"),
             mpatches.Patch(facecolor=COLORS[0],  edgecolor="#ccc", label="None logged"),
@@ -142,7 +134,7 @@ def plot_symptom_calendar(
         return buf
 
     try:
-        return cached_png(f"symptom_calendar_{uid}", generate)
+        return cached_png(f"symptom_calendar_{uid}", generate, background_tasks)
     except Exception as e:
         logger.error("plot_symptom_calendar failed: %s", e)
         logger.error(traceback.format_exc())

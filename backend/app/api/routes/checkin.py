@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
+from app.core.plot_cache import invalidate_cache
 from app.database import get_db
 from app.models.table_class import DailyCheckin, User
 
@@ -105,6 +106,7 @@ def submit_checkin(
             existing.checkin_datetime = parsed_dt
         existing.recorded_at = datetime.now(timezone.utc)
         db.commit()
+        invalidate_cache(f"checkin_trends_{current_user.user_id}")
         return {"status": "updated", "checkin_id": existing.checkin_id}
 
     row = DailyCheckin(
@@ -117,4 +119,5 @@ def submit_checkin(
     db.add(row)
     db.commit()
     db.refresh(row)
+    invalidate_cache(f"checkin_trends_{current_user.user_id}")
     return {"status": "created", "checkin_id": row.checkin_id}
