@@ -52,7 +52,8 @@ def plot_triptan_monthly(
             raise HTTPException(status_code=404, detail="No Triptan data found.")
 
         df = pd.DataFrame([(r.month_start, r.cnt) for r in rows], columns=["month_start", "count"])
-        df["month_start"] = pd.to_datetime(df["month_start"])
+        # Strip timezone so comparisons with naive Timestamps work
+        df["month_start"] = pd.to_datetime(df["month_start"]).dt.tz_localize(None)
         df["label"] = df["month_start"].dt.strftime("%b %Y")
 
         now = pd.Timestamp.now()
