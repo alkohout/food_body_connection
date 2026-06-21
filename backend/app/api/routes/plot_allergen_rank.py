@@ -58,7 +58,8 @@ def plot_allergen_rank(
         return model_classification(db, uid)
 
     try:
-        return cached_png(f"allergen_rank_{uid}", generate, background_tasks)
+        # No background refresh — ML model is too heavy for background tasks on 1GB RAM
+        return cached_png(f"allergen_rank_{uid}", generate)
     except Exception as e:
         logger.error("Error generating plot: %s", e)
         logger.error(traceback.format_exc())

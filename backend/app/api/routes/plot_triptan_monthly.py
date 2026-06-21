@@ -54,6 +54,9 @@ def plot_triptan_monthly(
         df = pd.DataFrame([(r.month_start, r.cnt) for r in rows], columns=["month_start", "count"])
         # Strip timezone so comparisons with naive Timestamps work
         df["month_start"] = pd.to_datetime(df["month_start"]).dt.tz_localize(None)
+        # Remove Dec 2025 — only a partial month (app launch)
+        df = df[df["month_start"] != pd.Timestamp("2025-12-01")].reset_index(drop=True)
+
         df["label"] = df["month_start"].dt.strftime("%b %Y")
 
         now = pd.Timestamp.now()
@@ -63,9 +66,8 @@ def plot_triptan_monthly(
         days_in_month = (current_month + pd.offsets.MonthEnd(1)).day
         current_alpha = max(0.2, now.day / days_in_month)
 
-        # Exclude current (incomplete) month and Dec 2025 (partial launch month)
-        exclude = df["is_current"] | (df["month_start"] == pd.Timestamp("2025-12-01"))
-        complete = df[~exclude]
+        # Exclude current (incomplete) month from average
+        complete = df[~df["is_current"]]
         avg = complete["count"].mean() if not complete.empty else 0
 
         fig, ax = plt.subplots(figsize=(max(8, len(df) * 0.8), 5))
