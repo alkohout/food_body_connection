@@ -63,8 +63,9 @@ def plot_triptan_monthly(
     days_in_month = (current_month + pd.offsets.MonthEnd(1)).day
     current_alpha = max(0.2, now.day / days_in_month)
 
-    # Average excludes the current (incomplete) month
-    complete = df[~df["is_current"]]
+    # Average excludes the current (incomplete) month and Dec 2025 (partial launch month)
+    exclude = df["is_current"] | (df["month_start"] == pd.Timestamp("2025-12-01"))
+    complete = df[~exclude]
     avg = complete["count"].mean() if not complete.empty else 0
 
     fig, ax = plt.subplots(figsize=(max(8, len(df) * 0.8), 5))
