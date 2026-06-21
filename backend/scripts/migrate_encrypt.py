@@ -84,6 +84,18 @@ def main():
         ("user_document",      "document_id",   "filename"),
         ("user_document",      "document_id",   "description"),
         ("user_document",      "document_id",   "extracted_text"),
+        ("daily_checkin",      "checkin_id",    "mood"),
+        ("daily_checkin",      "checkin_id",    "sleep"),
+        ("daily_checkin",      "checkin_id",    "fatigue"),
+        ("daily_checkin",      "checkin_id",    "gut"),
+        ("daily_checkin",      "checkin_id",    "stress"),
+        ("daily_checkin",      "checkin_id",    "headache"),
+        ("daily_checkin",      "checkin_id",    "headache_overnight"),
+        ("daily_checkin",      "checkin_id",    "brain_fog"),
+        ("daily_checkin",      "checkin_id",    "tinnitus"),
+        ("daily_checkin",      "checkin_id",    "visual_disturbance"),
+        ("daily_checkin",      "checkin_id",    "training"),
+        ("daily_checkin",      "checkin_id",    "virus"),
     ]
 
     for table, id_col, col in jobs:

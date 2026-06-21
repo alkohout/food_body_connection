@@ -1,11 +1,11 @@
 # backend/app/models/table_class.py
 
-from sqlalchemy import Column, Integer, SmallInteger, String, Float, DateTime, Date, ForeignKey, CheckConstraint, Boolean
+from sqlalchemy import Column, Integer, String, Float, DateTime, Date, ForeignKey, CheckConstraint, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy import UniqueConstraint
 from datetime import datetime, timezone
 from app.database import Base
-from app.core.encryption import EncryptedString
+from app.core.encryption import EncryptedString, EncryptedInt
 
 class User(Base):
     __tablename__ = 'users'
@@ -166,21 +166,21 @@ class DailyCheckin(Base):
     checkin_date = Column(Date, nullable=False)
     period = Column(String(10), nullable=False)  # 'morning' or 'evening'
 
-    # General variables (all users)
-    mood    = Column(SmallInteger, nullable=True)
-    sleep   = Column(SmallInteger, nullable=True)   # morning only
-    fatigue = Column(SmallInteger, nullable=True)
-    gut     = Column(SmallInteger, nullable=True)
-    stress  = Column(SmallInteger, nullable=True)
+    # General variables (all users) — stored encrypted as Text
+    mood    = Column(EncryptedInt, nullable=True)
+    sleep   = Column(EncryptedInt, nullable=True)   # morning only
+    fatigue = Column(EncryptedInt, nullable=True)
+    gut     = Column(EncryptedInt, nullable=True)
+    stress  = Column(EncryptedInt, nullable=True)
 
-    # Extended variables (user 4)
-    headache             = Column(SmallInteger, nullable=True)
-    headache_overnight   = Column(SmallInteger, nullable=True)  # morning only
-    brain_fog            = Column(SmallInteger, nullable=True)
-    tinnitus             = Column(SmallInteger, nullable=True)
-    visual_disturbance   = Column(SmallInteger, nullable=True)
-    training             = Column(SmallInteger, nullable=True)  # morning only; 0=none 1=partial 2=full
-    virus                = Column(SmallInteger, nullable=True)  # 0=none 1=mild 2=bad
+    # Extended variables (user 4) — stored encrypted as Text
+    headache             = Column(EncryptedInt, nullable=True)
+    headache_overnight   = Column(EncryptedInt, nullable=True)  # morning only
+    brain_fog            = Column(EncryptedInt, nullable=True)
+    tinnitus             = Column(EncryptedInt, nullable=True)
+    visual_disturbance   = Column(EncryptedInt, nullable=True)
+    training             = Column(EncryptedInt, nullable=True)  # morning only; 0=none 1=partial 2=full
+    virus                = Column(EncryptedInt, nullable=True)  # 0=none 1=mild 2=bad
 
     checkin_datetime = Column(DateTime(timezone=True), nullable=True)
     recorded_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

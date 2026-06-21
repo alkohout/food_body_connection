@@ -35,3 +35,26 @@ class EncryptedString(TypeDecorator):
             return get_fernet().decrypt(value.encode()).decode()
         except (InvalidToken, Exception):
             return value  # plaintext fallback for pre-migration rows
+
+
+class EncryptedInt(TypeDecorator):
+    """Encrypts integer scores as text. Column must be TEXT in the database."""
+
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        return get_fernet().encrypt(str(int(value)).encode()).decode()
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        try:
+            return int(get_fernet().decrypt(value.encode()).decode())
+        except (InvalidToken, Exception):
+            try:
+                return int(value)  # plaintext integer fallback
+            except (ValueError, TypeError):
+                return None
