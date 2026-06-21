@@ -55,21 +55,39 @@ def plot_triptan_monthly(
 
     df["label"] = df["month_start"].dt.strftime("%b %Y")
 
-    avg = df["count"].mean()
+    current_month = pd.Timestamp.now().to_period("M").to_timestamp()
+    df["is_current"] = df["month_start"] == current_month
+
+    # Average excludes the current (incomplete) month
+    complete = df[~df["is_current"]]
+    avg = complete["count"].mean() if not complete.empty else 0
 
     fig, ax = plt.subplots(figsize=(max(8, len(df) * 0.8), 5))
 
-    bars = ax.bar(df["label"], df["count"], color="#d97706", edgecolor="white", width=0.6)
+    colors  = ["#d97706" if not cur else "#d97706" for cur in df["is_current"]]
+    alphas  = [1.0       if not cur else 0.35       for cur in df["is_current"]]
 
-    ax.axhline(avg, color="#6b7280", linestyle="--", linewidth=1.2, label=f"Average ({avg:.1f})")
+    bars = ax.bar(df["label"], df["count"], color=colors, edgecolor="white",
+                  width=0.6, alpha=1.0)
+    for bar, alpha in zip(bars, alphas):
+        bar.set_alpha(alpha)
 
-    for bar, val in zip(bars, df["count"]):
+    ax.axhline(avg, color="#6b7280", linestyle="--", linewidth=1.2,
+               label=f"Average excl. current month ({avg:.1f})")
+
+    for bar, val, is_cur in zip(bars, df["count"], df["is_current"]):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
             bar.get_height() + 0.15,
-            str(int(val)),
-            ha="center", va="bottom", fontsize=9, color="#374151"
+            str(int(val)) + ("*" if is_cur else ""),
+            ha="center", va="bottom", fontsize=9,
+            color="#9ca3af" if is_cur else "#374151"
         )
+
+    if df["is_current"].any():
+        ax.annotate("* month in progress", xy=(1, 0), xycoords="axes fraction",
+                    ha="right", va="bottom", fontsize=8, color="#9ca3af",
+                    xytext=(0, -38), textcoords="offset points")
 
     ax.set_xlabel("Month", fontsize=11)
     ax.set_ylabel("Triptan uses", fontsize=11)
