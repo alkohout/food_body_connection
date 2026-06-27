@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.api.routes.auth import get_current_user
 from app.models.table_class import User, UserDocument
+from app.analysis.ai_summary import _DOC_CHAR_LIMIT
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +109,7 @@ async def upload_document(
         "description": doc.description,
         "uploaded_at": doc.uploaded_at.isoformat(),
         "text_extracted": bool(extracted_text),
+        "text_truncated": len(extracted_text) > _DOC_CHAR_LIMIT,
     }
 
 
@@ -129,6 +131,7 @@ def list_documents(
             "description": d.description,
             "uploaded_at": d.uploaded_at.isoformat(),
             "has_text": bool(d.extracted_text),
+            "text_truncated": len(d.extracted_text or "") > _DOC_CHAR_LIMIT,
         }
         for d in docs
     ]

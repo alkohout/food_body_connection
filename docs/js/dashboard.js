@@ -2827,7 +2827,7 @@ async function fetchDocumentList() {
           <br>
           <span class="subtle" style="font-size:0.8em;">
             Uploaded ${new Date(doc.uploaded_at).toLocaleDateString()}
-            ${doc.has_text ? " · text extracted" : " · no text extracted"}
+            ${!doc.has_text ? " · no text extracted" : doc.text_truncated ? " · <span style=\"color:#b45309\">partially read (too long)</span>" : " · text extracted"}
           </span>
         </div>
         <button class="delete-doc-btn secondary" data-doc-id="${doc.document_id}" style="padding:0.3rem 0.7rem; font-size:0.85em;">Delete</button>
@@ -2893,10 +2893,22 @@ function setupDocumentsTab() {
         throw new Error(err.detail || res.status);
       }
 
+      const data = await res.json();
       fileInput.value = "";
       descInput.value = "";
-      if (status) status.textContent = "Uploaded successfully.";
-      setTimeout(() => { if (status) status.textContent = ""; }, 3000);
+      if (status) {
+        if (data.text_extracted === false) {
+          status.textContent = "Uploaded, but text could not be extracted — the AI will not be able to read this document.";
+          status.style.color = "#b45309";
+        } else if (data.text_truncated) {
+          status.textContent = "Uploaded, but the document is too long to read in full — only the first portion will be shown to the AI. Consider splitting it into shorter documents.";
+          status.style.color = "#b45309";
+        } else {
+          status.textContent = "Uploaded successfully.";
+          status.style.color = "";
+          setTimeout(() => { if (status) status.textContent = ""; }, 3000);
+        }
+      }
       await fetchDocumentList();
     } catch (err) {
       console.error("upload failed:", err);

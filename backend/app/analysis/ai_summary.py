@@ -141,7 +141,7 @@ def build_analysis_context(db, user_id: int) -> dict | None:
     }
 
 
-_DOC_CHAR_LIMIT = 3000
+_DOC_CHAR_LIMIT = 8000
 
 
 def _get_document_context(db, user_id: int) -> str:
