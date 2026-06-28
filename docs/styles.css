@@ -645,6 +645,17 @@ select:focus {
   font-weight: 600;
 }
 
+@media (max-width: 480px) {
+  .checkin-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+  .checkin-label {
+    min-width: unset;
+  }
+}
+
 
 /* =========================
    Time series – controls
