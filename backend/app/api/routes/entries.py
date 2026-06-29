@@ -82,10 +82,56 @@ def log_allergen(
     invalidate_cache(f"allergen_rank_{uid}")
     invalidate_cache(f"triptan_monthly_{uid}")
 
+    _maybe_imply_triptan_symptoms(db, current_user.user_id, allergen, payload.date_time)
+
     return {
         "message": "Allergen logged",
         "allergen_log_id": new_entry.allergen_log_id
     }
+
+
+# Allergen names are Fernet-encrypted with a random IV so SQL filtering won't
+# match — load all and compare in Python instead.
+_TRIPTAN_USER_ID = 4
+_TRIPTAN_IMPLIED = [
+    ("Headache", 2),            # 2 = Bad (triptan was required)
+    ("Visual disturbance", 1),  # 1 = Mild (usually present)
+]
+
+
+def _maybe_imply_triptan_symptoms(db, user_id, allergen, date_time):
+    if user_id != _TRIPTAN_USER_ID or allergen.allergen_name.lower() != "triptan":
+        return
+
+    all_symptoms = db.query(Symptom).filter(Symptom.user_id == user_id).all()
+    symptom_map = {s.symptom_name.lower(): s for s in all_symptoms}
+
+    added = False
+    for sym_name, intensity in _TRIPTAN_IMPLIED:
+        sym = symptom_map.get(sym_name.lower())
+        if not sym:
+            continue
+        already_logged = (
+            db.query(SymptomLog)
+            .filter(
+                SymptomLog.user_id == user_id,
+                SymptomLog.symptom_id == sym.symptom_id,
+                SymptomLog.date_time == date_time,
+            )
+            .first()
+        )
+        if not already_logged:
+            db.add(SymptomLog(
+                user_id=user_id,
+                symptom_id=sym.symptom_id,
+                date_time=date_time,
+                symptom_intensity=intensity,
+            ))
+            added = True
+
+    if added:
+        db.commit()
+        invalidate_cache(f"symptom_calendar_{user_id}")
 
 @router.post("/symptoms")
 def log_symptom(
