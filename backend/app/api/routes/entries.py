@@ -95,7 +95,7 @@ def log_allergen(
 _TRIPTAN_USER_ID = 4
 _TRIPTAN_IMPLIED = [
     ("Headache", 2),            # 2 = Bad (triptan was required)
-    ("Visual disturbance", 1),  # 1 = Mild (usually present)
+    ("Visual Disturbances", 1),  # 1 = Mild (usually present)
 ]
 
 

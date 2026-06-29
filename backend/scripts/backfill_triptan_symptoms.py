@@ -3,7 +3,7 @@ Backfill: for every existing Triptan allergen log for user 4,
 create implied symptom logs at the same timestamp if they don't exist.
 
   Headache         intensity=2  (Bad — triptan was needed)
-  Visual disturbance intensity=1  (Mild — usually present)
+  Visual Disturbances intensity=1  (Mild — usually present)
 
 Run from the backend/ directory:
   python scripts/backfill_triptan_symptoms.py
@@ -19,7 +19,7 @@ USER_ID = 4
 
 IMPLIED = [
     ("Headache", 2),
-    ("Visual disturbance", 1),
+    ("Visual Disturbances", 1),
 ]
 
 
