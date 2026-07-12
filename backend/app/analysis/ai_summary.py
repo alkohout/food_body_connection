@@ -142,6 +142,7 @@ def build_analysis_context(db, user_id: int) -> dict | None:
 
 
 _DOC_CHAR_LIMIT = 8000
+_DOC_TOTAL_CHAR_LIMIT = 24000  # across all documents combined
 
 
 def _get_document_context(db, user_id: int) -> str:
@@ -158,10 +159,17 @@ def _get_document_context(db, user_id: int) -> str:
         return ""
 
     parts = []
+    total_chars = 0
     for doc in docs:
+        if total_chars >= _DOC_TOTAL_CHAR_LIMIT:
+            parts.append(f"### [further documents omitted — combined limit reached]")
+            break
         text = doc.extracted_text or ""
-        truncated = len(text) > _DOC_CHAR_LIMIT
-        snippet = text[:_DOC_CHAR_LIMIT] + (" [truncated]" if truncated else "")
+        remaining = _DOC_TOTAL_CHAR_LIMIT - total_chars
+        per_doc_limit = min(_DOC_CHAR_LIMIT, remaining)
+        truncated = len(text) > per_doc_limit
+        snippet = text[:per_doc_limit] + (" [truncated]" if truncated else "")
+        total_chars += len(snippet)
         label = doc.description or doc.filename
         parts.append(f"### {label}\n{snippet}")
 

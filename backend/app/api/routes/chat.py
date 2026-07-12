@@ -61,12 +61,24 @@ Answer questions clearly and concisely. Reference specific numbers from the data
         raise HTTPException(status_code=400, detail="Last message must be from the user.")
 
     client = anthropic.Anthropic(api_key=api_key)
-    response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=600,
-        system=system_prompt,
-        messages=messages,
-    )
+    try:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=600,
+            system=system_prompt,
+            messages=messages,
+        )
+    except anthropic.BadRequestError as e:
+        logger.error("Anthropic bad request: %s", e)
+        raise HTTPException(status_code=400, detail="The request was too large or malformed. Try removing some documents or shortening your message.")
+    except anthropic.RateLimitError:
+        raise HTTPException(status_code=429, detail="AI service rate limit reached. Please wait a moment and try again.")
+    except anthropic.APIStatusError as e:
+        logger.error("Anthropic API error %s: %s", e.status_code, e.message)
+        raise HTTPException(status_code=502, detail="AI service returned an error. Please try again.")
+    except anthropic.APIConnectionError as e:
+        logger.error("Anthropic connection error: %s", e)
+        raise HTTPException(status_code=502, detail="Could not reach AI service. Please try again.")
 
     return {
         "reply": response.content[0].text,
