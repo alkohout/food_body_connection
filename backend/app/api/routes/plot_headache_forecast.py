@@ -43,13 +43,53 @@ from app.models.table_class import User
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
+# An ordinal ramp: one hue, light -> dark, monotone in perceived lightness.
+# Order is carried by lightness rather than hue, so it survives colour-vision
+# deficiency, greyscale printing and photocopying — which a red-to-green scale
+# does not, red-green being exactly the axis CVD collapses.
+#
+# Steps are the documented blue ramp at 250/350/500/600/700.  The lightest
+# clears the 2:1-against-surface rule for discrete ordinal marks (2.11:1), the
+# ramp is strictly decreasing in relative luminance, and every band's label ink
+# below clears WCAG AA for small text (worst 5.39:1).
 BAND_COLORS = {
-    "low":      "#86c98a",
-    "moderate": "#f2c14e",
-    "high":     "#e06666",
-    "unknown":  "#e8e8e8",
+    "very_low":  "#86b6ef",
+    "low":       "#5598e7",
+    "moderate":  "#256abf",
+    "high":      "#184f95",
+    "very_high": "#0d366b",
+    "unknown":   "#e8e8e8",
 }
-BAND_LABELS = {"low": "Low", "moderate": "Moderate", "high": "High"}
+
+# Label ink per band — flips to white once the fill is too dark for dark ink.
+BAND_INK = {
+    "very_low":  "#202124",
+    "low":       "#202124",
+    "moderate":  "#ffffff",
+    "high":      "#ffffff",
+    "very_high": "#ffffff",
+    "unknown":   "#5f6368",
+}
+
+BAND_LABELS = {
+    "very_low":  "Very low",
+    "low":       "Low",
+    "moderate":  "Moderate",
+    "high":      "High",
+    "very_high": "Very high",
+    "unknown":   "No data",
+}
+
+BAND_ORDER = ["very_low", "low", "moderate", "high", "very_high"]
+
+# Cut points as multiples of the user's own daily rate.  Five bands is the
+# ceiling the data supports: with ~7 cycles a single day's 95% CI is about 0.5
+# wide, so finer gradations would encode sampling noise as signal.
+_BAND_CUTS = [(2.0, "very_high"), (1.5, "high"), (1.0, "moderate"), (0.5, "low")]
+
+# Accent for the today ring — opposite hue to the ramp so it can never be read
+# as one of the risk levels.
+ACCENT = "#eb6834"
 
 # Minimum completed cycles before a forecast means anything at all.
 MIN_CYCLES = 4
@@ -98,12 +138,12 @@ def _band(p: float, overall: float) -> str:
     if np.isnan(p):
         return "unknown"
     if overall <= 0:
-        return "low"
-    if p >= overall * 1.5:
-        return "high"
-    if p >= overall * 0.75:
-        return "moderate"
-    return "low"
+        return "very_low"
+    ratio = p / overall
+    for cut, name in _BAND_CUTS:
+        if ratio >= cut:
+            return name
+    return "very_low"
 
 
 def _message_fig(text: str) -> BytesIO:
@@ -222,8 +262,9 @@ def plot_headache_forecast(
             y = (n_weeks - 1 - row) * cell
             x = col * cell
 
-            item = by_date.get(d)
+            item  = by_date.get(d)
             color = BAND_COLORS[item["band"]] if item else "#fafafa"
+            ink   = BAND_INK[item["band"]] if item else "#cccccc"
 
             ax.add_patch(mpatches.FancyBboxPatch(
                 (x, y), cell * 0.9, cell * 0.9,
@@ -231,33 +272,42 @@ def plot_headache_forecast(
                 facecolor=color,
                 edgecolor="#9aa0a6" if item else "#eeeeee",
                 linewidth=0.8,
-                hatch="///" if (item and item["uncertain"]) else None,
-                alpha=1.0,
             ))
+
+            # Hatch as its own overlay in the cell's ink, so it stays visible on
+            # the dark end of the ramp where a fixed grey would disappear.
+            if item and item["uncertain"]:
+                ax.add_patch(mpatches.FancyBboxPatch(
+                    (x, y), cell * 0.9, cell * 0.9,
+                    boxstyle="round,pad=0.02",
+                    facecolor="none", edgecolor=ink, hatch="///",
+                    linewidth=0.0, alpha=0.55, zorder=2,
+                ))
 
             # Day-of-month number
             ax.text(x + cell * 0.45, y + cell * 0.60, f"{d.day}",
                     ha="center", va="center", fontsize=10.5,
                     fontweight="bold" if item else "normal",
-                    color="#202124" if item else "#cccccc")
+                    color=ink, zorder=4)
 
             if item:
                 ax.text(x + cell * 0.45, y + cell * 0.26,
                         BAND_LABELS[item["band"]],
-                        ha="center", va="center", fontsize=6.5, color="#3c4043")
+                        ha="center", va="center", fontsize=6.5, color=ink, zorder=4)
 
             # Today
             if item and d == dates[0]:
                 ax.add_patch(mpatches.FancyBboxPatch(
                     (x, y), cell * 0.9, cell * 0.9,
                     boxstyle="round,pad=0.02",
-                    facecolor="none", edgecolor="#1a73e8", linewidth=2.4, zorder=5,
+                    facecolor="none", edgecolor=ACCENT, linewidth=2.6, zorder=5,
                 ))
-            # Predicted period start
+            # Predicted period start — drawn in the cell's ink so it is legible
+            # at both ends of the ramp.
             if item and d == next_anchor:
                 ax.text(x + cell * 0.80, y + cell * 0.78, "◆",
                         ha="center", va="center", fontsize=9,
-                        color="#8e24aa", zorder=6)
+                        color=ink, zorder=6)
 
         for i, lbl in enumerate(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]):
             ax.text(i * cell + cell * 0.45, n_weeks * cell + 0.12, lbl,
@@ -277,20 +327,20 @@ def plot_headache_forecast(
         )
 
         legend_items = [
-            mpatches.Patch(facecolor=BAND_COLORS["low"],      edgecolor="#9aa0a6", label="Low"),
-            mpatches.Patch(facecolor=BAND_COLORS["moderate"], edgecolor="#9aa0a6", label="Moderate"),
-            mpatches.Patch(facecolor=BAND_COLORS["high"],     edgecolor="#9aa0a6", label="High"),
+            mpatches.Patch(facecolor=BAND_COLORS[b], edgecolor="#9aa0a6",
+                           label=BAND_LABELS[b])
+            for b in BAND_ORDER
         ]
         if shows_uncertain:
             legend_items.append(
-                mpatches.Patch(facecolor="white", edgecolor="#9aa0a6", hatch="///",
+                mpatches.Patch(facecolor="white", edgecolor="#5f6368", hatch="///",
                                label="Beyond next predicted period")
             )
         ax.legend(handles=legend_items, loc="upper center",
-                  bbox_to_anchor=(0.5, -0.01), ncol=len(legend_items), fontsize=7.5,
-                  frameon=False)
+                  bbox_to_anchor=(0.5, -0.01), ncol=min(len(legend_items), 6),
+                  fontsize=7.5, frameon=False)
 
-        pct_hi = sum(1 for i in info if i["band"] == "high")
+        pct_hi = sum(1 for i in info if i["band"] in ("high", "very_high"))
         caption = (
             f"Based on {n_cycles} completed cycles (median {cycle} days) · "
             f"your overall rate {overall*100:.0f}% of days · "
