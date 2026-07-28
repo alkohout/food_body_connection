@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from io import BytesIO
+from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -38,15 +39,32 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 # Peri-event time histogram
 # ──────────────────────────────────────────────
 
+def _naive(d):
+    return pd.Timestamp(d.replace(tzinfo=None) if getattr(d, "tzinfo", None) else d)
+
+
+def _dedupe_by_day(dates, tz_offset: int = 0):
+    """Collapse anchor events that fall on the same local calendar day.
+
+    A cyclical anchor like Period is logged once per cycle, but the same onset
+    occasionally gets entered twice.  Left alone, each duplicate counts as a
+    separate anchor, which inflates n_anchors and dilutes every rate.
+    Keeps the earliest timestamp for each day.  Returns a sorted list.
+    """
+    by_day = {}
+    for d in sorted(_naive(x) for x in dates):
+        day = (d - pd.Timedelta(minutes=tz_offset)).normalize()
+        if day not in by_day:
+            by_day[day] = d
+    return [by_day[k] for k in sorted(by_day)]
+
+
 def _peri_event(anchor_dates, target_dates, window_days: int):
     """
     For each anchor event, count how many target events fall on each
     relative day (–window to +window).  Returns rates normalised by
     the number of anchor events, plus the overall baseline rate.
     """
-    def _naive(d):
-        return pd.Timestamp(d.replace(tzinfo=None) if getattr(d, "tzinfo", None) else d)
-
     anchors = [_naive(d) for d in anchor_dates]
     targets = [_naive(d) for d in target_dates]
     n_anchors = len(anchors)
@@ -71,15 +89,68 @@ def _peri_event(anchor_dates, target_dates, window_days: int):
     return days, rates, n_anchors, baseline
 
 
+def _current_phase(anchors, now_utc):
+    """Locate 'now' on the peri-event axis.
+
+    anchors must already be deduped and sorted (naive UTC timestamps).
+
+    The cycle length is the median gap between consecutive anchors, which lets
+    us place today either after the most recent anchor or before the next
+    expected one — whichever is nearer.  Relative day uses the same
+    floor-of-fractional-days convention as _peri_event, so the marker lines up
+    with the bar that describes it.
+
+    Returns None when there is too little history, or when the anchor data is
+    too stale for a projection to mean anything.
+    """
+    if len(anchors) < 3:
+        return None
+
+    gaps = [(b - a).days for a, b in zip(anchors, anchors[1:])]
+    gaps = [g for g in gaps if g > 0]
+    if not gaps:
+        return None
+
+    cycle = int(np.median(gaps))
+    if cycle < 1:
+        return None
+
+    last = anchors[-1]
+    days_since = int(np.floor((now_utc - last).total_seconds() / 86400))
+    if days_since < 0:
+        return None                      # anchor in the future — nothing to project from
+
+    # Anchor history that stops more than two cycles back is stale (usually a
+    # date filter ending in the past); a projection off it would be fiction.
+    if days_since > 2 * cycle:
+        return None
+
+    next_expected = last + pd.Timedelta(days=cycle)
+    days_until = int(np.ceil((next_expected - now_utc).total_seconds() / 86400))
+
+    if days_until < 0:
+        # Overdue: the next anchor was expected already.
+        return {"rel_day": days_since, "phase": "after", "cycle": cycle,
+                "days_since": days_since, "days_until": days_until, "overdue": True}
+
+    if days_since <= days_until:
+        return {"rel_day": days_since, "phase": "after", "cycle": cycle,
+                "days_since": days_since, "days_until": days_until, "overdue": False}
+
+    return {"rel_day": -days_until, "phase": "before", "cycle": cycle,
+            "days_since": days_since, "days_until": days_until, "overdue": False}
+
+
 @router.get("/plot_peri_event")
 def plot_peri_event(
     item_type:   str = Query(..., alias="type"),
     name:        str = Query(..., min_length=1),
     type2:       str = Query(...),
     name2:       str = Query(..., min_length=1),
-    window_days: int = Query(7, ge=1, le=30),
+    window_days: int = Query(15, ge=1, le=30),
     date_from: Optional[str] = Query(None),
     date_to:   Optional[str] = Query(None),
+    tz_offset: int = Query(0),
     db:           Session = Depends(get_db),
     current_user: User    = Depends(get_current_user),
 ):
@@ -91,15 +162,16 @@ def plot_peri_event(
     (e.g. Triptan).
 
     Returns a bar chart of mean target events per day at each relative day
-    (–window_days … +window_days), with a dashed baseline rate line.
+    (–window_days … +window_days), with a dashed baseline rate line and a
+    marker showing where today sits in the current cycle.
     """
     if item_type not in ("allergen", "symptom"):
         raise HTTPException(400, "type must be 'allergen' or 'symptom'")
     if type2 not in ("allergen", "symptom"):
         raise HTTPException(400, "type2 must be 'allergen' or 'symptom'")
 
-    from_dt = _parse_date(date_from)
-    to_dt   = _parse_date(date_to, end_of_day=True)
+    from_dt = _parse_date(date_from, tz_offset_minutes=tz_offset)
+    to_dt   = _parse_date(date_to, end_of_day=True, tz_offset_minutes=tz_offset)
 
     try:
         fetch1 = _get_allergen_data if item_type == "allergen" else _get_symptom_data
@@ -115,7 +187,12 @@ def plot_peri_event(
                 f"Need at least 2 '{name2}' events to run peri-event analysis."
             )
 
-        days, rates, n_anchors, baseline = _peri_event(dates2, dates1, window_days)
+        anchors = _dedupe_by_day(dates2, tz_offset)
+
+        days, rates, n_anchors, baseline = _peri_event(anchors, dates1, window_days)
+
+        now_utc = _naive(datetime.now(timezone.utc))
+        phase   = _current_phase(anchors, now_utc)
 
         # ── Interpretation ──────────────────────────────────────────
         max_rate = max(rates) if rates else 0
@@ -135,6 +212,42 @@ def plot_peri_event(
         else:
             summary = f"No clear clustering of {name} around {name2} events."
 
+        # ── Where are we now in the cycle? ──────────────────────────
+        now_line = None
+        if phase:
+            rel = phase["rel_day"]
+            if phase["phase"] == "after":
+                where_now = (
+                    f"today is the day of {name2}" if rel == 0
+                    else f"{rel} day(s) after {name2}"
+                )
+            else:
+                where_now = f"{abs(rel)} day(s) before the next expected {name2}"
+
+            if -window_days <= rel <= window_days:
+                rate_now = rates[days.index(rel)]
+                if baseline > 0:
+                    ratio = rate_now / baseline
+                    risk = (
+                        f"{ratio:.1f}× baseline" if ratio >= 1
+                        else f"{ratio:.1f}× baseline (below average)"
+                    )
+                else:
+                    risk = f"{rate_now:.2f} events/day"
+                now_line = (
+                    f"You are here: {where_now} "
+                    f"(cycle ≈ {phase['cycle']} days).  "
+                    f"Expected {name}: {rate_now:.2f}/day — {risk}"
+                )
+            else:
+                now_line = (
+                    f"You are here: {where_now} "
+                    f"(cycle ≈ {phase['cycle']} days) — outside the ±{window_days} day window"
+                )
+
+            if phase["overdue"]:
+                now_line += f".  Next {name2} is overdue by {abs(phase['days_until'])} day(s)"
+
         # ── Plot ────────────────────────────────────────────────────
         fig, ax = plt.subplots(figsize=(10, 4.2))
 
@@ -149,7 +262,25 @@ def plot_peri_event(
         ax.bar([max_day], [max_rate], width=0.75, color="#1d4ed8",
                alpha=1.0, edgecolor="black", linewidth=1.2, zorder=4)
 
-        ax.set_xticks(days)
+        # "You are here" marker
+        if phase and -window_days <= phase["rel_day"] <= window_days:
+            rel = phase["rel_day"]
+            ax.axvline(rel, color="#059669", linewidth=2.2, zorder=6,
+                       label=f"Today  (day {rel:+d})")
+            ax.annotate(
+                "TODAY",
+                xy=(rel, 0.98), xycoords=("data", "axes fraction"),
+                ha="center", va="top", fontsize=8, fontweight="bold",
+                color="#059669", zorder=7,
+                bbox=dict(boxstyle="round,pad=0.25", facecolor="white",
+                          edgecolor="#059669", linewidth=0.8, alpha=0.95),
+            )
+
+        # A ±15 day window is 31 bars — thin the tick labels so they stay legible,
+        # always keeping 0 on the axis.
+        step  = 1 if window_days <= 7 else (2 if window_days <= 15 else 5)
+        ax.set_xticks([d for d in days if d % step == 0])
+        ax.tick_params(axis="x", labelsize=8)
         ax.set_xlabel(f"Days relative to {name2}  (0 = day of event)", fontsize=9)
         ax.set_ylabel(f"Mean {name} events / day")
         ax.set_title(
@@ -161,10 +292,18 @@ def plot_peri_event(
         ax.grid(axis="y", alpha=0.2)
         ax.set_ylim(bottom=0)
 
-        fig.text(0.5, 0.01, summary, ha="center", fontsize=9,
-                 color="#374151", style="italic")
+        if now_line:
+            fig.text(0.5, 0.075, summary, ha="center", fontsize=9,
+                     color="#374151", style="italic")
+            fig.text(0.5, 0.012, now_line, ha="center", fontsize=9.5,
+                     color="#059669", fontweight="bold")
+            rect = [0, 0.13, 1, 1]
+        else:
+            fig.text(0.5, 0.01, summary, ha="center", fontsize=9,
+                     color="#374151", style="italic")
+            rect = [0, 0.06, 1, 1]
 
-        plt.tight_layout(rect=[0, 0.06, 1, 1])
+        plt.tight_layout(rect=rect)
         return StreamingResponse(_save_fig(fig), media_type="image/png")
 
     except HTTPException:

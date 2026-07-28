@@ -366,14 +366,19 @@
                   <p style="margin:0 0 0.75rem; font-size:0.82rem; color:#6b7280">
                     Treats <strong>variable 2</strong> as the trigger event and shows how often
                     <strong>variable 1</strong> occurs in the days surrounding it.
+                    A green <strong>TODAY</strong> line marks where you currently sit in the
+                    cycle — how many days you are before or after variable 2 — so you can read
+                    off the expected rate for right now.
                   </p>
                   <div class="inline-fields" style="margin-bottom:0.75rem">
                     <label style="font-size:0.82rem;color:#6b7280;white-space:nowrap">Window ±</label>
-                    <select id="ts-peri-window" style="width:90px">
+                    <select id="ts-peri-window" style="width:150px">
                       <option value="3">3 days</option>
                       <option value="5">5 days</option>
-                      <option value="7" selected>7 days</option>
-                      <option value="14">14 days</option>
+                      <option value="7">7 days</option>
+                      <option value="15" selected>15 days (full cycle)</option>
+                      <option value="21">21 days</option>
+                      <option value="30">30 days</option>
                     </select>
                   </div>
                   <button type="button" id="ts-peri-btn" class="secondary" style="width:auto;margin:0;padding:0.35rem 0.9rem;font-size:0.85rem">

@@ -1008,11 +1008,16 @@ function setupTimeSeries() {
     const name  = nameSelect.value;
     const type2 = type2Select?.value;
     const name2 = name2Select?.value;
-    const win   = periWindow?.value ?? "7";
+    const win   = periWindow?.value ?? "15";
     if (!name || !type2 || !name2) return;
 
     const params = new URLSearchParams({ type, name, type2, name2, window_days: win });
     Object.entries(getDateRange()).forEach(([k, v]) => params.set(k, v));
+    // getDateRange() omits tz_offset on the "all" range, but the TODAY marker
+    // needs the local timezone regardless of which range is selected.
+    if (!params.has("tz_offset")) {
+      params.set("tz_offset", new Date().getTimezoneOffset());
+    }
 
     if (periStatus) periStatus.textContent = "Running analysis…";
     if (periFigure) periFigure.style.display = "none";
