@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -32,20 +32,24 @@ COLORS = {
 @router.get("/plot_symptom_calendar")
 def plot_symptom_calendar(
     background_tasks: BackgroundTasks,
+    tz_offset: int = Query(0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     uid = current_user.user_id
 
     def generate() -> BytesIO:
-        # Push daily-max aggregation to SQL; AT TIME ZONE 'UTC' keeps dates consistent
+        # Bucket by the user's calendar day, not UTC's.  :tz is
+        # Date.getTimezoneOffset() — minutes to add to local time to reach UTC
+        # (NZ = -720) — so local = utc - tz.  Bucketing on the raw UTC day put
+        # every symptom logged before local noon in the previous cell.
         rows = db.execute(text("""
-            SELECT DATE(date_time AT TIME ZONE 'UTC') AS day,
+            SELECT DATE((date_time AT TIME ZONE 'UTC') - make_interval(mins => :tz)) AS day,
                    MAX(symptom_intensity) AS max_intensity
             FROM symptom_log
             WHERE user_id = :uid AND date_time IS NOT NULL
-            GROUP BY DATE(date_time AT TIME ZONE 'UTC')
-        """), {"uid": uid}).fetchall()
+            GROUP BY DATE((date_time AT TIME ZONE 'UTC') - make_interval(mins => :tz))
+        """), {"uid": uid, "tz": tz_offset}).fetchall()
 
         if not rows:
             fig, ax = plt.subplots(figsize=(8, 4))
@@ -61,8 +65,11 @@ def plot_symptom_calendar(
         # Build intensity map from SQL result (already one row per UTC day)
         intensity_map = {pd.Timestamp(r.day): int(r.max_intensity) for r in rows}
 
-        # 52-week grid ending today (UTC-based, timezone-naive)
-        today = pd.Timestamp.utcnow().normalize()
+        # 52-week grid ending on the user's today, not UTC's — otherwise for a
+        # UTC+12 user the grid stops at yesterday until local noon and there is
+        # nowhere for today's entry to appear.
+        today = (pd.Timestamp.now(tz="UTC").tz_localize(None)
+                 - pd.Timedelta(minutes=tz_offset)).normalize()
         start = today - pd.Timedelta(weeks=52) + pd.Timedelta(days=1)
         start = start - pd.Timedelta(days=start.dayofweek)  # snap to Monday
         all_dates = pd.date_range(start=start, end=today, freq="D")
@@ -134,7 +141,9 @@ def plot_symptom_calendar(
         return buf
 
     try:
-        return cached_png(f"symptom_calendar_{uid}", generate, background_tasks)
+        # tz_offset is part of the key — the rendered days depend on it, so a
+        # cached UTC version must not be served to a local-time request.
+        return cached_png(f"symptom_calendar_{uid}_{tz_offset}", generate, background_tasks)
     except Exception as e:
         logger.error("plot_symptom_calendar failed: %s", e)
         logger.error(traceback.format_exc())

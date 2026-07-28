@@ -3,12 +3,13 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
 from fastapi.responses import StreamingResponse,JSONResponse
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.api.routes.auth import get_current_user
 from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Symptom
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df, get_allergen_events_df
+from app.api.routes.plot_time_series_analysis import cycle_length
 from io import BytesIO
 from datetime import date, datetime, time, timezone, timedelta
 from sqlalchemy import text, func, union_all, select, func
@@ -23,6 +24,18 @@ logging.basicConfig(level=logging.INFO)
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
+# Bucket a timestamptz into the *user's* calendar day rather than the UTC one.
+# :tz is JS Date.getTimezoneOffset() — minutes to add to local time to reach UTC
+# (NZ = -720), so local = utc - tz.  Without this, a UTC+12 user has everything
+# logged before noon attributed to the previous day.
+_LOCAL_DAY = "DATE((date_time AT TIME ZONE 'UTC') - make_interval(mins => :tz))"
+_LOCAL_MONTH = "DATE_TRUNC('month', (date_time AT TIME ZONE 'UTC') - make_interval(mins => :tz))"
+
+
+def _local_now(tz_offset: int) -> datetime:
+    """The user's current local wall-clock time, as a naive datetime."""
+    return datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=tz_offset)
+
 DEFAULT_ALLERGEN = "Dairy"          # default allergen if none selected
 DEFAULT_SYMPTOM = "Nausea"          # default symptom if none selected
 DEFAULT_START_DATE = date(2025, 1, 1)  # earliest date
@@ -30,6 +43,7 @@ DEFAULT_END_DATE = date.today()        # today
 
 @router.get("/stats")
 def analysis_stats(
+    tz_offset: int = Query(0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -51,45 +65,45 @@ def analysis_stats(
             WHERE user_id = :user_id
         """), {"user_id": user_id}).scalar() or 0
 
-        total_days = db.execute(text("""
+        total_days = db.execute(text(f"""
             SELECT COUNT(*)
             FROM (
-                SELECT DISTINCT DATE(date_time) AS d
+                SELECT DISTINCT {_LOCAL_DAY} AS d
                 FROM allergen_log
                 WHERE user_id = :user_id
                   AND date_time IS NOT NULL
 
                 UNION
 
-                SELECT DISTINCT DATE(date_time) AS d
+                SELECT DISTINCT {_LOCAL_DAY} AS d
                 FROM symptom_log
                 WHERE user_id = :user_id
                   AND date_time IS NOT NULL
             ) x
-        """), {"user_id": user_id}).scalar() or 0
+        """), {"user_id": user_id, "tz": tz_offset}).scalar() or 0
 
-        avg_allergens_per_day = db.execute(text("""
+        avg_allergens_per_day = db.execute(text(f"""
             SELECT AVG(cnt)::float
             FROM (
-                SELECT DATE(date_time) AS d, COUNT(*) AS cnt
+                SELECT {_LOCAL_DAY} AS d, COUNT(*) AS cnt
                 FROM allergen_log
                 WHERE user_id = :user_id
                   AND date_time IS NOT NULL
-                GROUP BY DATE(date_time)
+                GROUP BY {_LOCAL_DAY}
             ) x
-        """), {"user_id": user_id}).scalar()
+        """), {"user_id": user_id, "tz": tz_offset}).scalar()
         avg_allergens_per_day = round(float(avg_allergens_per_day or 0), 2)
 
-        avg_symptoms_per_day = db.execute(text("""
+        avg_symptoms_per_day = db.execute(text(f"""
             SELECT AVG(cnt)::float
             FROM (
-                SELECT DATE(date_time) AS d, COUNT(*) AS cnt
+                SELECT {_LOCAL_DAY} AS d, COUNT(*) AS cnt
                 FROM symptom_log
                 WHERE user_id = :user_id
                   AND date_time IS NOT NULL
-                GROUP BY DATE(date_time)
+                GROUP BY {_LOCAL_DAY}
             ) x
-        """), {"user_id": user_id}).scalar()
+        """), {"user_id": user_id, "tz": tz_offset}).scalar()
         avg_symptoms_per_day = round(float(avg_symptoms_per_day or 0), 2)
 
         payload = {
@@ -101,7 +115,7 @@ def analysis_stats(
         }
 
         if user_id == 4:
-            payload.update(get_special_user_stats(db, user_id))
+            payload.update(get_special_user_stats(db, user_id, tz_offset))
 
         return payload
 
@@ -114,8 +128,7 @@ def analysis_stats(
 
 from datetime import timedelta, datetime
 
-def get_special_user_stats(db: Session, user_id: int) -> dict:
-    avg_length_historic = 31.0
+def get_special_user_stats(db: Session, user_id: int, tz_offset: int = 0) -> dict:
 
     # Resolve allergen IDs in Python — names are encrypted, can't compare in SQL
     all_allergens = db.query(Allergen).filter(Allergen.user_id == user_id).all()
@@ -128,20 +141,26 @@ def get_special_user_stats(db: Session, user_id: int) -> dict:
             SELECT COUNT(*) FROM allergen_log
             WHERE user_id = :uid AND allergen_id = :aid
               AND date_time IS NOT NULL
-              AND date_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '28 days'
+              AND date_time >= NOW() - INTERVAL '28 days'
         """), {"uid": user_id, "aid": triptan.allergen_id}).scalar() or 0
 
-        monthly_rows = db.execute(text("""
-            SELECT DATE_TRUNC('month', date_time) AS month_start,
+        # Exclude the current month using the user's month boundary, not UTC's —
+        # otherwise the first 12 hours of an NZ month count as the previous one.
+        current_month = _local_now(tz_offset).replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0
+        )
+        monthly_rows = db.execute(text(f"""
+            SELECT {_LOCAL_MONTH} AS month_start,
                    COUNT(*) AS monthly_count
             FROM allergen_log
             WHERE user_id = :uid AND allergen_id = :aid
               AND date_time IS NOT NULL
-              AND DATE_TRUNC('month', date_time) <> DATE_TRUNC('month', NOW() AT TIME ZONE 'UTC')
-              AND DATE_TRUNC('month', date_time) <> DATE '2025-12-01'
-            GROUP BY DATE_TRUNC('month', date_time)
+              AND {_LOCAL_MONTH} <> :current_month
+              AND {_LOCAL_MONTH} <> DATE '2025-12-01'
+            GROUP BY {_LOCAL_MONTH}
             ORDER BY month_start
-        """), {"uid": user_id, "aid": triptan.allergen_id}).fetchall()
+        """), {"uid": user_id, "aid": triptan.allergen_id, "tz": tz_offset,
+               "current_month": current_month}).fetchall()
     else:
         count_last28 = 0
         monthly_rows = []
@@ -153,37 +172,34 @@ def get_special_user_stats(db: Session, user_id: int) -> dict:
 
     # Period/cycle stats
     if period:
-        cycle_rows = db.execute(text("""
-            SELECT DISTINCT DATE(date_time) AS cycle_day
+        cycle_rows = db.execute(text(f"""
+            SELECT DISTINCT {_LOCAL_DAY} AS cycle_day
             FROM allergen_log
             WHERE user_id = :uid AND allergen_id = :aid
               AND date_time IS NOT NULL
             ORDER BY cycle_day
-        """), {"uid": user_id, "aid": period.allergen_id}).fetchall()
+        """), {"uid": user_id, "aid": period.allergen_id, "tz": tz_offset}).fetchall()
     else:
         cycle_rows = []
 
     cycle_dates = [row.cycle_day for row in cycle_rows if row.cycle_day is not None]
 
-    average_cycle_length = avg_length_historic
+    # Same estimator as the peri-event marker and the headache forecast, so the
+    # predicted date here matches the one those show.  Previously this averaged
+    # the observed mean with a hardcoded 31.0, which pulled the answer toward a
+    # constant that had nothing to do with this user's data.
+    typical_cycle_length = cycle_length(cycle_dates) if len(cycle_dates) >= 2 else None
+
     predicted_next_cycle_date = None
-
-    if len(cycle_dates) >= 2:
-        intervals = [
-            (cycle_dates[i] - cycle_dates[i - 1]).days
-            for i in range(1, len(cycle_dates))
-        ]
-        observed_avg = sum(intervals) / len(intervals)
-        average_cycle_length = round((avg_length_historic + observed_avg) / 2, 1)
-
-    if cycle_dates:
-        last_cycle_start = cycle_dates[-1]
-        predicted_next_cycle_date = last_cycle_start + timedelta(days=average_cycle_length)
+    if cycle_dates and typical_cycle_length:
+        predicted_next_cycle_date = cycle_dates[-1] + timedelta(days=typical_cycle_length)
 
     return {
         "Triptan usage in past month": int(count_last28),
         "Average Triptan usage per month": int(round(average_per_month)),
-        "Average cycle length": float(average_cycle_length),
+        "Typical cycle length": (
+            float(typical_cycle_length) if typical_cycle_length else None
+        ),
         "Predicted next cycle date": (
             predicted_next_cycle_date.strftime("%A, %d %B %Y")
             if predicted_next_cycle_date else None

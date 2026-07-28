@@ -760,6 +760,7 @@ function hideAllAnalysisPanels() {
     getElement("panel-deeper-analysis"),
     getElement("panel-checkin-trends"),
     getElement("panel-symptom-calendar"),
+    getElement("panel-headache-forecast"),
     getElement("panel-triptan-monthly"),
   ];
 
@@ -815,6 +816,13 @@ async function showAnalysisPanel(selected) {
     const panel = getElement("panel-symptom-calendar");
     if (panel) panel.classList.add("visible");
     await fetchSymptomCalendarPlot();
+    return;
+  }
+
+  if (selected === "headache-forecast") {
+    const panel = getElement("panel-headache-forecast");
+    if (panel) panel.classList.add("visible");
+    await fetchHeadacheForecastPlot();
     return;
   }
 
@@ -963,6 +971,11 @@ function setupTimeSeries() {
 
     const params = new URLSearchParams({ type, name, type2, name2 });
     Object.entries(getDateRange()).forEach(([k, v]) => params.set(k, v));
+    // getDateRange() omits tz_offset on the "all" range, but the 12-hour bins
+    // are anchored to local midnight regardless of which range is selected.
+    if (!params.has("tz_offset")) {
+      params.set("tz_offset", new Date().getTimezoneOffset());
+    }
 
     if (ccfStatus)  ccfStatus.textContent = "Running analysis…";
     if (ccfFigure)  ccfFigure.style.display = "none";
@@ -1598,7 +1611,8 @@ async function fetchAISummary() {
   setSummaryState("");
 
   try {
-    const res = await fetch(`${API_URL}/analysis/generate_summary_text`, {
+    const res = await fetch(
+      `${API_URL}/analysis/generate_summary_text?tz_offset=${new Date().getTimezoneOffset()}`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
     });
 
@@ -1647,7 +1661,9 @@ async function fetchAnalysisStats({ force = false } = {}) {
   analysisStatsLoading = true;
 
   try {
-    const url = `${API_URL}/analysis/stats`;
+    // tz_offset so day counts and the cycle prediction bucket on the user's
+    // calendar day rather than the UTC one.
+    const url = `${API_URL}/analysis/stats?tz_offset=${new Date().getTimezoneOffset()}`;
     const token = localStorage.getItem("access_token");
 
     console.log("Fetching analysis stats from:", url);
@@ -1822,7 +1838,8 @@ async function fetchSymptomCalendarPlot() {
   if (img) img.style.display = "none";
 
   try {
-    const res = await fetch(`${API_URL}/analysis/plot_symptom_calendar`, {
+    const res = await fetch(
+      `${API_URL}/analysis/plot_symptom_calendar?tz_offset=${new Date().getTimezoneOffset()}`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
     });
     if (!res.ok) throw new Error(`Server returned ${res.status}`);
@@ -1838,6 +1855,40 @@ async function fetchSymptomCalendarPlot() {
     if (statusEl) statusEl.textContent = `Could not load plot: ${err.message}`;
   }
 }
+
+async function fetchHeadacheForecastPlot() {
+  const statusEl = getElement("headache-forecast-status");
+  const img      = getElement("headache-forecast-plot");
+  const daysSel  = getElement("headache-forecast-days");
+
+  if (statusEl) statusEl.textContent = "Loading…";
+  if (img) img.style.display = "none";
+
+  const params = new URLSearchParams({
+    days_ahead: daysSel?.value ?? "14",
+    tz_offset: new Date().getTimezoneOffset(),
+  });
+
+  try {
+    const res = await fetch(`${API_URL}/analysis/plot_headache_forecast?${params}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+    });
+    if (!res.ok) throw new Error(`Server returned ${res.status}`);
+
+    const blob = await res.blob();
+    if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+    img.src = URL.createObjectURL(blob);
+    img.dataset.objectUrl = img.src;
+    img.style.display = "";
+    if (statusEl) statusEl.textContent = "";
+  } catch (err) {
+    console.error("fetchHeadacheForecastPlot failed:", err);
+    if (statusEl) statusEl.textContent = `Could not load plot: ${err.message}`;
+  }
+}
+
+document.getElementById("headache-forecast-days")
+  ?.addEventListener("change", fetchHeadacheForecastPlot);
 
 // =========================================================
 // Analysis tab load
@@ -2536,7 +2587,10 @@ async function sendChatMessage() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${localStorage.getItem("access_token")}`,
       },
-      body: JSON.stringify({ messages: chatHistory }),
+      body: JSON.stringify({
+        messages: chatHistory,
+        tz_offset: new Date().getTimezoneOffset(),
+      }),
     });
 
     typingEl.remove();

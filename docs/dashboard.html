@@ -225,6 +225,7 @@
               <option value="deeper-analysis">Deeper analysis</option>
               <option value="checkin-trends">Daily wellbeing trends</option>
               <option value="symptom-calendar">Symptom calendar</option>
+              <option value="headache-forecast">Headache forecast</option>
               <option value="triptan-monthly" class="user4-only" style="display:none">Triptans per month</option>
             </select>
           </div>
@@ -473,6 +474,31 @@
               <p id="symptom-calendar-status" class="status"></p>
               <figure class="img-figure">
                 <img id="symptom-calendar-plot" src="" alt="Symptom calendar heatmap" style="width:100%" />
+              </figure>
+            </div>
+
+            <!-- Headache forecast -->
+            <div id="panel-headache-forecast" class="analysis-panel">
+              <h4>Headache Forecast</h4>
+              <p>
+                Likelihood of a headache on each of the coming days, based on where
+                you sit in your cycle. Built from how often headaches landed on each
+                cycle day historically — so it ranks days against your own average,
+                it does not predict individual events.
+              </p>
+              <div class="inline-fields" style="margin-bottom:0.75rem">
+                <label for="headache-forecast-days"
+                       style="font-size:0.82rem;color:#6b7280;white-space:nowrap">Look ahead</label>
+                <select id="headache-forecast-days" style="width:130px">
+                  <option value="14" selected>14 days</option>
+                  <option value="21">21 days</option>
+                  <option value="28">28 days</option>
+                  <option value="35">35 days</option>
+                </select>
+              </div>
+              <p id="headache-forecast-status" class="status"></p>
+              <figure class="img-figure">
+                <img id="headache-forecast-plot" src="" alt="Headache likelihood forecast calendar" style="width:100%" />
               </figure>
             </div>
 

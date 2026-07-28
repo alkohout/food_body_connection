@@ -159,14 +159,17 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
             jaccard_dist = pairwise_distances(X_bool.T, metric="jaccard")
             jaccard_sim = 1 - jaccard_dist
 
+            # Remove diagonal (self-similarity) before building the frame.
+            # Under pandas 3 the array behind .values is read-only, so writing
+            # through it raises and the whole classification section is lost.
+            jaccard_sim = np.array(jaccard_sim, copy=True)
+            np.fill_diagonal(jaccard_sim, 0)
+
             jaccard_df = pd.DataFrame(
                 jaccard_sim,
                 index=allergen_cols,
                 columns=allergen_cols
             )
-
-            # Remove diagonal (self-similarity)
-            np.fill_diagonal(jaccard_df.values, 0)
 
             # Identify strongly co-occurring allergen pairs
             strong_pairs = (

@@ -24,15 +24,28 @@ def _time_of_day(h: int) -> str:
         return "night"
 
 
-def build_analysis_context(db, user_id: int) -> dict | None:
+def build_analysis_context(db, user_id: int, tz_offset: int = 0) -> dict | None:
+    """Assemble the context handed to the model.
+
+    tz_offset is JS Date.getTimezoneOffset() — minutes to add to local time to
+    reach UTC (NZ = -720).  Timestamps are stored in UTC, but "time of day" and
+    "day of week" are only meaningful in the user's own zone: for UTC+12 the raw
+    UTC hour is rotated half a day, which would report evening symptoms as
+    morning ones.
+    """
     allergen_df = get_all_allergen_events_df(db, user_id)
     symptom_df = get_all_symptom_events_df(db, user_id)
 
     if allergen_df.empty or symptom_df.empty:
         return None
 
-    allergen_df["date_time"] = pd.to_datetime(allergen_df["date_time"], utc=True)
-    symptom_df["date_time"] = pd.to_datetime(symptom_df["date_time"], utc=True)
+    local_shift = pd.Timedelta(minutes=tz_offset)
+    allergen_df["date_time"] = (
+        pd.to_datetime(allergen_df["date_time"], utc=True).dt.tz_localize(None) - local_shift
+    )
+    symptom_df["date_time"] = (
+        pd.to_datetime(symptom_df["date_time"], utc=True).dt.tz_localize(None) - local_shift
+    )
 
     all_times = pd.concat([allergen_df["date_time"], symptom_df["date_time"]])
     start_date = all_times.min().strftime("%Y-%m-%d")
@@ -176,8 +189,8 @@ def _get_document_context(db, user_id: int) -> str:
     return "\n\n".join(parts)
 
 
-def generate_ai_summary(db, user_id: int) -> dict:
-    context = build_analysis_context(db, user_id)
+def generate_ai_summary(db, user_id: int, tz_offset: int = 0) -> dict:
+    context = build_analysis_context(db, user_id, tz_offset)
 
     if context is None:
         return {

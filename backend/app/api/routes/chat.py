@@ -25,6 +25,9 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
+    # JS Date.getTimezoneOffset(); needed so time-of-day claims are in the
+    # user's zone rather than UTC.
+    tz_offset: int = 0
 
 
 @router.post("/chat")
@@ -37,7 +40,7 @@ def chat(
     if not api_key:
         raise HTTPException(status_code=503, detail="AI service not configured.")
 
-    context = build_analysis_context(db, current_user.user_id)
+    context = build_analysis_context(db, current_user.user_id, body.tz_offset)
     doc_context = _get_document_context(db, current_user.user_id)
 
     if context:

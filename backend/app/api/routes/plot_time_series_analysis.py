@@ -43,80 +43,128 @@ def _naive(d):
     return pd.Timestamp(d.replace(tzinfo=None) if getattr(d, "tzinfo", None) else d)
 
 
-def _dedupe_by_day(dates, tz_offset: int = 0):
-    """Collapse anchor events that fall on the same local calendar day.
+def _local_naive(d, tz_offset: int = 0):
+    """A stored UTC timestamp as the user's local wall-clock time (naive).
+
+    tz_offset is JS Date.getTimezoneOffset() — minutes to add to local time to
+    reach UTC (NZ = -720), so local = utc - tz_offset.
+    """
+    return _naive(d) - pd.Timedelta(minutes=tz_offset)
+
+
+def _local_day(d, tz_offset: int = 0):
+    """Normalise a timestamp to the user's local calendar day.
+
+    Everything downstream of this — peri-event bins, cycle length, the TODAY
+    marker and the headache forecast — works in whole local days.  Health events
+    are recorded at daily resolution, so "the day after my period started" must
+    mean the same thing everywhere regardless of clock time.
+    """
+    return _local_naive(d, tz_offset).normalize()
+
+
+def _anchor_days(dates, tz_offset: int = 0):
+    """Sorted unique local calendar days on which an anchor event was logged.
 
     A cyclical anchor like Period is logged once per cycle, but the same onset
     occasionally gets entered twice.  Left alone, each duplicate counts as a
     separate anchor, which inflates n_anchors and dilutes every rate.
-    Keeps the earliest timestamp for each day.  Returns a sorted list.
     """
-    by_day = {}
-    for d in sorted(_naive(x) for x in dates):
-        day = (d - pd.Timedelta(minutes=tz_offset)).normalize()
-        if day not in by_day:
-            by_day[day] = d
-    return [by_day[k] for k in sorted(by_day)]
+    return sorted({_local_day(d, tz_offset) for d in dates})
 
 
-def _peri_event(anchor_dates, target_dates, window_days: int):
+def _peri_event(anchor_days, target_dates, window_days: int, tz_offset: int = 0):
     """
     For each anchor event, count how many target events fall on each
     relative day (–window to +window).  Returns rates normalised by
     the number of anchor events, plus the overall baseline rate.
+
+    Bins are whole local calendar days: an event logged the day after an anchor
+    lands in bin +1 whatever the clock times were.  Binning on raw timestamp
+    deltas instead would put an event 23 h later in bin 0 and one 25 h later in
+    bin +1, which does not match how the days were actually recorded.
     """
-    anchors = [_naive(d) for d in anchor_dates]
-    targets = [_naive(d) for d in target_dates]
-    n_anchors = len(anchors)
+    targets   = [_local_day(d, tz_offset) for d in target_dates]
+    n_anchors = len(anchor_days)
 
     days   = list(range(-window_days, window_days + 1))
     counts = {d: 0 for d in days}
 
-    for anchor in anchors:
+    all_days = list(anchor_days) + targets
+    obs_start, obs_end = min(all_days), max(all_days)
+
+    # Not every anchor can contribute to every bin.  The most recent anchor has
+    # no data yet for the days after it — they are still in the future — so
+    # dividing those bins by the full anchor count understates them by roughly
+    # one anchor's worth.  Count, per bin, how many anchors were actually
+    # observable there and normalise by that instead.
+    observable = {d: 0 for d in days}
+    for anchor in anchor_days:
+        for k in days:
+            if obs_start <= anchor + pd.Timedelta(days=k) <= obs_end:
+                observable[k] += 1
+
+    for anchor in anchor_days:
         for target in targets:
-            delta = (target - anchor).total_seconds() / 86400  # fractional days
-            day_bin = int(np.floor(delta))
+            day_bin = (target - anchor).days
             if -window_days <= day_bin <= window_days:
                 counts[day_bin] += 1
 
-    rates = [counts[d] / n_anchors for d in days]
+    rates = [
+        counts[d] / observable[d] if observable[d] else float("nan")
+        for d in days
+    ]
 
     # Overall baseline: mean target events per day across the full span
-    all_ts = anchors + targets
-    span   = max((max(all_ts) - min(all_ts)).days, 1)
+    span     = max((obs_end - obs_start).days, 1)
     baseline = len(targets) / span
 
-    return days, rates, n_anchors, baseline
+    return days, rates, n_anchors, baseline, observable
 
 
-def _current_phase(anchors, now_utc):
-    """Locate 'now' on the peri-event axis.
+def cycle_length(anchor_days):
+    """Typical gap between consecutive anchor events, in whole local days.
 
-    anchors must already be deduped and sorted (naive UTC timestamps).
+    The median rather than the mean: with a handful of cycles one unusually
+    long or short gap would drag a mean noticeably, and a cycle length is a
+    typical value rather than a total to be averaged.  Zero-length gaps are
+    dropped — they mean the same onset was logged twice, not a real cycle.
+
+    Shared by the peri-event marker, the headache forecast and /analysis/stats
+    so all three agree on when the next event is due.  Returns None when there
+    is not enough history.
+    """
+    gaps = [(b - a).days for a, b in zip(anchor_days, anchor_days[1:])]
+    gaps = [g for g in gaps if g > 0]
+    if not gaps:
+        return None
+    return int(np.median(gaps))
+
+
+def _current_phase(anchor_days, today_local):
+    """Locate today on the peri-event axis.
+
+    anchor_days must be sorted unique local calendar days (see _anchor_days),
+    and today_local the user's local calendar day.  All arithmetic is in whole
+    days, matching _peri_event's bins, so the marker lines up with the bar that
+    describes it.
 
     The cycle length is the median gap between consecutive anchors, which lets
     us place today either after the most recent anchor or before the next
-    expected one — whichever is nearer.  Relative day uses the same
-    floor-of-fractional-days convention as _peri_event, so the marker lines up
-    with the bar that describes it.
+    expected one — whichever is nearer.
 
     Returns None when there is too little history, or when the anchor data is
     too stale for a projection to mean anything.
     """
-    if len(anchors) < 3:
+    if len(anchor_days) < 3:
         return None
 
-    gaps = [(b - a).days for a, b in zip(anchors, anchors[1:])]
-    gaps = [g for g in gaps if g > 0]
-    if not gaps:
+    cycle = cycle_length(anchor_days)
+    if not cycle or cycle < 1:
         return None
 
-    cycle = int(np.median(gaps))
-    if cycle < 1:
-        return None
-
-    last = anchors[-1]
-    days_since = int(np.floor((now_utc - last).total_seconds() / 86400))
+    last = anchor_days[-1]
+    days_since = (today_local - last).days
     if days_since < 0:
         return None                      # anchor in the future — nothing to project from
 
@@ -126,7 +174,7 @@ def _current_phase(anchors, now_utc):
         return None
 
     next_expected = last + pd.Timedelta(days=cycle)
-    days_until = int(np.ceil((next_expected - now_utc).total_seconds() / 86400))
+    days_until = (next_expected - today_local).days
 
     if days_until < 0:
         # Overdue: the next anchor was expected already.
@@ -187,23 +235,39 @@ def plot_peri_event(
                 f"Need at least 2 '{name2}' events to run peri-event analysis."
             )
 
-        anchors = _dedupe_by_day(dates2, tz_offset)
+        anchors = _anchor_days(dates2, tz_offset)
 
-        days, rates, n_anchors, baseline = _peri_event(anchors, dates1, window_days)
+        days, rates, n_anchors, baseline, observable = _peri_event(
+            anchors, dates1, window_days, tz_offset
+        )
 
-        now_utc = _naive(datetime.now(timezone.utc))
-        phase   = _current_phase(anchors, now_utc)
+        today_local = _local_day(datetime.now(timezone.utc), tz_offset)
+        phase       = _current_phase(anchors, today_local)
 
         # ── Interpretation ──────────────────────────────────────────
-        max_rate = max(rates) if rates else 0
-        max_day  = days[rates.index(max_rate)] if rates else 0
+        finite = [r for r in rates if not np.isnan(r)]
+        if not finite:
+            raise HTTPException(
+                400, "No overlapping data between the two variables in this window."
+            )
+
+        max_rate = max(finite)
+        # Several days can share the peak; naming only the first is misleading.
+        peak_days = [d for d, r in zip(days, rates)
+                     if not np.isnan(r) and r == max_rate]
+        max_day = peak_days[0]
+
+        def _describe(d):
+            return (f"{abs(d)} day(s) before" if d < 0
+                    else "on the same day as" if d == 0
+                    else f"{d} day(s) after")
 
         if baseline > 0 and max_rate > baseline * 1.5:
-            where = (
-                f"{abs(max_day)} day(s) before" if max_day < 0
-                else f"on the same day as" if max_day == 0
-                else f"{max_day} day(s) after"
-            )
+            if len(peak_days) == 1:
+                where = _describe(max_day)
+            else:
+                joined = ", ".join(f"{d:+d}" for d in peak_days)
+                where = f"equally at days {joined} relative to"
             pct = (max_rate - baseline) / baseline * 100
             summary = (
                 f"Peak usage {where} {name2}  "
@@ -224,8 +288,20 @@ def plot_peri_event(
             else:
                 where_now = f"{abs(rel)} day(s) before the next expected {name2}"
 
-            if -window_days <= rel <= window_days:
-                rate_now = rates[days.index(rel)]
+            in_window = -window_days <= rel <= window_days
+            rate_now  = rates[days.index(rel)] if in_window else float("nan")
+
+            if not in_window:
+                now_line = (
+                    f"You are here: {where_now} "
+                    f"(cycle ≈ {phase['cycle']} days) — outside the ±{window_days} day window"
+                )
+            elif np.isnan(rate_now):
+                now_line = (
+                    f"You are here: {where_now} "
+                    f"(cycle ≈ {phase['cycle']} days) — no comparable history at this point yet"
+                )
+            else:
                 if baseline > 0:
                     ratio = rate_now / baseline
                     risk = (
@@ -239,11 +315,6 @@ def plot_peri_event(
                     f"(cycle ≈ {phase['cycle']} days).  "
                     f"Expected {name}: {rate_now:.2f}/day — {risk}"
                 )
-            else:
-                now_line = (
-                    f"You are here: {where_now} "
-                    f"(cycle ≈ {phase['cycle']} days) — outside the ±{window_days} day window"
-                )
 
             if phase["overdue"]:
                 now_line += f".  Next {name2} is overdue by {abs(phase['days_until'])} day(s)"
@@ -254,12 +325,22 @@ def plot_peri_event(
         bar_colors = ["#1d4ed8" if d == 0 else "#3b82f6" for d in days]
         ax.bar(days, rates, width=0.75, color=bar_colors, alpha=0.75, zorder=3)
 
+        # Only flag bins resting on materially less evidence.  Nearly every bin
+        # misses the odd anchor at the edges of the data; hatching a one-cycle
+        # shortfall would mark almost the whole chart and mean nothing.
+        thin = [d for d in days if 0 < observable[d] <= n_anchors - 2]
+        if thin:
+            ax.bar(thin, [rates[days.index(d)] for d in thin], width=0.75,
+                   color="none", edgecolor="#1e3a8a", hatch="///",
+                   linewidth=0.0, zorder=3.5,
+                   label=f"≤ {n_anchors - 2} cycles of data")
+
         ax.axhline(baseline, color="#9ca3af", linestyle="--", linewidth=1.5,
                    label=f"Baseline  ({baseline:.2f} events/day)")
         ax.axvline(0, color="black", linewidth=0.7, alpha=0.3)
 
-        # Highlight the peak bar
-        ax.bar([max_day], [max_rate], width=0.75, color="#1d4ed8",
+        # Highlight the peak bar(s) — there can be a tie
+        ax.bar(peak_days, [max_rate] * len(peak_days), width=0.75, color="#1d4ed8",
                alpha=1.0, edgecolor="black", linewidth=1.2, zorder=4)
 
         # "You are here" marker
@@ -283,9 +364,14 @@ def plot_peri_event(
         ax.tick_params(axis="x", labelsize=8)
         ax.set_xlabel(f"Days relative to {name2}  (0 = day of event)", fontsize=9)
         ax.set_ylabel(f"Mean {name} events / day")
+        cover = [v for v in observable.values() if v]
+        cover_note = (
+            f"{min(cover)}–{max(cover)} cycles per bin" if min(cover) != max(cover)
+            else f"{max(cover)} cycles per bin"
+        )
         ax.set_title(
             f"Peri-event analysis:  {name}  around  {name2}  "
-            f"(n = {n_anchors} anchor events)",
+            f"(n = {n_anchors} anchors, {cover_note})",
             fontsize=12,
         )
         ax.legend(frameon=False, fontsize=8, loc="upper right")
@@ -320,12 +406,12 @@ _MAX_LAG    = 14      # ±14 bins = ±7 days
 # Helpers
 # ──────────────────────────────────────────────
 
-def _to_series(dates, values, item_type, idx: pd.DatetimeIndex) -> pd.Series:
+def _to_series(dates, values, item_type, idx: pd.DatetimeIndex, tz_offset: int = 0) -> pd.Series:
     """Bin event data onto a regular grid and fill gaps with 0."""
     if not dates:
         return pd.Series(0.0, index=idx)
 
-    naive = [d.replace(tzinfo=None) if getattr(d, "tzinfo", None) else d for d in dates]
+    naive = [_local_naive(d, tz_offset) for d in dates]
 
     if item_type == "allergen":
         vals = [1.0 if v is None else float(v) for v in values]
@@ -362,6 +448,7 @@ def plot_cross_correlation(
     name2:     str = Query(..., min_length=1),
     date_from: Optional[str] = Query(None),
     date_to:   Optional[str] = Query(None),
+    tz_offset: int = Query(0),
     db:           Session = Depends(get_db),
     current_user: User    = Depends(get_current_user),
 ):
@@ -370,8 +457,8 @@ def plot_cross_correlation(
     if type2 not in ("allergen", "symptom"):
         raise HTTPException(400, "type2 must be 'allergen' or 'symptom'")
 
-    from_dt = _parse_date(date_from)
-    to_dt   = _parse_date(date_to, end_of_day=True)
+    from_dt = _parse_date(date_from, tz_offset_minutes=tz_offset)
+    to_dt   = _parse_date(date_to, end_of_day=True, tz_offset_minutes=tz_offset)
 
     try:
         fetch1 = _get_allergen_data if item_type == "allergen" else _get_symptom_data
@@ -380,11 +467,9 @@ def plot_cross_correlation(
         dates1, values1 = fetch1(db, current_user.user_id, name,  from_dt, to_dt)
         dates2, values2 = fetch2(db, current_user.user_id, name2, from_dt, to_dt)
 
-        # Build shared 12-hourly grid
-        all_naive = [
-            d.replace(tzinfo=None) if getattr(d, "tzinfo", None) else d
-            for d in list(dates1) + list(dates2)
-        ]
+        # Build shared 12-hourly grid, anchored to the user's local midnight so
+        # the two half-day bins line up with their day rather than UTC's.
+        all_naive = [_local_naive(d, tz_offset) for d in list(dates1) + list(dates2)]
         grid_start = pd.Timestamp(min(all_naive)).floor("D")
         grid_end   = pd.Timestamp(max(all_naive)).ceil("D") + pd.Timedelta(days=1)
         idx = pd.date_range(grid_start, grid_end, freq=_BIN_FREQ)
@@ -397,8 +482,8 @@ def plot_cross_correlation(
                 "to compute cross-correlation. Try a wider date range."
             )
 
-        s1 = _to_series(dates1, values1, item_type, idx)
-        s2 = _to_series(dates2, values2, type2,     idx)
+        s1 = _to_series(dates1, values1, item_type, idx, tz_offset)
+        s2 = _to_series(dates2, values2, type2,     idx, tz_offset)
 
         max_lag = min(_MAX_LAG, len(idx) // 3)
         lags, corrs = _ccf(s1, s2, max_lag)

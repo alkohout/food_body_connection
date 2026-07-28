@@ -162,15 +162,22 @@ def _get_symptom_data(db, user_id, name, from_dt, to_dt):
     return [log.date_time for log in logs], [log.symptom_intensity for log in logs]
 
 
-def _get_checkin_data(db, user_id, variable_name, from_dt, to_dt):
+def _get_checkin_data(db, user_id, variable_name, from_dt, to_dt, tz_offset: int = 0):
     if variable_name not in _CHECKIN_VARS:
         raise HTTPException(400, f"Unknown check-in variable '{variable_name}'")
 
+    # checkin_date is the user's LOCAL calendar date, whereas from_dt/to_dt are
+    # the UTC instants of local midnight.  Taking .date() off the UTC instant
+    # would compare a local date against a UTC one and silently widen the range
+    # by a day at each end, so convert back to the local date first.
+    def _local_date(dt):
+        return (dt.replace(tzinfo=None) - timedelta(minutes=tz_offset)).date()
+
     q = db.query(DailyCheckin).filter(DailyCheckin.user_id == user_id)
     if from_dt:
-        q = q.filter(DailyCheckin.checkin_date >= from_dt.date())
+        q = q.filter(DailyCheckin.checkin_date >= _local_date(from_dt))
     if to_dt:
-        q = q.filter(DailyCheckin.checkin_date <= to_dt.date())
+        q = q.filter(DailyCheckin.checkin_date <= _local_date(to_dt))
 
     records = q.order_by(DailyCheckin.checkin_date, DailyCheckin.period).all()
 
@@ -179,13 +186,15 @@ def _get_checkin_data(db, user_id, variable_name, from_dt, to_dt):
         val = getattr(r, variable_name)
         if val is None:
             continue
-        # Use stored local datetime if available, else fall back to reconstructed UTC
+        # Use the stored instant when present; otherwise reconstruct from the
+        # local date.  8am/8pm are LOCAL hours, so they need converting to UTC —
+        # stamping them as UTC directly would misplace them by the tz offset.
         if r.checkin_datetime:
             dt = r.checkin_datetime
         else:
             hour = 8 if r.period == "morning" else 20
-            dt = datetime(r.checkin_date.year, r.checkin_date.month, r.checkin_date.day,
-                          hour, 0, 0, tzinfo=timezone.utc)
+            dt = (datetime(r.checkin_date.year, r.checkin_date.month, r.checkin_date.day,
+                           hour, 0, 0) + timedelta(minutes=tz_offset)).replace(tzinfo=timezone.utc)
         dates.append(dt)
         values.append(val)
 
@@ -327,15 +336,30 @@ def plot_event_series(
     to_dt   = _parse_date(date_to, end_of_day=True, tz_offset_minutes=tz_offset)
 
     try:
+        def _to_local(dates):
+            """Hand matplotlib the user's wall-clock time, as naive datetimes.
+
+            matplotlib renders tz-aware datetimes through rcParams["timezone"],
+            which is never set and so defaults to UTC — the axis would be
+            labelled with UTC days.  Naive values are formatted literally, so
+            converting here makes every date label read in the user's zone.
+            """
+            out = []
+            for d in dates:
+                naive = d.replace(tzinfo=None) if getattr(d, "tzinfo", None) else d
+                out.append(naive - timedelta(minutes=tz_offset))
+            return out
+
         def _fetch(t, n):
             if t == "allergen":
-                return _get_allergen_data(db, current_user.user_id, n, from_dt, to_dt)
+                dates, values = _get_allergen_data(db, current_user.user_id, n, from_dt, to_dt)
             elif t == "symptom":
-                return _get_symptom_data(db, current_user.user_id, n, from_dt, to_dt)
+                dates, values = _get_symptom_data(db, current_user.user_id, n, from_dt, to_dt)
             elif t == "checkin":
-                return _get_checkin_data(db, current_user.user_id, n, from_dt, to_dt)
+                dates, values = _get_checkin_data(db, current_user.user_id, n, from_dt, to_dt, tz_offset)
             else:
-                return _get_medication_data(db, current_user.user_id, n, from_dt, to_dt)
+                dates, values = _get_medication_data(db, current_user.user_id, n, from_dt, to_dt)
+            return _to_local(dates), values
 
         def _draw_primary_ax(ax, dates, values, t, color):
             if t == "medication":
