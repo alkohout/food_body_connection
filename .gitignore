@@ -7,5 +7,9 @@ __pycache__/
 
 # Virtual environments
 venv/
+.venv/
 .env
+
+# Local dev scratch (plot cache, uploaded docs)
+.local/
 
