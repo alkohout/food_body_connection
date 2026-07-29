@@ -43,21 +43,29 @@ from app.models.table_class import User
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
-# An ordinal ramp: one hue, light -> dark, monotone in perceived lightness.
-# Order is carried by lightness rather than hue, so it survives colour-vision
-# deficiency, greyscale printing and photocopying — which a red-to-green scale
-# does not, red-green being exactly the axis CVD collapses.
+# A green -> blue sequential ramp, walking through teal.
 #
-# Steps are the documented blue ramp at 250/350/500/600/700.  The lightest
-# clears the 2:1-against-surface rule for discrete ordinal marks (2.11:1), the
-# ramp is strictly decreasing in relative luminance, and every band's label ink
-# below clears WCAG AA for small text (worst 5.39:1).
+# Multi-hue sequential is normally wrong (it produces rainbow scales where the
+# reader cannot tell which end is "more"), but green and blue are analogous
+# neighbours on the wheel, which is the sanctioned exception when the ramp
+# ships with a scale legend — it does, below.
+#
+# The ORDER is carried by lightness, not hue: relative luminance decreases
+# strictly across the five steps, so the scale still reads correctly in
+# greyscale, in print and under colour-vision deficiency.  Hue only tells you
+# which end you are at.  A red-to-green scale cannot make that claim — red-green
+# is precisely the axis CVD collapses.
+#
+# Steps were solved (not eyeballed) in OKLCH to hit the same contrast profile as
+# the blue ramp they replace: 2.11 / 2.96 / 5.36 / 8.05 / 11.92 against white.
+# The lightest clears the 2:1-against-surface rule for discrete ordinal marks,
+# and every band's label ink clears WCAG AA for small text (worst 5.36:1).
 BAND_COLORS = {
-    "very_low":  "#86b6ef",
-    "low":       "#5598e7",
-    "moderate":  "#256abf",
-    "high":      "#184f95",
-    "very_high": "#0d366b",
+    "very_low":  "#62c775",
+    "low":       "#00aa84",
+    "moderate":  "#0e767f",
+    "high":      "#015679",
+    "very_high": "#003670",
     "unknown":   "#e8e8e8",
 }
 
