@@ -195,7 +195,11 @@ def get_special_user_stats(db: Session, user_id: int, tz_offset: int = 0) -> dic
         predicted_next_cycle_date = cycle_dates[-1] + timedelta(days=typical_cycle_length)
 
     return {
-        "Triptan usage in past month": int(count_last28),
+        # Named for the window it actually measures.  "past month" read as the
+        # calendar month, which diverges sharply from a trailing 28-day count
+        # right after a month boundary — and a trailing count drops in steps
+        # whenever a cluster of doses ages out, which looks like a bug.
+        "Triptan usage (last 28 days)": int(count_last28),
         "Average Triptan usage per month": int(round(average_per_month)),
         "Typical cycle length": (
             float(typical_cycle_length) if typical_cycle_length else None
