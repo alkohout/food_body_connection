@@ -2559,6 +2559,97 @@ function appendChatMessage(role, text) {
   container.scrollTop = container.scrollHeight;
 }
 
+function appendChatTable(table) {
+  const container = getElement("chat-messages");
+  if (!container || !table?.columns?.length) return;
+
+  const wrap = document.createElement("div");
+  wrap.style.cssText = `
+    align-self: flex-start; max-width: 100%; width: 100%;
+    border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden;
+    background: #fff; font-size: 0.82em;
+  `;
+
+  if (table.title) {
+    const cap = document.createElement("div");
+    cap.style.cssText =
+      "padding:0.45rem 0.7rem;background:#f9fafb;border-bottom:1px solid #e5e7eb;" +
+      "color:#374151;font-weight:600;";
+    cap.textContent = table.title;
+    wrap.appendChild(cap);
+  }
+
+  // Wide tables scroll inside their own box rather than stretching the chat.
+  const scroller = document.createElement("div");
+  scroller.style.cssText = "overflow-x:auto;max-height:320px;overflow-y:auto;";
+
+  const t = document.createElement("table");
+  t.style.cssText = "border-collapse:collapse;width:100%;";
+
+  const thead = document.createElement("thead");
+  const hrow = document.createElement("tr");
+  table.columns.forEach(col => {
+    const th = document.createElement("th");
+    th.textContent = String(col).replace(/_/g, " ");
+    th.style.cssText =
+      "text-align:left;padding:0.4rem 0.7rem;background:#f3f4f6;color:#374151;" +
+      "position:sticky;top:0;white-space:nowrap;";
+    hrow.appendChild(th);
+  });
+  thead.appendChild(hrow);
+  t.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  (table.rows || []).forEach((row, i) => {
+    const tr = document.createElement("tr");
+    if (i % 2) tr.style.background = "#fafafa";
+    row.forEach(cell => {
+      const td = document.createElement("td");
+      // textContent, never innerHTML — these values come from logged data.
+      td.textContent = cell === null || cell === undefined ? "—" : String(cell);
+      td.style.cssText =
+        "padding:0.35rem 0.7rem;border-top:1px solid #f3f4f6;white-space:nowrap;";
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  t.appendChild(tbody);
+  scroller.appendChild(t);
+  wrap.appendChild(scroller);
+
+  const foot = document.createElement("div");
+  foot.style.cssText =
+    "padding:0.35rem 0.7rem;background:#f9fafb;border-top:1px solid #e5e7eb;" +
+    "color:#6b7280;font-size:0.92em;display:flex;justify-content:space-between;gap:0.5rem;";
+  const count = document.createElement("span");
+  count.textContent = table.truncated
+    ? `${table.row_count} rows shown — more matched`
+    : `${table.row_count} row${table.row_count === 1 ? "" : "s"}`;
+  const copy = document.createElement("button");
+  copy.type = "button";
+  copy.textContent = "Copy CSV";
+  copy.style.cssText =
+    "background:none;border:none;color:#2563eb;cursor:pointer;font-size:1em;padding:0;";
+  copy.addEventListener("click", () => {
+    const esc = v => {
+      const s = v === null || v === undefined ? "" : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csv = [table.columns.map(esc).join(",")]
+      .concat((table.rows || []).map(r => r.map(esc).join(",")))
+      .join("\n");
+    navigator.clipboard.writeText(csv).then(
+      () => { copy.textContent = "Copied"; setTimeout(() => (copy.textContent = "Copy CSV"), 1500); },
+      () => { copy.textContent = "Copy failed"; }
+    );
+  });
+  foot.append(count, copy);
+  wrap.appendChild(foot);
+
+  container.appendChild(wrap);
+  container.scrollTop = container.scrollHeight;
+}
+
 async function sendChatMessage() {
   const input = getElement("chat-input");
   const sendBtn = getElement("chat-send-btn");
@@ -2603,6 +2694,10 @@ async function sendChatMessage() {
     const data = await res.json();
     chatHistory.push({ role: "assistant", content: data.reply });
     appendChatMessage("assistant", data.reply);
+
+    // Show the rows the AI actually read, so its summary can be checked
+    // against the underlying records rather than taken on trust.
+    if (data.table) appendChatTable(data.table);
 
     const costLabel = formatAICost(data.input_tokens, data.output_tokens);
     if (costLabel && container) {
