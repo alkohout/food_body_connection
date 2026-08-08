@@ -12,7 +12,7 @@ from app.analysis import data_tools
 from app.analysis.ai_summary import build_analysis_context, _get_document_context
 from app.api.routes.auth import get_current_user
 from app.database import get_db
-from app.models.table_class import User
+from app.models.table_class import Allergen, Symptom, User
 
 logger = logging.getLogger(__name__)
 
@@ -31,48 +31,100 @@ class ChatRequest(BaseModel):
     tz_offset: int = 0
 
 
-# Model choice: tool selection over an ambiguous question is the hard part here
-# — picking the right tool and arguments from a vague "show me my headaches in
-# March" is what determines whether the answer is right. Haiku (used by the
-# summary endpoint) is weaker at that. Adjust if the cost is not worth it.
-_CHAT_MODEL = "claude-opus-5"
+# Two models, split by which half carries the tokens.
+#
+# Deciding WHICH tool to call, with which arguments, is the half that can
+# quietly produce a wrong answer — and its input is just the tool schemas plus
+# the question (~1.5k tokens) however much data comes back. So the expensive
+# model sits on the small half, and never sees the health documents at all.
+#
+# Writing the answer carries everything: the statistical summary (2.3k), the
+# documents (4.9k) and every row the tools returned. That is the big half, and
+# it is the easy half — turning rows already in front of you into prose. Haiku
+# does it at a fifth of the price.
+#
+# Measured before the split: 8.7k tokens resent per tool round, 26k for a
+# 3-round question, $0.13 per question with Opus carrying all of it.
+_TOOL_MODEL = "claude-opus-5"
+_TOOL_PRICE = (5.00, 25.00)      # USD per million tokens (input, output)
+_TOOL_EFFORT = "low"             # picking a tool is not hard; raise if it misfires
 
-# Thinking is left at its default (on). Disabling it on this model can make the
-# model write a tool call into its visible text instead of emitting a tool_use
-# block — the turn succeeds, the call never runs, and nothing errors. That is
-# precisely the failure mode a tool-driven feature cannot afford.
-_CHAT_EFFORT = "medium"      # interactive chat; raise for harder analysis
-_CHAT_MAX_TOKENS = 8000      # covers thinking + reply; nginx caps the turn at 120s
-_MAX_TOOL_ROUNDS = 4         # bounds latency and stops runaway loops
+_WRITEUP_MODEL = "claude-haiku-4-5"
+_WRITEUP_PRICE = (1.00, 5.00)
+
+# Thinking is left at its default (on) on the tool model. Disabling it can make
+# the model write a tool call into its visible text instead of emitting a
+# tool_use block — the turn succeeds, the call never runs, and nothing errors.
+# That is precisely the failure mode a tool-driven feature cannot afford.
+_TOOL_MAX_TOKENS = 4000
+_WRITEUP_MAX_TOKENS = 1200
+_MAX_TOOL_ROUNDS = 4             # bounds latency and stops runaway loops
 
 
-def _run_tool_loop(client, system_prompt, messages, db, user_id, tz_offset):
-    """Drive the request/tool/response cycle until the model stops calling tools.
+def _tracked_names(db, user_id):
+    """Compact list of what the user logs, so tool-selection needn't spend a
+    round discovering names. ~100 tokens, versus a whole extra round-trip."""
+    allergens = sorted(
+        (a.allergen_name or "").strip()
+        for a in db.query(Allergen).filter(Allergen.user_id == user_id).all()
+        if a.allergen_name
+    )
+    symptoms = sorted(
+        (s.symptom_name or "").strip()
+        for s in db.query(Symptom).filter(Symptom.user_id == user_id).all()
+        if s.symptom_name
+    )
+    return (
+        f"Allergens/foods logged: {', '.join(allergens) or 'none'}\n"
+        f"Symptoms logged: {', '.join(symptoms) or 'none'}"
+    )
 
-    Written as an explicit loop rather than using the SDK's tool runner: the
-    frontend renders the rows the model looked at, so the loop needs to capture
-    tool output as it goes, and the runner is still beta.
 
-    Returns (final_response, table_for_display, summed_usage).
+_TOOL_SYSTEM = """You look up entries in a user's health tracking database by calling tools.
+
+Your only job this turn is to fetch the right data. Do not write an explanation \
+or an analysis — another step does that. Call the tools you need, then stop.
+
+Match names exactly against the list below (matching is case-insensitive but \
+otherwise exact). If the question does not need any lookup, call no tools.
+
+{names}"""
+
+
+def _run_tool_loop(client, db, user_id, tz_offset, messages):
+    """Fetch phase: let the strong model choose tools until it stops calling them.
+
+    Written as an explicit loop rather than using the SDK's tool runner, because
+    the frontend renders the rows the model read, so the loop has to capture
+    tool output as it goes — and the runner is still beta.
+
+    Returns (collected_results, table_for_display, usage).
     """
+    system = [{
+        "type": "text",
+        "text": _TOOL_SYSTEM.format(names=_tracked_names(db, user_id)),
+        # Stable across rounds and across turns, so it caches. Tools render
+        # before system, so this breakpoint covers both.
+        "cache_control": {"type": "ephemeral"},
+    }]
+
     convo = list(messages)
-    table = None
-    usage = {"input_tokens": 0, "output_tokens": 0}
+    collected, table = [], None
+    usage = _new_usage()
 
     for _ in range(_MAX_TOOL_ROUNDS):
         response = client.messages.create(
-            model=_CHAT_MODEL,
-            max_tokens=_CHAT_MAX_TOKENS,
-            output_config={"effort": _CHAT_EFFORT},
-            system=system_prompt,
+            model=_TOOL_MODEL,
+            max_tokens=_TOOL_MAX_TOKENS,
+            output_config={"effort": _TOOL_EFFORT},
+            system=system,
             tools=data_tools.TOOLS,
             messages=convo,
         )
-        usage["input_tokens"] += response.usage.input_tokens
-        usage["output_tokens"] += response.usage.output_tokens
+        _add_usage(usage, response.usage)
 
         if response.stop_reason != "tool_use":
-            return response, table, usage
+            break
 
         # Echo the assistant turn back verbatim — dropping the tool_use blocks
         # would orphan the tool_result ids that follow.
@@ -85,9 +137,11 @@ def _run_tool_loop(client, system_prompt, messages, db, user_id, tz_offset):
             output = data_tools.run_tool(
                 block.name, block.input, db, user_id, tz_offset
             )
+            label = _describe_call(block.name, block.input)
+            collected.append({"query": label, "result": output})
             # Keep the last real table for the UI; a bare error has nothing to show.
             if isinstance(output, dict) and output.get("rows"):
-                table = {"title": _describe_call(block.name, block.input), **output}
+                table = {"title": label, **output}
             results.append({
                 "type": "tool_result",
                 "tool_use_id": block.id,
@@ -98,20 +152,64 @@ def _run_tool_loop(client, system_prompt, messages, db, user_id, tz_offset):
         # All results for one assistant turn go back in a single user message.
         convo.append({"role": "user", "content": results})
 
-    # Ran out of rounds. Ask for a final answer with tools withheld so the model
-    # has to respond in prose instead of looping again.
+    return collected, table, usage
+
+
+def _write_up(client, system_blocks, messages, collected):
+    """Answer phase: cheap model turns the fetched rows into prose.
+
+    It receives the full context — summary, documents, and every row the tools
+    returned — because that is what writing a good answer needs. This is the
+    big-input half, which is why it is not on the expensive model.
+    """
+    convo = list(messages)
+    if collected:
+        convo.append({
+            "role": "user",
+            "content": (
+                "Here are the results of looking up their data. Answer the question "
+                "using these, and do not mention that a lookup step happened:\n\n"
+                + json.dumps(collected, indent=2, default=str)
+            ),
+        })
+
     response = client.messages.create(
-        model=_CHAT_MODEL,
-        max_tokens=_CHAT_MAX_TOKENS,
-        output_config={"effort": _CHAT_EFFORT},
-        system=system_prompt
-        + "\n\nYou have used your tool budget for this question. "
-          "Answer now with what you have, and say what you could not check.",
+        model=_WRITEUP_MODEL,
+        max_tokens=_WRITEUP_MAX_TOKENS,
+        system=system_blocks,
         messages=convo,
     )
-    usage["input_tokens"] += response.usage.input_tokens
-    usage["output_tokens"] += response.usage.output_tokens
-    return response, table, usage
+    return response
+
+
+def _add_usage(usage, u):
+    """Accumulate one response's usage.
+
+    input_tokens is only the UNCACHED remainder — the cached part is reported
+    separately, so summing input_tokens alone silently undercounts a cached
+    prompt by everything that hit the cache.
+    """
+    usage["input_tokens"] += u.input_tokens
+    usage["cache_write_tokens"] += getattr(u, "cache_creation_input_tokens", 0) or 0
+    usage["cache_read_tokens"] += getattr(u, "cache_read_input_tokens", 0) or 0
+    usage["output_tokens"] += u.output_tokens
+    return usage
+
+
+def _new_usage():
+    return {"input_tokens": 0, "cache_write_tokens": 0,
+            "cache_read_tokens": 0, "output_tokens": 0}
+
+
+def _usd(usage, price):
+    """Cache writes cost 1.25x input, cache reads 0.1x."""
+    inp, out = price
+    return (
+        usage["input_tokens"] / 1e6 * inp
+        + usage["cache_write_tokens"] / 1e6 * inp * 1.25
+        + usage["cache_read_tokens"] / 1e6 * inp * 0.10
+        + usage["output_tokens"] / 1e6 * out
+    )
 
 
 def _describe_call(name, args):
@@ -152,21 +250,19 @@ def chat(
         f"\n\n--- HEALTH DOCUMENTS ---\n{doc_context}" if doc_context else ""
     )
 
-    system_prompt = f"""You are a health data assistant helping a user explore their personal food and symptom tracking data. You have access to a statistical summary of their data below, and to tools that read the underlying records directly.
+    writeup_system = [{
+        "type": "text",
+        "text": f"""You are a health data assistant helping a user explore their personal food and symptom tracking data.
 
-Answer questions clearly and concisely. Reference specific numbers from the data where relevant. Be honest when the data is insufficient to draw a conclusion. Do not make medical diagnoses or treatment recommendations.
+Answer clearly and concisely. Lead with the answer, then a few specific observations. Reference specific numbers where relevant. Be honest when the data is insufficient to draw a conclusion. Do not make medical diagnoses or treatment recommendations, and do not pad with caveats or restate the question.
 
-The summary below is aggregated. When the user asks to see specific entries, or asks a question the summary cannot answer (a particular date range, a specific food or symptom, counts grouped a particular way), use the tools to look up the actual records rather than guessing or saying you lack the data.
+If lookup results are supplied, they are also displayed to the user as a table beneath your reply — so summarise what they show and point out what is notable rather than repeating every row.
 
-Names must match what the user actually logs. If you are unsure of the exact name of a food, symptom or medication, call list_tracked_items first — matching is case-insensitive but otherwise exact, so a guessed name returns nothing.
-
-The rows a tool returns are displayed to the user as a table beneath your reply, so do not repeat every row back in prose. Summarise what the rows show and point out what is notable.
-
-Keep responses focused and brief — lead with the answer, then a few specific observations. Do not pad with caveats or restate the question.
-
-Do not narrate corrections to yourself mid-answer. If you notice you have miscounted while writing, state the correct figure and continue; do not write out the mistake and the fix.
-
-{data_section}{doc_section}"""
+{data_section}{doc_section}""",
+        # The summary and documents are identical across every turn of a
+        # conversation, and they are the bulk of this prompt — cache them.
+        "cache_control": {"type": "ephemeral"},
+    }]
 
     messages = [{"role": m.role, "content": m.content} for m in body.messages]
 
@@ -175,9 +271,11 @@ Do not narrate corrections to yourself mid-answer. If you notice you have miscou
 
     client = anthropic.Anthropic(api_key=api_key)
     try:
-        response, table, usage = _run_tool_loop(
-            client, system_prompt, messages, db, current_user.user_id, body.tz_offset
+        collected, table, tool_usage = _run_tool_loop(
+            client, db, current_user.user_id, body.tz_offset, messages
         )
+        response = _write_up(client, writeup_system, messages, collected)
+        write_usage = _add_usage(_new_usage(), response.usage)
     except anthropic.BadRequestError as e:
         logger.error("Anthropic bad request: %s", e)
         raise HTTPException(status_code=400, detail="The request was too large or malformed. Try removing some documents or shortening your message.")
@@ -194,9 +292,19 @@ Do not narrate corrections to yourself mid-answer. If you notice you have miscou
         b.text for b in response.content if b.type == "text" and b.text.strip()
     )
 
+    # Two models at different prices, so the server computes the cost — the
+    # client cannot derive it from token counts alone any more.
+    cost = _usd(tool_usage, _TOOL_PRICE) + _usd(write_usage, _WRITEUP_PRICE)
+
     return {
         "reply": reply or "I couldn't produce an answer for that — try rephrasing.",
         "table": table,
-        "input_tokens": usage["input_tokens"],
-        "output_tokens": usage["output_tokens"],
+        "cost_usd": round(cost, 6),
+        "input_tokens": sum(
+            u[k] for u in (tool_usage, write_usage)
+            for k in ("input_tokens", "cache_write_tokens", "cache_read_tokens")
+        ),
+        "output_tokens": tool_usage["output_tokens"] + write_usage["output_tokens"],
+        "lookup_tokens": tool_usage,
+        "writeup_tokens": write_usage,
     }

@@ -761,6 +761,7 @@ function hideAllAnalysisPanels() {
     getElement("panel-checkin-trends"),
     getElement("panel-symptom-calendar"),
     getElement("panel-headache-forecast"),
+    getElement("panel-medication-change"),
     getElement("panel-triptan-monthly"),
   ];
 
@@ -823,6 +824,13 @@ async function showAnalysisPanel(selected) {
     const panel = getElement("panel-headache-forecast");
     if (panel) panel.classList.add("visible");
     await fetchHeadacheForecastPlot();
+    return;
+  }
+
+  if (selected === "medication-change") {
+    const panel = getElement("panel-medication-change");
+    if (panel) panel.classList.add("visible");
+    await initMedicationChangePanel();
     return;
   }
 
@@ -1890,6 +1898,121 @@ async function fetchHeadacheForecastPlot() {
 document.getElementById("headache-forecast-days")
   ?.addEventListener("change", fetchHeadacheForecastPlot);
 
+// ── Medication change ────────────────────────────────────
+let medChangeReady = false;
+
+async function initMedicationChangePanel() {
+  const changeSel = getElement("medchange-change");
+  const typeSel   = getElement("medchange-type");
+  const targetSel = getElement("medchange-target");
+  const windowSel = getElement("medchange-window");
+  const statusEl  = getElement("medication-change-status");
+  if (!changeSel || !targetSel) return;
+
+  if (!medChangeReady) {
+    const token = localStorage.getItem("access_token");
+    const tz = new Date().getTimezoneOffset();
+
+    // Only offer dose changes that actually exist — a medication with a single
+    // unchanged regimen has nothing to compare.
+    try {
+      const res = await fetch(`${API_URL}/analysis/medication_changes?tz_offset=${tz}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      const meds = await res.json();
+
+      changeSel.innerHTML = "";
+      meds.forEach(m => m.changes.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = JSON.stringify({ medication: m.medication, date: c.date });
+        opt.textContent = `${m.medication}: ${c.label}`;
+        changeSel.appendChild(opt);
+      }));
+
+      if (!changeSel.options.length) {
+        if (statusEl) {
+          statusEl.textContent =
+            "No dose changes recorded yet. Add a second regimen with a different " +
+            "dose to compare before and after.";
+        }
+        return;
+      }
+    } catch (err) {
+      if (statusEl) statusEl.textContent = `Could not load dose changes: ${err.message}`;
+      return;
+    }
+
+    // populateNameSelect is scoped to the time-series setup function, so fill
+    // this one from the module-level caches instead.
+    const fillTargets = () => {
+      const items = typeSel.value === "symptom" ? cachedSymptoms : cachedAllergens;
+      const key = typeSel.value === "symptom" ? "symptom_name" : "allergen_name";
+      targetSel.innerHTML = "";
+      (items || []).forEach(item =>
+        targetSel.appendChild(new Option(item[key], item[key])));
+    };
+
+    fillTargets();
+    typeSel?.addEventListener("change", () => {
+      fillTargets();
+      fetchMedicationChangePlot();
+    });
+    [changeSel, targetSel, windowSel].forEach(el =>
+      el?.addEventListener("change", fetchMedicationChangePlot));
+
+    medChangeReady = true;
+  }
+
+  await fetchMedicationChangePlot();
+}
+
+async function fetchMedicationChangePlot() {
+  const changeSel = getElement("medchange-change");
+  const typeSel   = getElement("medchange-type");
+  const targetSel = getElement("medchange-target");
+  const windowSel = getElement("medchange-window");
+  const statusEl  = getElement("medication-change-status");
+  const img       = getElement("medication-change-plot");
+
+  const choice = changeSel?.value;
+  const target = targetSel?.value;
+  if (!choice || !target) return;
+
+  const { medication, date } = JSON.parse(choice);
+  const params = new URLSearchParams({
+    medication,
+    change_date: date,
+    target_type: typeSel?.value || "allergen",
+    target,
+    tz_offset: new Date().getTimezoneOffset(),
+  });
+  if (windowSel?.value) params.set("window_days", windowSel.value);
+
+  if (statusEl) statusEl.textContent = "Running comparison…";
+  if (img) img.style.display = "none";
+
+  try {
+    const res = await fetch(`${API_URL}/analysis/plot_medication_change?${params}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Server returned ${res.status}`);
+    }
+
+    const blob = await res.blob();
+    if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+    img.src = URL.createObjectURL(blob);
+    img.dataset.objectUrl = img.src;
+    img.style.display = "";
+    if (statusEl) statusEl.textContent = "";
+  } catch (err) {
+    console.error("fetchMedicationChangePlot failed:", err);
+    if (statusEl) statusEl.textContent = err.message;
+  }
+}
+
 // =========================================================
 // Analysis tab load
 // =========================================================
@@ -2699,7 +2822,12 @@ async function sendChatMessage() {
     // against the underlying records rather than taken on trust.
     if (data.table) appendChatTable(data.table);
 
-    const costLabel = formatAICost(data.input_tokens, data.output_tokens);
+    // The chat runs two models at different prices, so the server computes the
+    // cost — token counts alone can't be priced client-side any more.
+    const costLabel = data.cost_usd != null
+      ? `~$${data.cost_usd.toFixed(6)}  (${data.input_tokens.toLocaleString()} in / ` +
+        `${data.output_tokens.toLocaleString()} out tokens)`
+      : formatAICost(data.input_tokens, data.output_tokens);
     if (costLabel && container) {
       const costEl = document.createElement("div");
       costEl.style.cssText = "align-self: flex-start; color: #9ca3af; font-size: 0.75em; margin-top: -0.3rem; padding-left: 0.2rem;";
