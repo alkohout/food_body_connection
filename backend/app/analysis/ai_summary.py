@@ -1,3 +1,4 @@
+import copy
 import os
 import json
 import logging
@@ -5,6 +6,7 @@ import logging
 import anthropic
 import pandas as pd
 from scipy.stats import binomtest
+from sqlalchemy import text as _text
 
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
 from app.analysis.model import model_classification
@@ -24,7 +26,73 @@ def _time_of_day(h: int) -> str:
         return "night"
 
 
+# Building the context runs the whole statistical pipeline — nested-CV logistic
+# regression, temporal stats, model_classification — which takes seconds. Every
+# chat turn rebuilt it from scratch even though the underlying logs had not
+# changed, so a conversation paid that cost on every message.
+#
+# Cached per (user, tz_offset) and invalidated by a fingerprint of the logs the
+# context is derived from, so an edit, insert or delete is picked up on the next
+# request while an unchanged conversation is served instantly. The cache lives
+# in-process: with more than one worker each warms its own copy, which costs one
+# rebuild per worker rather than one per message.
+_CONTEXT_CACHE: dict = {}
+_CONTEXT_CACHE_MAX = 16
+
+
+def _analysis_fingerprint(db, user_id: int) -> str:
+    """Cheap digest of everything build_analysis_context reads.
+
+    Hashes ids, timestamps and values rather than just counts and max dates, so
+    editing a logged entry in place invalidates the cache too.
+    """
+    row = db.execute(_text("""
+        SELECT
+          (SELECT md5(coalesce(string_agg(
+                 allergen_log_id::text || ':' || date_time::text || ':' ||
+                 coalesce(quantity::text, '') || ':' || allergen_id::text,
+                 ',' ORDER BY allergen_log_id), ''))
+             FROM allergen_log WHERE user_id = :uid),
+          (SELECT md5(coalesce(string_agg(
+                 symptom_log_id::text || ':' || date_time::text || ':' ||
+                 coalesce(symptom_intensity::text, '') || ':' || symptom_id::text,
+                 ',' ORDER BY symptom_log_id), ''))
+             FROM symptom_log WHERE user_id = :uid),
+          (SELECT md5(coalesce(string_agg(
+                 allergen_id::text || ':' || allergen_name,
+                 ',' ORDER BY allergen_id), ''))
+             FROM allergen WHERE user_id = :uid),
+          (SELECT md5(coalesce(string_agg(
+                 symptom_id::text || ':' || symptom_name,
+                 ',' ORDER BY symptom_id), ''))
+             FROM symptom WHERE user_id = :uid)
+    """), {"uid": user_id}).fetchone()
+    return "|".join(str(x) for x in row)
+
+
 def build_analysis_context(db, user_id: int, tz_offset: int = 0) -> dict | None:
+    """Cached wrapper around _build_analysis_context."""
+    key = (user_id, tz_offset)
+    try:
+        fingerprint = _analysis_fingerprint(db, user_id)
+    except Exception:
+        # Never let a caching optimisation break the feature it speeds up.
+        logger.warning("analysis fingerprint failed; rebuilding uncached", exc_info=True)
+        return _build_analysis_context(db, user_id, tz_offset)
+
+    cached = _CONTEXT_CACHE.get(key)
+    if cached and cached[0] == fingerprint:
+        return copy.deepcopy(cached[1])
+
+    result = _build_analysis_context(db, user_id, tz_offset)
+
+    if len(_CONTEXT_CACHE) >= _CONTEXT_CACHE_MAX:
+        _CONTEXT_CACHE.clear()
+    _CONTEXT_CACHE[key] = (fingerprint, copy.deepcopy(result))
+    return result
+
+
+def _build_analysis_context(db, user_id: int, tz_offset: int = 0) -> dict | None:
     """Assemble the context handed to the model.
 
     tz_offset is JS Date.getTimezoneOffset() — minutes to add to local time to

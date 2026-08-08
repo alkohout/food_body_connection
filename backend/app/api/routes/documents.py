@@ -99,9 +99,24 @@ async def upload_document(
         file_path=file_path,
         extracted_text=extracted_text or None,
     )
-    db.add(doc)
-    db.commit()
-    db.refresh(doc)
+    # The file is on disk before the row exists, so any insert failure would
+    # otherwise leave an orphan the user can neither see nor delete.
+    try:
+        db.add(doc)
+        db.commit()
+        db.refresh(doc)
+    except Exception:
+        db.rollback()
+        try:
+            os.remove(file_path)
+        except OSError:
+            logger.warning("Could not remove orphaned upload %s", file_path)
+        logger.exception("Saving document %s failed", safe_name)
+        raise HTTPException(
+            status_code=500,
+            detail="Could not save the document. Please try again, "
+                   "or rename the file if it has a very long name.",
+        )
 
     return {
         "document_id": doc.document_id,

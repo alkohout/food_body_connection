@@ -9,10 +9,15 @@ Group=foodbody
 WorkingDirectory=/opt/foodbodyconnection
 EnvironmentFile=/opt/foodbodyconnection/.env
 
+# 2 workers, matching what production has been running. A single worker blocks
+# every other request for the seconds a plot render or an analysis rebuild
+# takes, which freezes the whole UI. Two fits in the 1 GB box: each sits around
+# 200 MB once matplotlib/pandas/sklearn are loaded. Do not raise this without
+# checking `free -h` — there is no headroom for a third.
 ExecStart=/opt/foodbodyconnection/venv/bin/uvicorn app.main:app \
     --host 127.0.0.1 \
     --port 8000 \
-    --workers 1 \
+    --workers 2 \
     --log-level info \
     --log-config /opt/foodbodyconnection/log_config.json
 
