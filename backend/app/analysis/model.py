@@ -53,7 +53,7 @@ def return_blank(return_type="buf"):
         ax.set_axis_off()
 
         buf = BytesIO()
-        plt.savefig(buf, format="png", bbox_inches="tight")
+        fig.savefig(buf, format="png", bbox_inches="tight")
         buf.seek(0)
         plt.close(fig)
         return buf
@@ -451,7 +451,7 @@ def model_classification(db: 'Session', current_user: int, return_type="buf"):
         # --------------------------------------------------
         if return_type=="buf":
             buf = BytesIO()
-            plt.savefig(buf, format="png", bbox_inches="tight")
+            fig.savefig(buf, format="png", bbox_inches="tight")
             buf.seek(0)
             plt.close(fig)
             return buf

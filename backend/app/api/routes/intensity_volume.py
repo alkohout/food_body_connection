@@ -221,7 +221,7 @@ def intensity_volume(
         # Save plot to PNG buffer
         # --------------------------------------------------
         buf = BytesIO()
-        plt.savefig(buf, format="png", bbox_inches="tight")
+        fig.savefig(buf, format="png", bbox_inches="tight")
         plt.close(fig)
         buf.seek(0)
 

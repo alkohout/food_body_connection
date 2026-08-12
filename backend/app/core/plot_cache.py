@@ -23,11 +23,10 @@ import hashlib
 import json
 import logging
 import os
+import tempfile
 import time
 from io import BytesIO
 from pathlib import Path
-from threading import Lock
-
 from fastapi import BackgroundTasks
 from fastapi.responses import StreamingResponse
 
@@ -35,8 +34,6 @@ logger = logging.getLogger(__name__)
 
 CACHE_DIR = Path(os.getenv("PLOT_CACHE_DIR", "/opt/foodbodyconnection/plot_cache"))
 FRESH_TTL = 3600  # seconds — serve without regenerating for 1 hour
-
-_lock = Lock()
 
 
 def _png_path(key: str) -> Path:
@@ -47,32 +44,70 @@ def _meta_path(key: str) -> Path:
     return CACHE_DIR / f"{hashlib.md5(key.encode()).hexdigest()}.json"
 
 
+def _atomic_write(path: Path, data: bytes) -> None:
+    """Replace a cache file in one indivisible step.
+
+    Path.write_bytes truncates the file and then fills it, so any reader that
+    arrives mid-write gets a short or empty file — a corrupt PNG, which the
+    browser drops silently with no server-side error. Writing to a temporary
+    file in the same directory and renaming it means a reader sees either the
+    whole old file or the whole new one.
+
+    Renaming is also the only thing that can work here. The previous guard was
+    a threading.Lock, which serialises nothing between the two worker processes
+    production runs — and it did not cover the read path at all. os.replace is
+    atomic on POSIX no matter which process is on the other side.
+    """
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=CACHE_DIR, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        # Never leave a stray .tmp behind for a failed write.
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
 def _read(key: str) -> tuple[bytes | None, float]:
     """Return (data, age_seconds). data=None if no cache entry exists."""
     try:
         png, meta = _png_path(key), _meta_path(key)
         if png.exists() and meta.exists():
             ts = json.loads(meta.read_text())["ts"]
-            return png.read_bytes(), time.time() - ts
+            data = png.read_bytes()
+            # A cached entry that is somehow empty is worse than no entry: it
+            # would be served as a broken image. Treat it as a miss.
+            if not data:
+                return None, float("inf")
+            return data, time.time() - ts
     except Exception:
         pass
     return None, float("inf")
 
 
 def _write(key: str, data: bytes) -> None:
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    with _lock:
-        _png_path(key).write_bytes(data)
-        _meta_path(key).write_text(json.dumps({"ts": time.time(), "key": key}))
+    # PNG first, then the timestamp. If a reader lands between the two it sees
+    # the new image with the old timestamp — it serves a correct plot and
+    # schedules a needless refresh. The other order would serve a stale image
+    # while claiming it is fresh.
+    _atomic_write(_png_path(key), data)
+    _atomic_write(_meta_path(key),
+                  json.dumps({"ts": time.time(), "key": key}).encode())
 
 
 def invalidate_cache(key: str) -> None:
     """Mark a cache entry as stale. Next request serves the old plot
     immediately and regenerates a fresh one in the background."""
     meta = _meta_path(key)
-    with _lock:
-        if meta.exists():
-            meta.write_text(json.dumps({"ts": 0, "key": key}))
+    if meta.exists():
+        _atomic_write(meta, json.dumps({"ts": 0, "key": key}).encode())
 
 
 def cached_png(

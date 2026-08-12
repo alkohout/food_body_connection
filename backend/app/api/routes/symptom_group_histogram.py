@@ -73,7 +73,7 @@ def symptom_group_histogram(
                 ax.set_axis_off()
 
                 buf = BytesIO()
-                plt.savefig(buf, format="png", bbox_inches="tight")
+                fig.savefig(buf, format="png", bbox_inches="tight")
                 plt.close(fig)
                 buf.seek(0)
 
@@ -108,7 +108,7 @@ def symptom_group_histogram(
         # Save figure to in-memory buffer
         # --------------------------------------------------
         buf = BytesIO()
-        plt.savefig(buf, format="png", bbox_inches="tight")
+        fig.savefig(buf, format="png", bbox_inches="tight")
         plt.close(fig)
         buf.seek(0)
 

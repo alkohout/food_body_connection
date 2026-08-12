@@ -50,7 +50,7 @@ def plot_checkin_trends(
                     ha="center", va="center", fontsize=12, color="#666")
             ax.set_axis_off()
             buf = BytesIO()
-            plt.savefig(buf, format="png", bbox_inches="tight", dpi=120)
+            fig.savefig(buf, format="png", bbox_inches="tight", dpi=120)
             plt.close(fig)
             buf.seek(0)
             return buf
@@ -119,7 +119,7 @@ def plot_checkin_trends(
         plt.tight_layout()
 
         buf = BytesIO()
-        plt.savefig(buf, format="png", bbox_inches="tight", dpi=120)
+        fig.savefig(buf, format="png", bbox_inches="tight", dpi=120)
         plt.close(fig)
         buf.seek(0)
         return buf

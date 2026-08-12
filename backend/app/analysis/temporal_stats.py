@@ -116,7 +116,7 @@ def plot_stats(
     # Output image buffer
     # --------------------------------------------------
     buf = BytesIO()
-    plt.savefig(buf, format="png", dpi=150, bbox_inches="tight")
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
     plt.close(fig)
     buf.seek(0)
 
@@ -322,7 +322,7 @@ def plot_stats_risk(
     # Save plot to PNG buffer
     # --------------------------------------------------
     buf = BytesIO()
-    plt.savefig(buf, format="png", dpi=150, bbox_inches="tight")
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
     plt.close(fig)
     buf.seek(0)
 
