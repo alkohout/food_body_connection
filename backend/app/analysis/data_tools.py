@@ -51,7 +51,13 @@ TOOLS = [
             "List the things this user actually logs — allergens/foods, symptoms, "
             "or medications — with how many entries each has and the date range "
             "covered. Call this FIRST when you are unsure of the exact name of "
-            "something, because the other tools match on these names."
+            "something, because the other tools match on these names.\n\n"
+            "For medications this returns the full dose history: one row per "
+            "regimen with its dose, unit, start and end date, whether it is "
+            "current, and any note. Use it to find when a dose started or "
+            "changed, then compare logged events either side of that date — "
+            "medications are recorded as dose periods, not as logged events, so "
+            "they cannot be passed to query_logs or aggregate_logs."
         ),
         "input_schema": {
             "type": "object",
@@ -200,7 +206,7 @@ def _match(records, names, attr):
     return [r for r in records if (getattr(r, attr) or "").strip().lower() in wanted]
 
 
-def _table(columns, rows, truncated=False, total=None):
+def _table(columns, rows, truncated=False, total=None, note=None):
     out = {"columns": columns, "rows": rows, "row_count": len(rows)}
     if truncated:
         out["truncated"] = True
@@ -208,6 +214,8 @@ def _table(columns, rows, truncated=False, total=None):
             f"Showing the first {len(rows)} of {total} matching rows. "
             "Narrow the date range or filter by name to see the rest."
         )
+    if note:
+        out["note"] = f"{out['note']} {note}" if out.get("note") else note
     return out
 
 
@@ -258,19 +266,33 @@ def _list_tracked_items(db, user_id, tz_offset, kind="all"):
         )
 
     if kind in ("medication", "all"):
+        # One row per regimen rather than per medication. Only the count of
+        # regimens used to be returned, which meant the dose and the date it
+        # changed — the whole point of tracking a regimen — were invisible to
+        # the model, so it could not answer "did my triptan use drop after I
+        # increased propranolol". A null end_date means still being taken.
         rows = []
         for m in db.query(Medication).filter(Medication.user_id == user_id).all():
             regs = db.query(MedicationRegimen).filter(
                 MedicationRegimen.medication_id == m.medication_id
             ).all()
-            rows.append([
-                m.medication_name,
-                len(regs),
-                min((r.start_date for r in regs), default=None),
-                max((r.end_date or r.start_date for r in regs), default=None),
-            ])
+            for r in sorted(regs, key=lambda r: (r.start_date, r.regimen_id)):
+                rows.append([
+                    m.medication_name,
+                    r.dose,
+                    r.unit,
+                    r.start_date,
+                    r.end_date,
+                    r.end_date is None,
+                    r.note,
+                ])
+            if not regs:
+                # Recorded but never given a dose — say so rather than omitting
+                # the medication entirely.
+                rows.append([m.medication_name, None, None, None, None, False, None])
+        rows.sort(key=lambda r: (str(r[0]).lower(), str(r[3])))
         sections["medications"] = _table(
-            ["name", "regimens", "first", "last"], rows
+            ["name", "dose", "unit", "start", "end", "current", "note"], rows
         )
 
     return sections
@@ -427,6 +449,20 @@ def _aggregate_logs(db, user_id, tz_offset, kind, group_by,
     else:
         keys = sorted(buckets)
 
+    # The final day/week/month is usually still running, and its count is
+    # therefore not comparable with the completed periods above it. Left
+    # unsaid, a month that is three weeks in reads as a genuine drop.
+    partial = None
+    if group_by in ("day", "week", "month") and keys:
+        now_local = datetime.utcnow() - timedelta(minutes=tz_offset)
+        current = keyer(now_local, None)
+        if keys[-1] == current:
+            partial = (
+                f"The last row ({current}) is the current {group_by} and is still "
+                f"in progress, so it covers only part of the period. Do not read it "
+                f"as a fall relative to the completed {group_by}s."
+            )
+
     if kind == "symptom":
         rows = [
             [k, buckets[k]["count"],
@@ -434,10 +470,10 @@ def _aggregate_logs(db, user_id, tz_offset, kind, group_by,
              if buckets[k]["intensities"] else None]
             for k in keys
         ]
-        return _table([group_by, "count", "mean_intensity"], rows)
+        return _table([group_by, "count", "mean_intensity"], rows, note=partial)
 
     rows = [[k, buckets[k]["count"]] for k in keys]
-    return _table([group_by, "count"], rows)
+    return _table([group_by, "count"], rows, note=partial)
 
 
 def _get_checkins(db, user_id, tz_offset, date_from=None, date_to=None, fields=None):
