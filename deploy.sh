@@ -60,9 +60,23 @@ fi
 
 echo "--- restarting ---"
 sudo systemctl restart foodbodyconnection
-sleep 3
 sudo systemctl is-active foodbodyconnection
-curl -fsS http://localhost:8000/ && echo
+
+# Workers take ~30s to come up: uvicorn forks them, then each imports pandas,
+# sklearn and matplotlib before it will accept a connection. A fixed short sleep
+# reported "Connection refused" on a deploy that had in fact succeeded, so poll
+# instead and only fail once it is genuinely not coming back.
+for i in $(seq 1 24); do
+    if curl -fsS -o /dev/null http://localhost:8000/; then
+        echo "healthy after $((i * 5))s"
+        break
+    fi
+    if [ "$i" -eq 24 ]; then
+        echo "STILL DOWN after 120s — check: journalctl -u foodbodyconnection -n 50"
+        exit 1
+    fi
+    sleep 5
+done
 REMOTE_SCRIPT
 
 echo "==> Done"
