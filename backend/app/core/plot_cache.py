@@ -23,12 +23,13 @@ import hashlib
 import json
 import logging
 import os
-import tempfile
 import time
 from io import BytesIO
 from pathlib import Path
 from fastapi import BackgroundTasks
 from fastapi.responses import StreamingResponse
+
+from app.core.atomic import atomic_write
 
 logger = logging.getLogger(__name__)
 
@@ -47,32 +48,11 @@ def _meta_path(key: str) -> Path:
 def _atomic_write(path: Path, data: bytes) -> None:
     """Replace a cache file in one indivisible step.
 
-    Path.write_bytes truncates the file and then fills it, so any reader that
-    arrives mid-write gets a short or empty file — a corrupt PNG, which the
-    browser drops silently with no server-side error. Writing to a temporary
-    file in the same directory and renaming it means a reader sees either the
-    whole old file or the whole new one.
-
-    Renaming is also the only thing that can work here. The previous guard was
-    a threading.Lock, which serialises nothing between the two worker processes
-    production runs — and it did not cover the read path at all. os.replace is
-    atomic on POSIX no matter which process is on the other side.
+    Without this, a reader arriving mid-write gets a short or empty file — a
+    corrupt PNG, which the browser drops silently with no server-side error.
+    See app.core.atomic for why renaming is the only thing that can work here.
     """
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=CACHE_DIR, suffix=".tmp")
-    try:
-        with os.fdopen(fd, "wb") as f:
-            f.write(data)
-            f.flush()
-            os.fsync(f.fileno())
-        os.replace(tmp, path)
-    except BaseException:
-        # Never leave a stray .tmp behind for a failed write.
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
+    atomic_write(path, data)
 
 
 def _read(key: str) -> tuple[bytes | None, float]:

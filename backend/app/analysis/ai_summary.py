@@ -9,6 +9,7 @@ import pandas as pd
 from scipy.stats import binomtest
 from sqlalchemy import text as _text
 
+from app.core import shared_cache
 from app.data.analysis_data import get_all_allergen_events_df, get_all_symptom_events_df
 from app.analysis.model import model_classification
 from app.models.table_class import UserDocument
@@ -34,9 +35,13 @@ def _time_of_day(h: int) -> str:
 #
 # Cached per (user, tz_offset) and invalidated by a fingerprint of the logs the
 # context is derived from, so an edit, insert or delete is picked up on the next
-# request while an unchanged conversation is served instantly. The cache lives
-# in-process: with more than one worker each warms its own copy, which costs one
-# rebuild per worker rather than one per message.
+# request while an unchanged conversation is served instantly.
+#
+# Two layers. This dict is per process and costs nothing to consult; behind it
+# sits app.core.shared_cache on disk, which every worker sees. Without that
+# second layer a context built by one worker did nothing for a request routed to
+# the other, so warming the cache — by generating an AI summary, say — only made
+# the next question fast about half the time.
 _CONTEXT_CACHE: dict = {}
 _CONTEXT_CACHE_MAX = 16
 
@@ -71,6 +76,12 @@ def _model_summary(db, user_id: int, tz_offset: int) -> str:
     if cached and cached[0] == today:
         return cached[1]
 
+    name = f"model_summary:{user_id}:{tz_offset}"
+    shared = shared_cache.read(name, today)
+    if shared is not None:
+        _MODEL_TEXT_CACHE[key] = (today, shared)
+        return shared
+
     try:
         text = model_classification(db, user_id, return_type="text")
     except Exception as exc:
@@ -79,6 +90,7 @@ def _model_summary(db, user_id: int, tz_offset: int) -> str:
         # rest of the day.
         return "Logistic regression model could not be run (likely insufficient data)."
 
+    shared_cache.write(name, today, text)
     if len(_MODEL_TEXT_CACHE) >= _MODEL_TEXT_CACHE_MAX:
         _MODEL_TEXT_CACHE.clear()
     _MODEL_TEXT_CACHE[key] = (today, text)
@@ -129,12 +141,28 @@ def build_analysis_context(db, user_id: int, tz_offset: int = 0) -> dict | None:
     if cached and cached[0] == fingerprint:
         return copy.deepcopy(cached[1])
 
+    # Then the on-disk cache, which the other worker may already have filled.
+    shared = shared_cache.read(_context_cache_name(key), fingerprint)
+    if shared is not None:
+        _remember(key, fingerprint, shared)
+        return copy.deepcopy(shared)
+
     result = _build_analysis_context(db, user_id, tz_offset)
 
+    if result is not None:
+        shared_cache.write(_context_cache_name(key), fingerprint, result)
+    _remember(key, fingerprint, result)
+    return result
+
+
+def _context_cache_name(key: tuple) -> str:
+    return f"analysis_context:{key[0]}:{key[1]}"
+
+
+def _remember(key: tuple, fingerprint: str, result) -> None:
     if len(_CONTEXT_CACHE) >= _CONTEXT_CACHE_MAX:
         _CONTEXT_CACHE.clear()
     _CONTEXT_CACHE[key] = (fingerprint, copy.deepcopy(result))
-    return result
 
 
 def _build_analysis_context(db, user_id: int, tz_offset: int = 0) -> dict | None:
