@@ -67,7 +67,9 @@ sudo systemctl is-active foodbodyconnection
 # reported "Connection refused" on a deploy that had in fact succeeded, so poll
 # instead and only fail once it is genuinely not coming back.
 for i in $(seq 1 24); do
-    if curl -fsS -o /dev/null http://localhost:8000/; then
+    # -s without -S: a refused connection is the expected state while the
+    # workers boot, not something to print eight times before succeeding.
+    if curl -fs -o /dev/null http://localhost:8000/; then
         echo "healthy after $((i * 5))s"
         break
     fi
