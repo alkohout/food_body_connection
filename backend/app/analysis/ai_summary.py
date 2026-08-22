@@ -1,4 +1,5 @@
 import copy
+import datetime as dt
 import os
 import json
 import logging
@@ -38,6 +39,50 @@ def _time_of_day(h: int) -> str:
 # rebuild per worker rather than one per message.
 _CONTEXT_CACHE: dict = {}
 _CONTEXT_CACHE_MAX = 16
+
+# model_classification dominates that rebuild: a GridSearchCV plus a bootstrap
+# over hundreds of liblinear fits, measured at 11.8s of the 13.7s context build
+# on the production box (2 vCPU). Because the fingerprint above covers every log
+# row, logging a single entry invalidated the whole context and forced a full
+# refit before the next question — so in practice nearly every chat turn paid
+# those 11.8 seconds.
+#
+# The model summarises months of food-symptom association; one new row cannot
+# meaningfully move it. So it gets its own cache, keyed on the user's local
+# calendar day, and refits at most once a day instead of once per new log entry.
+_MODEL_TEXT_CACHE: dict = {}
+_MODEL_TEXT_CACHE_MAX = 16
+
+
+def _local_today(tz_offset: int) -> str:
+    """The user's current calendar day. tz_offset is JS getTimezoneOffset()."""
+    return (
+        dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
+        - dt.timedelta(minutes=tz_offset)
+    ).strftime("%Y-%m-%d")
+
+
+def _model_summary(db, user_id: int, tz_offset: int) -> str:
+    """The logistic-regression write-up, refitted at most once per local day."""
+    key = (user_id, tz_offset)
+    today = _local_today(tz_offset)
+
+    cached = _MODEL_TEXT_CACHE.get(key)
+    if cached and cached[0] == today:
+        return cached[1]
+
+    try:
+        text = model_classification(db, user_id, return_type="text")
+    except Exception as exc:
+        logger.warning("model_classification failed: %s", exc)
+        # Not cached: a transient failure should not suppress the model for the
+        # rest of the day.
+        return "Logistic regression model could not be run (likely insufficient data)."
+
+    if len(_MODEL_TEXT_CACHE) >= _MODEL_TEXT_CACHE_MAX:
+        _MODEL_TEXT_CACHE.clear()
+    _MODEL_TEXT_CACHE[key] = (today, text)
+    return text
 
 
 def _analysis_fingerprint(db, user_id: int) -> str:
@@ -197,11 +242,7 @@ def _build_analysis_context(db, user_id: int, tz_offset: int = 0) -> dict | None
                 "temporal_evidence": evidence,
             })
 
-    try:
-        model_text = model_classification(db, user_id, return_type="text")
-    except Exception as exc:
-        logger.warning("model_classification failed: %s", exc)
-        model_text = "Logistic regression model could not be run (likely insufficient data)."
+    model_text = _model_summary(db, user_id, tz_offset)
 
     return {
         "date_range": f"{start_date} to {end_date}",

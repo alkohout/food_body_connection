@@ -14,10 +14,17 @@ EnvironmentFile=/opt/foodbodyconnection/.env
 # takes, which freezes the whole UI. Two fits in the 1 GB box: each sits around
 # 200 MB once matplotlib/pandas/sklearn are loaded. Do not raise this without
 # checking `free -h` — there is no headroom for a third.
+# --timeout-worker-healthcheck: the parent pings each worker and SIGKILLs it if
+# no reply arrives in time. The reply comes from a daemon thread, so a worker
+# that is merely busy — not deadlocked — can miss the deadline and be killed
+# mid-request, which surfaces to the browser as a 502 with no traceback in the
+# log. The 5s default is far too tight for endpoints that render plots or fit
+# models on a 2 vCPU box. 60s still catches a genuinely deadlocked worker.
 ExecStart=/opt/foodbodyconnection/venv/bin/uvicorn app.main:app \
     --host 127.0.0.1 \
     --port 8000 \
     --workers 2 \
+    --timeout-worker-healthcheck 60 \
     --log-level info \
     --log-config /opt/foodbodyconnection/log_config.json
 

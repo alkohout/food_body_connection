@@ -47,6 +47,17 @@ sudo chown -R foodbody:foodbody "$APP_DIR"
 echo "--- installing deps ---"
 sudo -u foodbody "$APP_DIR/venv/bin/pip" install -q -r "$APP_DIR/requirements.txt"
 
+# The unit file is version-controlled but used to be applied by hand, so the
+# repo copy could silently drift from what was actually running. Install it when
+# it differs; systemd needs the reload before the restart below picks it up.
+UNIT_SRC="$CHECKOUT/deploy/foodbodyconnection.service"
+UNIT_DST=/etc/systemd/system/foodbodyconnection.service
+if [ -f "$UNIT_SRC" ] && ! sudo cmp -s "$UNIT_SRC" "$UNIT_DST"; then
+    echo "--- updating systemd unit ---"
+    sudo cp "$UNIT_SRC" "$UNIT_DST"
+    sudo systemctl daemon-reload
+fi
+
 echo "--- restarting ---"
 sudo systemctl restart foodbodyconnection
 sleep 3
