@@ -68,7 +68,10 @@ def search_symptoms(
     return [
         {
             "symptom_id": a.symptom_id,
-            "symptom_name": a.symptom_name
+            "symptom_name": a.symptom_name,
+            # Without this the client cannot show a symptom's group, offer the
+            # groups in use, or tell a grouped symptom from an ungrouped one.
+            "symptom_group": a.symptom_group,
         }
         for a in results
     ]
