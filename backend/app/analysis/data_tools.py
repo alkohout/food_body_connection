@@ -51,7 +51,8 @@ TOOLS = [
     {
         "name": "list_tracked_items",
         "description": (
-            "List the things this user actually logs — allergens/foods, symptoms, "
+            "List the things this user actually logs — exposures (foods, drinks, "
+            "medications, events such as a period), symptoms, "
             "or medications — with how many entries each has and the date range "
             "covered. Call this FIRST when you are unsure of the exact name of "
             "something, because the other tools match on these names.\n\n"
@@ -67,7 +68,7 @@ TOOLS = [
             "properties": {
                 "kind": {
                     "type": "string",
-                    "enum": ["allergen", "symptom", "medication", "exercise", "all"],
+                    "enum": ["exposure", "symptom", "medication", "exercise", "all"],
                     "description": "Which category to list. Use 'all' if unsure.",
                 }
             },
@@ -78,14 +79,14 @@ TOOLS = [
         "name": "query_logs",
         "description": (
             "Return the individual logged entries — one row per event — for one or "
-            "more allergens or symptoms, optionally filtered by date range and "
+            "more exposures or symptoms, optionally filtered by date range and "
             "minimum symptom intensity. Use this when the user wants to SEE specific "
             "records ('show me every headache in March', 'what did I eat on 3 July')."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "kind": {"type": "string", "enum": ["allergen", "symptom"]},
+                "kind": {"type": "string", "enum": ["exposure", "symptom"]},
                 "names": {
                     "type": "array",
                     "items": {"type": "string"},
@@ -119,7 +120,7 @@ TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "kind": {"type": "string", "enum": ["allergen", "symptom"]},
+                "kind": {"type": "string", "enum": ["exposure", "symptom"]},
                 "group_by": {
                     "type": "string",
                     "enum": ["day", "week", "month", "weekday", "hour", "item"],
@@ -288,7 +289,7 @@ def _table(columns, rows, truncated=False, total=None, note=None):
 def _list_tracked_items(db, user_id, tz_offset, kind="all"):
     sections = {}
 
-    if kind in ("allergen", "all"):
+    if kind in ("exposure", "all"):
         rows = []
         for a in db.query(Allergen).filter(Allergen.user_id == user_id).all():
             logs = db.query(AllergenLog).filter(
@@ -304,7 +305,7 @@ def _list_tracked_items(db, user_id, tz_offset, kind="all"):
                 max(days).strftime("%Y-%m-%d") if days else None,
             ])
         rows.sort(key=lambda r: -r[1])
-        sections["allergens"] = _table(["name", "entries", "first", "last"], rows)
+        sections["exposures"] = _table(["name", "entries", "first", "last"], rows)
 
     if kind in ("symptom", "all"):
         rows = []
@@ -384,7 +385,7 @@ def _query_logs(db, user_id, tz_offset, kind, names=None, date_from=None,
     from_utc = _to_utc(_parse_day(date_from), tz_offset)
     to_utc = _to_utc(_parse_day(date_to, end_of_day=True), tz_offset)
 
-    if kind == "allergen":
+    if kind == "exposure":
         lookup = {
             a.allergen_id: a.allergen_name
             for a in _match(
@@ -414,9 +415,15 @@ def _query_logs(db, user_id, tz_offset, kind, names=None, date_from=None,
             for l in logs[:limit]
         ]
         return _table(
-            ["date", "time", "allergen", "quantity", "unit"],
+            ["date", "time", "exposure", "quantity", "unit"],
             rows, truncated=len(logs) > limit, total=len(logs),
         )
+
+    if kind != "symptom":
+        # Everything below is the symptom path. Without this an unrecognised
+        # kind reaches it and comes back as symptom rows under whatever label
+        # was asked for — and the model would then describe them as that.
+        return {"error": f"Unknown kind '{kind}'. Use 'exposure' or 'symptom'."}
 
     lookup = {
         s.symptom_id: s.symptom_name
@@ -458,7 +465,7 @@ def _aggregate_logs(db, user_id, tz_offset, kind, group_by,
     from_utc = _to_utc(_parse_day(date_from), tz_offset)
     to_utc = _to_utc(_parse_day(date_to, end_of_day=True), tz_offset)
 
-    if kind == "allergen":
+    if kind == "exposure":
         lookup = {
             a.allergen_id: a.allergen_name
             for a in _match(
@@ -478,6 +485,8 @@ def _aggregate_logs(db, user_id, tz_offset, kind, group_by,
             (_to_local(l.date_time, tz_offset), lookup.get(l.allergen_id), None)
             for l in q.all() if l.date_time
         ]
+    elif kind != "symptom":
+        return {"error": f"Unknown kind '{kind}'. Use 'exposure' or 'symptom'."}
     else:
         lookup = {
             s.symptom_id: s.symptom_name

@@ -262,7 +262,7 @@ def _build_analysis_context(db, user_id: int, tz_offset: int = 0) -> dict | None
                 evidence = "insufficient data"
 
             cross_stats.append({
-                "allergen": allergen_name,
+                "exposure": allergen_name,
                 "symptom_group": group,
                 "symptoms_within_24h_after_exposure": int(post_count),
                 "symptoms_within_24h_before_exposure": int(pre_count),
@@ -275,18 +275,18 @@ def _build_analysis_context(db, user_id: int, tz_offset: int = 0) -> dict | None
     return {
         "date_range": f"{start_date} to {end_date}",
         "total_tracking_days": int(total_days),
-        "total_allergen_logs": int(len(allergen_df)),
+        "total_exposure_logs": int(len(allergen_df)),
         "total_symptom_logs": int(len(symptom_df)),
-        "unique_allergens_tracked": int(allergen_df["allergen_name"].nunique()),
+        "unique_exposures_tracked": int(allergen_df["allergen_name"].nunique()),
         "unique_symptom_groups": (
             int(symptom_df["symptom_group"].nunique()) if has_groups else 0
         ),
-        "allergen_frequency": allergen_counts.head(15).to_dict(),
+        "exposure_frequency": allergen_counts.head(15).to_dict(),
         "symptom_group_frequency": symptom_group_counts,
         "symptom_group_avg_intensity_1_to_10": symptom_group_intensity,
         "symptom_peak_time_of_day": peak_time,
         "busiest_symptom_days_of_week": busiest_days,
-        "allergen_to_symptom_temporal_analysis": cross_stats,
+        "exposure_to_symptom_temporal_analysis": cross_stats,
         "logistic_regression_summary": model_text,
     }
 
