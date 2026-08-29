@@ -29,24 +29,24 @@
 
   <p>
     This guide explains how to interpret the performance of the various models used on this site. 
-    Each of the models (Allergen Ranking, Dose–Response, Risk ) have specific metrics that indicate how well it is performing and how much confidence to place in its results.
+    Each of the models (Exposure Ranking, Dose–Response, Risk ) have specific metrics that indicate how well it is performing and how much confidence to place in its results.
     Their details are described below, along with a traffic-light color system to help you quickly assess the reliability of the results.
     Note that this guide is a tool for guidance, not a medical diagnosis.
   </p>
 
   <hr />
 
-  <h2>Allergen Ranking Model</h2>
+  <h2>Exposure Ranking Model</h2>
   <p>
-  The Allergen Ranking model analyses your logged allergen and symptom data to highlight potential patterns. 
-  A logistic regression model is used to examine the relationship between logged allergen exposures and symptom occurrence.
-  This model returns an odds ratio, which indicates how much more likely symptoms are when exposed to the allergen.
+  The Exposure Ranking model analyses your logged exposure and symptom data to highlight potential patterns. 
+  A logistic regression model is used to examine the relationship between logged exposures and symptom occurrence.
+  This model returns an odds ratio, which indicates how much more likely symptoms are when exposed to the exposure.
   The metrics below help you understand how well the model is performing and how much confidence to place in its results. 
   </p>
 
   <ul>
     <li>
-      <span class="metric-title">ROC AUC</span>: measures the model's ability to distinguish likely from unlikely allergens.
+      <span class="metric-title">ROC AUC</span>: measures the model's ability to distinguish likely from unlikely exposures.
       <div class="metric-description">
         <span class="indicator green">●</span> ≥ 0.75: Good – strong separation<br>
         <span class="indicator orange">●</span> 0.65 – 0.74: Moderate – some useful signal<br>
@@ -56,7 +56,7 @@
 
     <p></p>
     <li>
-      <span class="metric-title">Symptom Recall</span>: the proportion of symptom-linked allergens the model correctly identifies.
+      <span class="metric-title">Symptom Recall</span>: the proportion of symptom-linked exposures the model correctly identifies.
       <div class="metric-description">
         <span class="indicator green">●</span> ≥ 0.70: Good – most triggers captured<br>
         <span class="indicator orange">●</span> 0.55 – 0.69: Moderate – some triggers may be missed<br>
@@ -66,7 +66,7 @@
 
     <p></p>
     <li>
-      <span class="metric-title">Sample Size</span>: the number of logged allergen–symptom events used by the model.
+      <span class="metric-title">Sample Size</span>: the number of logged exposure–symptom events used by the model.
       <div class="metric-description">
         <span class="indicator green">●</span> ≥ 200: Good – reliable patterns<br>
         <span class="indicator orange">●</span> 75 – 199: Moderate – patterns emerging<br>
@@ -75,8 +75,8 @@
     </li>
     <p></p>
     <li>
-      <span class="metric-title">Allergen Co-occurrence</span>: some allergens are often logged together. 
-      High co-occurrence may indicate that multiple allergens are consumed simultaneously, making it harder to isolate individual effects.
+      <span class="metric-title">Exposure Co-occurrence</span>: some exposures are often logged together. 
+      High co-occurrence may indicate that multiple exposures are consumed simultaneously, making it harder to isolate individual effects.
       <div class="metric-description">
         <span class="indicator green">●</span> no co-occurrence: Good – reliable odds ratios<br>
         <span class="indicator red">●</span> co-occurrence present: Caution when interpreting odds ratios<br>
@@ -88,11 +88,11 @@
   <h2>Dose–Response Model</h2>
 
   <p>
-  The odds ratio (OR) and its 95% confidence interval is estimated using an <strong> Ordinal Logisitc Regression Model</strong>, which determines how the probability of being in a higher symptom intensity category changes with allergen volume.
+  The odds ratio (OR) and its 95% confidence interval is estimated using an <strong> Ordinal Logisitc Regression Model</strong>, which determines how the probability of being in a higher symptom intensity category changes with exposure volume.
   </p>
   <p>
-  OR > 1: Higher allergen volume is associated with greater odds of more intense symptoms.<br>
-  OR = 1: Allergen volume has no association with symptom intensity.<br>
+  OR > 1: Higher exposure volume is associated with greater odds of more intense symptoms.<br>
+  OR = 1: Exposure volume has no association with symptom intensity.<br>
   OR < 1: Higher allergen volume is associated with lower odds of more intense symptoms (protective effect or inverse relationship).
   </p>
   <p>
@@ -115,7 +115,7 @@
 
   <p>
   These metrics describe how symptom risk differs between days with and without exposure
-  to a specific allergen, and how confident we are that the difference is not due to chance.
+  to a specific exposure, and how confident we are that the difference is not due to chance.
   </p>
   <p>
   The p-value is calculated using the Fisher exact statistical test which compares the number of symptom days on exposed versus non-exposed days. 
@@ -172,7 +172,7 @@
   <ul>
     <li><strong>Narrow intervals (small ± value)</strong>: The model’s performance is consistent — results are more reliable.</li>
     <li><strong>Wide intervals (large ± value)</strong>: The model’s performance varies more depending on which data is used — interpret with caution.</li>
-    <li>In your plots, the <strong>error bars</strong> on allergen odds ratios show a similar concept: longer bars indicate greater uncertainty in how strongly a particular allergen is associated with symptoms.</li>
+    <li>In your plots, the <strong>error bars</strong> on exposure odds ratios show a similar concept: longer bars indicate greater uncertainty in how strongly a particular exposure is associated with symptoms.</li>
   </ul>
 
   <p>

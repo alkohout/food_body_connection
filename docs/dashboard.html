@@ -35,7 +35,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="checkin">Check-in</button>
       <button class="tab" data-tab="training">Training</button>
-      <button class="tab" data-tab="allergen">Log Allergen</button>
+      <button class="tab" data-tab="allergen">Log Exposure</button>
       <button class="tab" data-tab="symptom">Log Symptom</button>
       <button class="tab" data-tab="analysis">Analysis</button>
       <button class="tab" data-tab="medication">Medications</button>
@@ -46,9 +46,9 @@
      <form id="allergen-form" class="form">
 
       <div class="form-row">
-        <label for="allergen-select">Allergen</label>
+        <label for="allergen-select">Exposure</label>
         <select id="allergen-select" required>
-          <option value="">Select an allergen…</option>
+          <option value="">Select an exposure…</option>
         </select>
       </div>
 
@@ -62,7 +62,7 @@
           <input
             type="text"
             id="new-allergen-name"
-            placeholder="New allergen name"
+            placeholder="New exposure name"
           />
           <button type="button" class="secondary" id="add-allergen-btn">Add</button>
         </div>
@@ -85,7 +85,7 @@
         </div>
       </div>
 
-      <button type="submit" class="primary">Log allergen</button>
+      <button type="submit" class="primary">Log exposure</button>
 
       <p id="log-success" class="success"></p>
       <p id="log-error" class="error"></p>
@@ -207,7 +207,7 @@
         </div>
 
         <div class="stat-card stat-card--secondary stat-inline">
-          <span class="stat-label">Total allergens logged</span>
+          <span class="stat-label">Total exposures logged</span>
           <span class="stat-value" id="stat-total-allergens">—</span>
         </div>
 
@@ -222,7 +222,7 @@
         </div>
 
         <div class="stat-card stat-card--secondary stat-inline">
-          <span class="stat-label">Average allergens per day</span>
+          <span class="stat-label">Average exposures per day</span>
           <span class="stat-value" id="stat-avg-allergens-per-day">—</span>
         </div>
 
@@ -243,7 +243,7 @@
             <label for="analysis-select">Choose analysis</label>
             <select id="analysis-select">
               <option value="">Select an analysis…</option>
-              <option value="allergen-importance">Allergen importance plot</option>
+              <option value="allergen-importance">Exposure importance plot</option>
               <option value="symptom-grouping">Symptom grouping plot</option>
               <option value="time-series">Time series plot</option>
               <option value="deeper-analysis">Deeper analysis</option>
@@ -263,9 +263,9 @@
 
             <!-- Allergen importance -->
             <div id="panel-allergen-importance" class="analysis-panel">
-              <h4>Allergen Importance</h4>
+              <h4>Exposure Importance</h4>
               <p>
-                The allergens you have been exposed to are ranked to show which may be
+                The exposures you have logged are ranked to show which may be
                 more strongly associated with symptoms after exposure.
               </p>
 
@@ -289,7 +289,7 @@
                     "
                   ></div>
                   <figcaption>
-                    Figure: The allergen odds ratio versus allergen...
+                    Figure: The odds ratio for each exposure...
                   </figcaption>
                 </figure>
               </div>
@@ -320,7 +320,7 @@
                 <label>Variable 1</label>
                 <div class="inline-fields">
                   <select id="ts-type-select" class="ts-type-sel">
-                    <option value="allergen">Allergen</option>
+                    <option value="allergen">Exposure</option>
                     <option value="symptom">Symptom</option>
                     <option value="medication">Medication</option>
                     <option value="checkin">Daily Check-in</option>
@@ -336,7 +336,7 @@
                 <div class="inline-fields">
                   <select id="ts-type2-select" class="ts-type-sel">
                     <option value="">None</option>
-                    <option value="allergen">Allergen</option>
+                    <option value="allergen">Exposure</option>
                     <option value="symptom">Symptom</option>
                     <option value="medication">Medication</option>
                     <option value="checkin">Daily Check-in</option>
@@ -426,7 +426,7 @@
               <p>Use the controls below to explore your data in more detail.</p>
 
               <div class="form-row">
-                <label for="allergen-intensity-input">– an allergen:</label>
+                <label for="allergen-intensity-input">– an exposure:</label>
                 <div class="autocomplete-wrapper" style="position: relative;">
                   <input type="text" id="allergen-intensity-input" autocomplete="off" />
                   <input type="hidden" id="allergen-intensity-id" />
@@ -466,7 +466,7 @@
               <div id="deeper-plots" style="display:none">
                 <figure class="img-figure" style="margin-top:1rem">
                   <img id="deeper-time-series-plot" src="" alt="Time Series" style="width:100%" />
-                  <figcaption>Symptom burden and allergen exposure over time.</figcaption>
+                  <figcaption>Symptom burden and exposure over time.</figcaption>
                 </figure>
                 <figure class="img-figure" style="margin-top:1rem">
                   <img id="deeper-bar-plot" src="" alt="Temporal relationship" style="width:100%" />
@@ -542,7 +542,7 @@
 
                 <label for="medchange-type" style="font-size:0.82rem;color:#6b7280;white-space:nowrap">Compare</label>
                 <select id="medchange-type" style="width:110px">
-                  <option value="allergen" selected>Allergen</option>
+                  <option value="allergen" selected>Exposure</option>
                   <option value="symptom">Symptom</option>
                 </select>
                 <select id="medchange-target" style="min-width:150px"></select>
@@ -617,7 +617,7 @@
         <textarea
           id="chat-input"
           rows="3"
-          placeholder="e.g. Which allergen looks most strongly linked to my symptoms?"
+          placeholder="e.g. Which exposure looks most strongly linked to my symptoms?"
           style="width: 100%; box-sizing: border-box; resize: vertical; padding: 0.6rem 0.85rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95em; font-family: inherit;"
         ></textarea>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.4rem;">
@@ -628,7 +628,7 @@
         <div id="analysis-empty-state" style="display:none; padding:20px;">
           <h3>No data yet</h3>
           <p>
-            Start logging allergens and symptoms to unlock personalised insights.
+            Start logging exposures and symptoms to unlock personalised insights.
             Once you’ve recorded sufficient entries, your analysis will appear here.
           </p>
         </div>
@@ -650,13 +650,13 @@
 
 <!--
               <h3>Exploratory Plots</h3>
-              <p>Overview of logged allergens and symptoms. Explore these plots to gain insights. </p>
-              <h4>Allergen Importance</h4>
+              <p>Overview of logged exposures and symptoms. Explore these plots to gain insights. </p>
+              <h4>Exposure Importance</h4>
                 <p>
-                The allergens you have been exposed to are ranked (Figure ), showing which allergens are most likely to trigger symptoms within a lag window following exposure. 
+                The exposures you have logged are ranked (Figure ), showing which exposures are most likely to trigger symptoms within a lag window following exposure. 
                 The bars represent the strength of association, called the "odds ratio," which indicates how much 
-                more likely symptoms are when the allergen is consumed. An odds ratio greater than 1 suggests 
-                the allergen may increase symptom risk, while an odds ratio around 1 (dashed line) indicates little or no effect. 
+                more likely symptoms are when the exposure is consumed. An odds ratio greater than 1 suggests 
+                the exposure may increase symptom risk, while an odds ratio around 1 (dashed line) indicates little or no effect. 
                 Use this information to explore potential triggers, but remember this shows association, not a diagnosis.
                 </p>
                 <div class="plot-container" style="position: relative;">
@@ -677,8 +677,8 @@
                       height: 120px;
                     "
                   ></div>
-                <figcaption>Figure : The allergen odds ratio versus allergen. 
-                  The 95% confidence interval for each allergen is given by the thin verticle black lines.
+                <figcaption>Figure : The odds ratio for each exposure. 
+                  The 95% confidence interval for each exposure is given by the thin verticle black lines.
                   The neutral odds ratio is shown by the red dashed horizontal line.
                   The performance metrics of the model used to calculate the odds ratio is provided in the top right corner. 
                   Red text indicates a weak model with low reliability, orange text indicates a moderate model to treat cautiously and green text indicates a strong reliable model.
@@ -691,15 +691,15 @@
               <!--
               <h4>Symptom frequency</h4>
               <p>
-              This chart summarises how often symptoms are recorded after exposure to different allergens.
-              For each allergen, we count symptoms that occur within 24 hours of an exposure and normalise
-              by how often that allergen was consumed, allowing fair comparison across foods.
+              This chart summarises how often symptoms are recorded after exposure to different exposures.
+              For each exposure, we count symptoms that occur within 24 hours of an exposure and normalise
+              by how often that exposure was consumed, allowing fair comparison across foods.
               </p>
               <figure class="img-figure">
                 <img id="analysis-plot" src="" alt="Analysis Plot" />
-                <figcaption>Figure : Top 10 allergens ranked by symptom rate within 24 hours of exposure.
-                  The symptom rate is calculated as the total number of logged symptoms occurring within 24 hours of an allergen exposure, divided by the total number of exposures. 
-                  Only allergens with at least five recorded exposures and at least one associated symptom are shown.
+                <figcaption>Figure : Top 10 exposures ranked by symptom rate within 24 hours of exposure.
+                  The symptom rate is calculated as the total number of logged symptoms occurring within 24 hours of an exposure, divided by the total number of exposures. 
+                  Only exposures with at least five recorded exposures and at least one associated symptom are shown.
                 </figcaption>
                 </figure>
               -->
@@ -708,7 +708,7 @@
               <h4>Grouping symptoms</h4>
               <p>
               This chart shows how often symptoms are logged across different body systems.
-              Grouping symptoms by system helps highlight which areas of the body are most frequently affected overall, independent of specific allergens or timing.
+              Grouping symptoms by system helps highlight which areas of the body are most frequently affected overall, independent of specific exposures or timing.
               </p>
               <figure class="img-figure">
                 <img id="group_histogram" src="" alt="System Group Histogram" />
@@ -722,7 +722,7 @@
               <p>Using the plots above explore your data deeper by selecting:</p>
 
               <div class="form-row">
-                <label for="allergen-intensity-input">– an allergen:</label>
+                <label for="allergen-intensity-input">– an exposure:</label>
                 <div class="autocomplete-wrapper" style="position: relative;">
                   <input type="text" id="allergen-intensity-input" autocomplete="off" />
                   <input type="hidden" id="allergen-intensity-id" />
@@ -771,7 +771,7 @@
                 <table id="temporal-stats-table" class="analysis-table">
                   <thead>
                     <tr>
-                      <th>Allergen</th>
+                      <th>Exposure</th>
                       <th>Symptom Group</th>
                       <th>Post Count</th>
                       <th>Pre Count</th>
@@ -791,7 +791,7 @@
 
               <p>
               This section looks at whether your symptoms tend to occur more often on days when you are exposed
-              to a specific allergen, compared with days when you are not. It focuses on everyday risk —
+              to a specific exposure, compared with days when you are not. It focuses on everyday risk —
               how likely symptoms are on an exposed day versus a non-exposed day — rather than predicting
               individual events.
               </p>
@@ -823,18 +823,18 @@
                 ></div>
                 <figcaption> Figure : Chance of symptoms on exposed vs non-exposed days.
                   This chart shows how often symptoms occurred on days without exposure compared with days when exposed to <span id="caption-allergen"></span>. 
-                  A day is counted as “exposed” if the allergen occurred at least once that day. 
+                  A day is counted as “exposed” if the exposure occurred at least once that day. 
                   Symptoms are included if they happened within  <span id="caption-lag"></span>. 
                   The text shows how much the chance of symptoms increases (or decreases) on exposed days, along with a p-value indicating how strong the evidence is that the difference is significant. 
                 </figcaption>
               </figure> 
               </div>
               <h4>Dose-Response</h4>
-              This section examines whether higher standardized volumes of a specific allergen are associated with stronger symptom responses. 
-              The focus is on the relationship between allergen exposure and the peak symptom intensity observed within the specified lag window after exposure. 
-              The violin plot below shows the distribution of standardized allergen volumes for each level of peak symptom intensity. 
+              This section examines whether higher standardized volumes of a specific exposure are associated with stronger symptom responses. 
+              The focus is on the relationship between exposure and the peak symptom intensity observed within the specified lag window after exposure. 
+              The violin plot below shows the distribution of standardized exposure volumes for each level of peak symptom intensity. 
               The top-right metrics panel summarizes the strength of this relationship using the odds ratio. 
-              The odds ratio quantifies how the odds of experiencing a higher symptom intensity change with each one standard deviation increase in allergen volume.
+              The odds ratio quantifies how the odds of experiencing a higher symptom intensity change with each one standard deviation increase in exposure volume.
               <div class="plot-container" style="position: relative;">
               <figure class="img-figure" >
                 <img id="analysis-intensity-volume-plot" src="" alt="Intensity-Volume Plot" />
@@ -853,33 +853,33 @@
                       height: 120px;
                     "
                 ></div>
-                <figcaption> Figure : Distribution of allergen exposure volume by peak symptom intensity.
+                <figcaption> Figure : Distribution of exposure volume by peak symptom intensity.
                   This violin plot shows the distribution of <span id="caption-allergen-dose"></span> exposures grouped by the maximum symptom intensity logged within <span id="caption-lag-dose"></span>. 
                   The width of each violin represents the density of observations at that symptom intensity level.
-                  The odds ratio quantifies the multiplicative change in odds of experiencing higher symptom intensity per one standard deviation increase in allergen volume, with a 95% confidence interval.
+                  The odds ratio quantifies the multiplicative change in odds of experiencing higher symptom intensity per one standard deviation increase in exposure volume, with a 95% confidence interval.
                 </figcaption>
               </figure>
               </div>
               <h4>Time Series Plot</h4>
-              This figure shows the temporal relationship between symptom burden and allergen exposure. 
+              This figure shows the temporal relationship between symptom burden and exposure. 
               The top panel displays daily symptom burden as both raw values and a rolling average (default 3-day), highlighting short-term trends and fluctuations. 
               Subtle color bands indicate mild, moderate, and severe burden ranges. 
-              The bottom panel shows daily allergen exposure volume, allowing visual comparison of symptom patterns with exposure events over time.
+              The bottom panel shows daily exposure volume, allowing visual comparison of symptom patterns with exposure events over time.
               <figure class="img-figure" >
                 <img id="analysis-time-series-plot" src="" alt="Allergen Time Series Plot" />
-                <figcaption> Figure : Sympton burden blue time series (left axis) and allergen volume exposure orange markers (right axis). 
+                <figcaption> Figure : Sympton burden blue time series (left axis) and exposure volume exposure orange markers (right axis). 
                   The size of the markers correspond to the volume exposed to. 
                 </figcaption>
               </figure> 
-              <h4> Temporal Relationship between allergen and symptom group</h4>
-              This figure summarizes the temporal association between allergen exposure and symptom occurrence within a specified lag window. 
+              <h4> Temporal Relationship between exposure and symptom group</h4>
+              This figure summarizes the temporal association between exposure and symptom occurrence within a specified lag window. 
               The first bar shows the percentage of exposure-days that were followed by symptoms within the selected lag window, while the second bar shows the percentage of symptom-days that were preceded by exposure within the same time window. 
-              This dual perspective highlights how closely symptom events track allergen exposures for the selected symptom group.
+              This dual perspective highlights how closely symptom events track exposures for the selected symptom group.
               <figure class="img-figure" >
                 <img id="analysis-bar-plot" src="" alt="Allergen / Symptom Percentages" />
-                <figcaption> Figure : Temporal relationship between allergen exposure and symptoms for <span id="caption-symptom-group"></span> symptoms.
-                  The left bar shows the percentage of days with an allergen exposure where at least one symptom occurred within <span id="caption-lag"></span> afterward (exposure-days followed by symptoms).
-                  The right bar shows the percentage of days with a symptom where at least one allergen exposure occurred in the <span id="caption-lag"></span> prior (symptom-days preceded by exposure).
+                <figcaption> Figure : Temporal relationship between exposure and symptoms for <span id="caption-symptom-group"></span> symptoms.
+                  The left bar shows the percentage of days with an exposure where at least one symptom occurred within <span id="caption-lag"></span> afterward (exposure-days followed by symptoms).
+                  The right bar shows the percentage of days with a symptom where at least one exposure occurred in the <span id="caption-lag"></span> prior (symptom-days preceded by exposure).
                   These percentages reflect temporal alignment but do not imply causation.
                 </figcaption>
               </figure> 

@@ -157,16 +157,16 @@ const fetchAllergens = async () => {
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch allergens (${res.status})`);
+    throw new Error(`Failed to fetch exposures (${res.status})`);
   }
 
   const allergens = await res.json();
 
   if (!Array.isArray(allergens)) {
-    throw new Error("Invalid allergens response");
+    throw new Error("Invalid exposures response");
   }
 
-  console.log("✅ Loaded all allergens:", allergens.length);
+  console.log("✅ Loaded all exposures:", allergens.length);
   return allergens;
 };
 
@@ -178,7 +178,7 @@ const fetchRecentAllergens = async (limit = 5) => {
     }
 
     const url = `${API_URL}/allergens/recent?limit=${limit}`;
-    console.log("Fetching recent allergens from:", url);
+    console.log("Fetching recent exposures from:", url);
 
     const res = await fetch(url, {
       headers: {
@@ -187,7 +187,7 @@ const fetchRecentAllergens = async (limit = 5) => {
       },
     });
 
-    console.log("Recent allergens response status:", res.status, res.statusText);
+    console.log("Recent exposures response status:", res.status, res.statusText);
 
     if (!res.ok) {
       const errorText = await res.text();
@@ -195,7 +195,7 @@ const fetchRecentAllergens = async (limit = 5) => {
     }
 
     const recentAllergens = await res.json();
-    console.log("Recent allergens data:", recentAllergens);
+    console.log("Recent exposures data:", recentAllergens);
 
     if (!Array.isArray(recentAllergens)) {
       console.error("Expected array but got:", typeof recentAllergens, recentAllergens);
@@ -218,15 +218,15 @@ const populateAllergenSelect = (allergens, recentAllergens) => {
   // Placeholder
   const placeholder = document.createElement("option");
   placeholder.value = "";
-  placeholder.textContent = "Select an allergen…";
+  placeholder.textContent = "Select an exposure…";
   allergenSelect.appendChild(placeholder);
 
   const usedIds = new Set();
 
-  // ---- Recent allergens ----
+  // ---- Recent exposures ----
   if (Array.isArray(recentAllergens) && recentAllergens.length > 0) {
     const recentGroup = document.createElement("optgroup");
-    recentGroup.label = "Recent allergens";
+    recentGroup.label = "Recent exposures";
 
     recentAllergens.forEach(a => {
       if (!a.allergen_id || !a.allergen_name) return;
@@ -251,10 +251,10 @@ const populateAllergenSelect = (allergens, recentAllergens) => {
     allergenSelect.appendChild(divider);
   }
 
-  // ---- All allergens ----
+  // ---- All exposures ----
   if (Array.isArray(allergens) && allergens.length > 0) {
     const allGroup = document.createElement("optgroup");
-    allGroup.label = "All allergens";
+    allGroup.label = "All exposures";
 
     allergens.forEach(a => {
       if (!a.allergen_id || !a.allergen_name) return;
@@ -290,7 +290,7 @@ async function addNewAllergen(name) {
     if (!res.ok) throw new Error(await res.text());
 
     const data = await res.json();
-    console.log("Created allergen:", data);
+    console.log("Created exposure:", data);
 
     const allergens = await fetchAllergens();
     const recentAllergens = await fetchRecentAllergens(5);
@@ -304,8 +304,8 @@ async function addNewAllergen(name) {
 
     return data;
   } catch (err) {
-    console.error("Failed to create allergen:", err);
-    alert("Error adding allergen: " + err.message);
+    console.error("Failed to create exposure:", err);
+    alert("Error adding exposure: " + err.message);
   }
 }
 
@@ -319,7 +319,7 @@ function setupAddAllergen() {
 
   addBtn.addEventListener("click", async () => {
     const name = nameInput.value.trim();
-    if (!name) return alert("Enter an allergen name");
+    if (!name) return alert("Enter an exposure name");
 
     const created = await addNewAllergen(name);
     if (!created) return;
@@ -614,7 +614,7 @@ const setupAutocomplete = (inputEl, idEl, suggestionsEl, type) => {
 
       if (data.length === 0 && query.length > 1) {
         addBtnWrapper.style.display = "block";
-        addBtn.textContent = `Add "${query}" as a new allergen`;
+        addBtn.textContent = `Add "${query}" as a new exposure`;
 
         addBtn.onclick = async () => {
           const created = await addNewAllergen(query);
@@ -696,7 +696,7 @@ function setupForms() {
     () => {
       const allergenId = Number(allergenIdInput?.value);
       if (!allergenId) {
-        throw new Error("Please select an allergen");
+        throw new Error("Please select an exposure");
       }
 
       return {
@@ -1159,7 +1159,7 @@ function setupDeeperAnalysis() {
     const plotsDiv   = getElement("deeper-plots");
 
     if (!allergenName) {
-      if (statusEl) statusEl.textContent = "Please select an allergen first.";
+      if (statusEl) statusEl.textContent = "Please select an exposure first.";
       return;
     }
 
@@ -1549,7 +1549,7 @@ function restoreButton(button, fallbackText = "Load") {
 }
 
 function renderAnalysisStats(stats) {
-  const totalAllergens = Number(stats["Total allergens logged"] || 0);
+  const totalAllergens = Number(stats["Total exposures logged"] || 0);
   const totalSymptoms = Number(stats["Total symptoms logged"] || 0);
 
   const totalAllergensEl = getElement("stat-total-allergens");
@@ -1566,7 +1566,7 @@ function renderAnalysisStats(stats) {
 
   const avgAllergensPerDayEl = getElement("stat-avg-allergens-per-day");
   if (avgAllergensPerDayEl) {
-    avgAllergensPerDayEl.textContent = stats["Average allergens logged per day"] || 0;
+    avgAllergensPerDayEl.textContent = stats["Average exposures logged per day"] || 0;
   }
 
   const avgSymptomsPerDayEl = getElement("stat-avg-symptoms-per-day");
@@ -1592,10 +1592,10 @@ function renderAnalysisStats(stats) {
     extraStatsContainer.innerHTML = "";
 
     const standardKeys = [
-      "Total allergens logged",
+      "Total exposures logged",
       "Total symptoms logged",
       "Total days tracked",
-      "Average allergens logged per day",
+      "Average exposures logged per day",
       "Average symptoms logged per day"
     ];
 
@@ -1793,7 +1793,7 @@ async function fetchAllergenRankPlot({ force = false } = {}) {
     if (statusEl) statusEl.textContent = "";
     allergenRankLoaded = true;
   } catch (err) {
-    console.error("Failed to fetch allergen rank plot:", err);
+    console.error("Failed to fetch exposure rank plot:", err);
     if (statusEl) statusEl.textContent = `Could not load plot: ${err.message}`;
   } finally {
     allergenRankLoading = false;
@@ -2245,13 +2245,13 @@ function renderAllergenLogs(logs, allergens, units) {
   if (!container) return;
 
   if (!logs.length) {
-    container.innerHTML = '<p class="logs-empty">No allergen logs yet.</p>';
+    container.innerHTML = '<p class="logs-empty">No exposure logs yet.</p>';
     return;
   }
 
   const table = document.createElement("table");
   table.className = "logs-table";
-  table.innerHTML = `<thead><tr><th>Allergen</th><th>Date &amp; time</th><th>Amount</th><th></th></tr></thead>`;
+  table.innerHTML = `<thead><tr><th>Exposure</th><th>Date &amp; time</th><th>Amount</th><th></th></tr></thead>`;
   const tbody = document.createElement("tbody");
   table.appendChild(tbody);
 
@@ -2382,7 +2382,7 @@ function renderAllergenLogs(logs, allergens, units) {
           tr.classList.remove("log-row--saving");
           tr.classList.add("log-row--error");
           setTimeout(() => tr.classList.remove("log-row--error"), 2000);
-          console.error("Failed to save allergen log:", err);
+          console.error("Failed to save exposure log:", err);
         }
       }, 0);
     });
@@ -2515,7 +2515,7 @@ async function loadAllergenLogs() {
     renderAllergenLogs(logs, cachedAllergens, cachedUnits);
   } catch (err) {
     container.innerHTML = '<p class="logs-empty">Could not load logs.</p>';
-    console.error("Failed to load allergen logs:", err);
+    console.error("Failed to load exposure logs:", err);
   }
 }
 
@@ -2601,7 +2601,7 @@ async function init() {
 
       const allergenSelect = getElement("allergen-select");
       if (allergenSelect) {
-        allergenSelect.innerHTML = '<option value="">Error loading allergens</option>';
+        allergenSelect.innerHTML = '<option value="">Error loading exposures</option>';
       }
     }
 
