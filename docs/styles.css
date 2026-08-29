@@ -111,34 +111,27 @@ h1 {
 /* Tab container with bottom divider */
 .tabs {
   display: flex;
+  /* Wrap rather than stretch or scroll. Stretching made each tab a seventh of
+     the bar on a wide screen and looked nothing like the phone; scrolling put
+     roughly 250px of tabs off the right of a phone with the scrollbar hidden,
+     so Training — the last one — was invisible with nothing to suggest it was
+     there. Wrapping keeps every tab reachable at any width. */
+  flex-wrap: wrap;
   margin-bottom: 1.5rem;
   border-bottom: 1px solid #ddd;
 }
 
-/* Individual tab button */
+/* Individual tab button. Sized to its own label at every width, which is what
+   the phone did and the desktop did not. */
 .tab {
-  flex: 1;                        /* Equal width tabs */
-  padding: 0.75rem;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: 0.6rem 0.75rem;
   background: none;
   border: none;
-  font-size: 1rem;
+  font-size: 0.85rem;
   cursor: pointer;
   border-bottom: 3px solid transparent; /* For active indicator */
-}
-
-@media (max-width: 640px) {
-  .tabs {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .tabs::-webkit-scrollbar { display: none; }
-  .tab {
-    flex: 0 0 auto;
-    white-space: nowrap;
-    font-size: 0.85rem;
-    padding: 0.6rem 0.75rem;
-  }
 }
 
 /* Active tab styling */
