@@ -3724,27 +3724,32 @@ function trRenderRunner() {
   painWrap.appendChild(painIn);
   body.appendChild(painWrap);
 
+  // One way out, matched to where you actually are. With nothing logged,
+  // moving on IS skipping, so offering both was a distinction without a
+  // difference. Part-way through it is a real choice: some sets are done and
+  // that is not a skip.
   const nav = trEl("div", null, "tr-nav");
-  const next = trEl("button", doneCount ? "Next exercise" : "Next exercise");
-  next.type = "button";
-  next.className = "secondary";
-  next.addEventListener("click", () => { trRun.idx += 1; trRenderRunner(); });
-  const skip = trEl("button", "Skip this one");
-  skip.type = "button";
-  skip.className = "secondary";
-  skip.addEventListener("click", () => {
-    trRun.skipped.push(b.exercise);
-    trRun.idx += 1;
-    trRenderRunner();
-  });
-  nav.appendChild(next);
-  nav.appendChild(skip);
+  if (doneCount === 0) {
+    const skip = trEl("button", "Skip this one", "secondary");
+    skip.type = "button";
+    skip.addEventListener("click", () => {
+      trRun.skipped.push(b.exercise);
+      trRun.idx += 1;
+      trRenderRunner();
+    });
+    nav.appendChild(skip);
+  } else {
+    const stop = trEl("button", `Move on — ${doneCount} of ${needed} done`, "secondary");
+    stop.type = "button";
+    stop.addEventListener("click", () => { trRun.idx += 1; trRenderRunner(); });
+    nav.appendChild(stop);
+  }
   body.appendChild(nav);
   body.appendChild(trEl("p", "", "logs-loading")).id = "tr-run-status";
 }
 
 function trRenderCheck(body, b) {
-  const btn = trEl("button", "Done");
+  const btn = trEl("button", "Done", "tr-big");
   btn.type = "button";
   btn.addEventListener("click", () => trLogRunSet(b, {}));
   body.appendChild(btn);
