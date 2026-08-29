@@ -144,79 +144,95 @@ GENERAL_ASSESSMENT = [
 KNEE_PHASES = {
     1: {
         "label": "Settle",
-        "aim": "Calm the knees down and build tolerance without loaded squatting.",
-        "themes": {"A": "Knee tolerance and core",
-                   "B": "Hips, posterior chain and shins",
-                   "C": "Knee control, core and arms"},
+        "aim": "Calm the knees down and build tolerance without loaded squatting, "
+               "while covering the rest of the body with what needs no equipment.",
+        "themes": {"A": "Knees, push and core",
+                   "B": "Hips, pull and shins",
+                   "C": "Knee control, pull and core"},
         "days": {
+            # Six rather than five: knee work is the priority but it is not a
+            # whole session, and pushing without pulling is how shoulders end
+            # up rounded. Everything here needs bodyweight or a light band.
             "A": [
                 Block("Spanish Squat", "iso", 3, 20, 45),
                 Block("Terminal Knee Extension", "reps", 3, 10, 15),
                 Block("Standing Hip Abduction", "reps", 3, 10, 15),
-                Block("Standing Calf Raise", "reps", 3, 12, 20),
+                Block("Push Up", "reps", 3, 5, 12),
+                Block("Prone Y Raise", "reps", 3, 8, 15),
                 Block("Plank", "iso", 3, 20, 45),
             ],
             "B": [
                 Block("Single Leg Glute Bridge", "reps", 3, 8, 15),
                 Block("Lateral Band Walk", "reps", 3, 10, 15),
+                Block("Band Pull Apart", "reps", 3, 10, 20),
+                Block("Standing Calf Raise", "reps", 3, 12, 20),
                 Block("Tibialis Raise", "reps", 3, 12, 20),
                 Block("Side Plank", "iso", 3, 20, 40),
-                Block("Push Up", "reps", 3, 5, 12),
             ],
             "C": [
                 Block("Wall Sit", "iso", 3, 20, 45),
                 Block("Terminal Knee Extension", "reps", 3, 10, 15),
-                Block("Standing Hip Abduction", "reps", 3, 10, 15),
-                Block("Sit Up", "reps", 3, 8, 15),
+                Block("Prone Y Raise", "reps", 3, 8, 15),
                 Block("Tricep Dip", "reps", 3, 5, 12),
+                Block("Bird Dog", "reps", 3, 6, 12),
+                Block("Sit Up", "reps", 3, 8, 15),
             ],
         },
     },
     2: {
         "label": "Load",
-        "aim": "Introduce eccentric control and light external load.",
-        "themes": {"A": "Squat and push", "B": "Hinge and pull",
-                   "C": "Single-leg control and shoulders"},
+        "aim": "Eccentric control and light external load, with pulling matched "
+               "to the pushing.",
+        "themes": {"A": "Squat, pull and core",
+                   "B": "Hinge, press and calves",
+                   "C": "Single-leg control, press and pull"},
         "days": {
             "A": [
                 Block("Spanish Squat", "iso", 2, 30, 45),
                 Block("Goblet Squat", "load", 3, 8, 12),
                 Block("Standing Hip Abduction", "reps", 3, 12, 15),
+                Block("Dumbbell Row", "load", 3, 8, 12),
                 Block("Push Up", "reps", 3, 8, 15),
                 Block("Plank", "iso", 3, 30, 60),
             ],
             "B": [
                 Block("Romanian Deadlift", "load", 3, 8, 12),
                 Block("Single Leg Glute Bridge", "reps", 3, 10, 15),
-                Block("Dumbbell Row", "load", 3, 8, 12),
+                Block("Dumbbell Shoulder Press", "load", 3, 8, 12),
+                Block("Band Pull Apart", "reps", 3, 12, 20),
                 Block("Standing Calf Raise", "reps", 3, 12, 20),
                 Block("Side Plank", "iso", 3, 30, 45),
             ],
             "C": [
                 Block("Lateral Step Down", "reps", 3, 5, 10),
                 Block("Split Squat", "load", 3, 6, 10),
+                Block("Dumbbell Floor Press", "load", 3, 8, 12),
+                Block("Prone Y Raise", "reps", 3, 10, 15),
                 Block("Tibialis Raise", "reps", 3, 15, 20),
-                Block("Dumbbell Shoulder Press", "load", 3, 8, 12),
-                Block("Sit Up", "reps", 3, 10, 20),
+                Block("Dead Bug", "reps", 3, 8, 15),
             ],
         },
     },
     3: {
         "label": "Build",
-        "aim": "Heavier and deeper, towards downhill and telemark demands.",
-        "themes": {"A": "Squat and push", "B": "Hinge and pull",
-                   "C": "Single-leg control and shoulders"},
+        "aim": "Heavier and deeper, towards downhill and telemark demands, on a "
+               "balanced full-body base.",
+        "themes": {"A": "Squat, press and pull",
+                   "B": "Hinge, pull and press",
+                   "C": "Step-downs, squat and pull"},
         "days": {
             "A": [
                 Block("Goblet Squat", "load", 4, 6, 10),
                 Block("Split Squat", "load", 3, 8, 12),
                 Block("Standing Hip Abduction", "reps", 3, 12, 20),
                 Block("Dumbbell Floor Press", "load", 3, 8, 12),
+                Block("Dumbbell Row", "load", 3, 8, 12),
                 Block("Plank", "iso", 3, 45, 75),
             ],
             "B": [
                 Block("Romanian Deadlift", "load", 4, 6, 10),
                 Block("Dumbbell Row", "load", 3, 8, 12),
+                Block("Dumbbell Shoulder Press", "load", 3, 8, 12),
                 Block("Single Leg Glute Bridge", "reps", 3, 12, 20),
                 Block("Standing Calf Raise", "reps", 3, 12, 20),
                 Block("Side Plank", "iso", 3, 40, 60),
@@ -225,8 +241,9 @@ KNEE_PHASES = {
                 Block("Lateral Step Down", "reps", 3, 8, 12),
                 Block("Anterior Step Down", "reps", 3, 8, 12),
                 Block("Box Squat", "load", 3, 8, 12),
-                Block("Dumbbell Shoulder Press", "load", 3, 8, 12),
+                Block("Band Pull Apart", "reps", 3, 15, 25),
                 Block("Bicep Curl", "load", 2, 10, 15),
+                Block("Dead Bug", "reps", 3, 10, 20),
             ],
         },
     },
@@ -272,8 +289,12 @@ PROGRAMS = {
     },
     "knee": {
         "label": "Knee stability",
-        "blurb": "Front-loads knee tolerance and control, for knees that are the "
-                 "limiting factor.",
+        "blurb": "Knee tolerance and control first, on a full-body base. Includes "
+                 "a tai chi and kung fu practice around each session.",
+        # Not offered to everyone: it carries someone's personal martial
+        # practice, which would be baffling to anyone else. Visible only to
+        # accounts it has been unlocked for.
+        "private": True,
         "phases": KNEE_PHASES,
         "maintenance": KNEE_MAINTENANCE,
         "assessment": KNEE_ASSESSMENT,

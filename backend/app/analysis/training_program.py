@@ -35,6 +35,37 @@ def user_focus(db, user_id) -> str:
     return focus if focus in PROGRAMS else DEFAULT_FOCUS
 
 
+def unlocked_programs(profile) -> set:
+    """Private programmes this account may use.
+
+    Kept on the profile rather than keyed to a name or id in the source: the
+    repository is not the place to record who somebody is, and a list means
+    unlocking a second person needs no code change.
+    """
+    unlocked = set()
+    if profile is not None and profile.equipment_json:
+        try:
+            data = json.loads(profile.equipment_json)
+            if isinstance(data.get("programs"), list):
+                unlocked = {str(x) for x in data["programs"]}
+        except (ValueError, TypeError):
+            pass
+    # Whatever is already selected stays selectable, so nobody can switch away
+    # from a programme and then find they cannot switch back.
+    current = getattr(profile, "focus", None)
+    if current:
+        unlocked.add(current)
+    return unlocked
+
+
+def visible_programs(profile) -> dict:
+    unlocked = unlocked_programs(profile)
+    return {
+        key: spec for key, spec in PROGRAMS.items()
+        if not spec.get("private") or key in unlocked
+    }
+
+
 def program(focus: str) -> dict:
     return PROGRAMS.get(focus, PROGRAMS[DEFAULT_FOCUS])
 
@@ -207,6 +238,7 @@ TRAVEL_SUBSTITUTES = {
     "lateral band walk": ("Side Lying Hip Abduction", "reps", 10, 20),
     "dumbbell shoulder press": ("Pike Push Up", "reps", 5, 12),
     "dumbbell floor press": ("Push Up", "reps", 8, 15),
+    "band pull apart": ("Prone Y Raise", "reps", 8, 15),
     "standing calf raise": ("Standing Calf Raise", "reps", 12, 20),
 }
 

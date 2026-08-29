@@ -14,7 +14,8 @@ from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
 from app.analysis.training_program import (
-    ALWAYS_AVAILABLE, available_equipment, build_session, program, user_focus,
+    ALWAYS_AVAILABLE, available_equipment, build_session, program,
+    user_focus, visible_programs,
 )
 from app.data.programs import DEFAULT_FOCUS, PROGRAMS
 from app.data.exercise_library import LIBRARY
@@ -274,12 +275,14 @@ def list_focus(
 ):
     """The programmes on offer, and which one is selected."""
     current = user_focus(db, current_user.user_id)
+    profile = db.query(TrainingProfile).filter(
+        TrainingProfile.user_id == current_user.user_id).first()
     return {
         "current": current,
         "options": [
             {"key": key, "label": spec["label"], "blurb": spec["blurb"],
              "selected": key == current}
-            for key, spec in PROGRAMS.items()
+            for key, spec in visible_programs(profile).items()
         ],
     }
 
@@ -293,13 +296,16 @@ def set_focus(
     """Switch programme. Logged history is kept: it is the same exercises and
     the same progression rules, only a different selection of them."""
     focus = str(payload.get("focus") or "")
-    if focus not in PROGRAMS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unknown programme. Choose one of: {', '.join(PROGRAMS)}.",
-        )
     p = db.query(TrainingProfile).filter(
         TrainingProfile.user_id == current_user.user_id).first()
+    allowed = visible_programs(p)
+    if focus not in allowed:
+        # A private programme reads as unknown rather than forbidden: there is
+        # no reason to tell one account what another one is using.
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown programme. Choose one of: {', '.join(allowed)}.",
+        )
     if p is None:
         p = TrainingProfile(user_id=current_user.user_id)
         db.add(p)
