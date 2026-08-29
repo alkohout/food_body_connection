@@ -114,9 +114,26 @@
             id="new-symptom-name"
             placeholder="New symptom name"
           />
+          <input
+            type="text"
+            id="new-symptom-group"
+            list="symptom-group-options"
+            placeholder="Group (e.g. Musculoskeletal)"
+          />
           <button type="button" class="secondary" id="add-symptom-btn">Add</button>
         </div>
       </div>
+
+      <datalist id="symptom-group-options"></datalist>
+
+      <!-- Editing symptoms: a name typed in a hurry used to be permanent, and
+           a symptom with no group is missing from the grouped analysis. -->
+      <section class="med-section">
+        <button type="button" id="sym-manage-toggle" class="secondary" style="width:auto">
+          Edit my symptoms
+        </button>
+        <div id="sym-manage" class="tr-panel" style="display:none"></div>
+      </section>
 
       <input type="hidden" id="symptom-id">
 

@@ -462,7 +462,7 @@ const populateSymptomSelect = (symptoms, recentSymptoms) => {
   }
 };
 
-async function addNewSymptom(name) {
+async function addNewSymptom(name, group) {
   const token = localStorage.getItem("access_token");
   if (!token) return;
 
@@ -473,7 +473,7 @@ async function addNewSymptom(name) {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       },
-      body: JSON.stringify({ symptom_name: name })
+      body: JSON.stringify({ symptom_name: name, symptom_group: group || null })
     });
 
     if (!res.ok) {
@@ -512,8 +512,12 @@ function setupAddSymptom() {
   addBtn.addEventListener("click", async () => {
     const name = nameInput.value.trim();
     if (!name) return alert("Enter a symptom name");
-    const created = await addNewSymptom(name);
+    // Grouping at creation, because a symptom added without one is absent
+    // from the grouped analysis and nothing says so.
+    const groupInput = getElement("new-symptom-group");
+    const created = await addNewSymptom(name, groupInput ? groupInput.value.trim() : "");
     if (!created) return;
+    if (groupInput) groupInput.value = "";
 
     // Select newly created symptom
     select.value = created.symptom_id;
@@ -2558,6 +2562,7 @@ async function init() {
     // Set up UI components
     setupLogout();
     setupTraining();
+    setupSymptomManager();
     setupDefaults();
     setupTabs();
 
@@ -4466,4 +4471,119 @@ async function trFinishSession() {
   trRenderSession();
   await trLoadPlan();
   await trLoadHistory();
+}
+
+
+// =========================================================
+// Editing symptoms
+//
+// Names and groups were fixed at creation. A group matters more than it
+// looks: the analysis groups symptom events by it, and rows with no group
+// are dropped rather than counted, so an ungrouped symptom is quietly
+// missing from the model and the summary.
+// =========================================================
+
+async function symLoadManager() {
+  const box = getElement("sym-manage");
+  if (!box) return;
+  box.replaceChildren(trEl("p", "Loading…", "tr-hint"));
+
+  const token = localStorage.getItem("access_token");
+  const res = await fetch(`${API_URL}/symptoms`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    box.replaceChildren(trEl("p", `Could not load symptoms (${res.status}).`, "tr-hint"));
+    return;
+  }
+  const symptoms = await res.json();
+
+  // Offer the groups already in use rather than inventing a fixed list.
+  const groups = [...new Set(symptoms.map((s) => s.symptom_group).filter(Boolean))].sort();
+  const datalist = getElement("symptom-group-options");
+  if (datalist) {
+    datalist.replaceChildren();
+    groups.forEach((g) => {
+      const o = document.createElement("option");
+      o.value = g;
+      datalist.appendChild(o);
+    });
+  }
+
+  box.replaceChildren();
+  const ungrouped = symptoms.filter((s) => !s.symptom_group).length;
+  if (ungrouped) {
+    box.appendChild(trEl("p",
+      `${ungrouped} symptom${ungrouped === 1 ? " has" : "s have"} no group. `
+      + "Grouped analysis skips those, so they are missing from the model and "
+      + "the AI summary.", "tr-warn"));
+  }
+
+  symptoms
+    .slice()
+    .sort((a, b) => Number(Boolean(a.symptom_group)) - Number(Boolean(b.symptom_group))
+      || a.symptom_name.localeCompare(b.symptom_name))
+    .forEach((s) => {
+      const row = trEl("div", null, "sym-edit-row");
+      const name = document.createElement("input");
+      name.type = "text";
+      name.value = s.symptom_name;
+      const group = document.createElement("input");
+      group.type = "text";
+      group.setAttribute("list", "symptom-group-options");
+      group.value = s.symptom_group || "";
+      group.placeholder = "no group";
+      if (!s.symptom_group) group.classList.add("sym-nogroup");
+
+      const save = trEl("button", "Save", "secondary");
+      save.type = "button";
+      const status = trEl("span", "", "tr-hint");
+      save.addEventListener("click", async () => {
+        status.textContent = "Saving…";
+        const r = await fetch(`${API_URL}/symptoms/${s.symptom_id}`, {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            symptom_name: name.value.trim(),
+            symptom_group: group.value.trim(),
+          }),
+        });
+        if (!r.ok) {
+          let msg = `Failed (${r.status})`;
+          try {
+            const body = await r.json();
+            if (body.detail) msg = body.detail;
+          } catch (err) { /* keep the status code */ }
+          status.textContent = msg;
+          return;
+        }
+        status.textContent = "Saved.";
+        // fetchSymptoms only fetches; the dropdown and the cache both have to
+        // be refreshed too, or the old name stays on screen until a reload.
+        try {
+          const fresh = await fetchSymptoms();
+          const recent = await fetchRecentSymptoms(5);
+          cachedSymptoms = fresh || [];
+          populateSymptomSelect(fresh, recent);
+        } catch (err) {
+          console.error("Could not refresh the symptom list:", err);
+        }
+        await symLoadManager();
+      });
+
+      row.append(name, group, save, status);
+      box.appendChild(row);
+    });
+}
+
+function setupSymptomManager() {
+  const btn = getElement("sym-manage-toggle");
+  if (!btn) return;
+  btn.addEventListener("click", async () => {
+    const box = getElement("sym-manage");
+    if (!box) return;
+    const opening = box.style.display === "none";
+    box.style.display = opening ? "" : "none";
+    if (opening) await symLoadManager();
+  });
 }
