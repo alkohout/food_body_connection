@@ -367,41 +367,68 @@ def _prescribe(block, ex, last_sets, action, loads):
     if action == "back_off":
         sets = max(2, block.sets - 1)
 
+    # What was actually completed last time. Two rules apply throughout:
+    #
+    #   - the weakest set counts, not the best one. Progressing off the
+    #     freshest set while the last one was fading is how a programme runs
+    #     away from the person following it.
+    #   - the sets have to have been finished. Managing one set of three and
+    #     being asked for more next time punishes logging honestly, which is
+    #     the one thing this whole system depends on.
+    #
+    # The load scheme already worked this way; the others did not.
+    expected = block.sets * (2 if ex.is_unilateral else 1)
+    complete = len(last_sets) >= expected
+    short = f"Only {len(last_sets)} of {expected} sets last time"
+
     if block.scheme == "check":
         detail = "Practise it"
         why = "Tick it off — logged so the knee load is on the record."
         target = None
 
     elif block.scheme == "iso":
-        if last_sets:
-            best = max((s.hold_seconds or 0) for s in last_sets)
-        else:
-            best = 0
+        holds = [(s.hold_seconds or 0) for s in last_sets]
+        top, weakest = (max(holds), min(holds)) if holds else (0, 0)
         if action == "back_off":
-            target = max(block.low, int(best * 0.8) or block.low)
+            target = max(block.low, int(top * 0.8) or block.low)
             why = "Held back while the knee settles."
-        elif action == "hold" or not best:
-            target = max(block.low, best or block.low)
-            why = "Repeat last time's hold." if best else "Starting point."
+        elif action == "hold" or not top:
+            target = max(block.low, top or block.low)
+            why = "Repeat last time's hold." if top else "Starting point."
+        elif not complete:
+            target = max(block.low, min(top, block.high))
+            why = f"{short} — repeat it before going longer."
+        elif weakest < top:
+            # Worked at `top` and one set fell short of it, so the prescription
+            # was not completed. Repeat it rather than asking for more.
+            target = max(block.low, min(top, block.high))
+            why = f"Last set dropped to {weakest}s — repeat {target}s before going longer."
         else:
-            target = min(block.high, (best or block.low) + 5)
-            why = f"Up 5s on last time's {best}s." if best else "Starting point."
+            target = min(block.high, top + 5)
+            why = f"Every set held {top}s — up 5s."
         detail = f"{sets} x {target}s hold"
 
     elif block.scheme == "reps":
-        best = max((s.reps or 0) for s in last_sets) if last_sets else 0
+        counts = [(s.reps or 0) for s in last_sets]
+        top, weakest = (max(counts), min(counts)) if counts else (0, 0)
         if action == "back_off":
-            target = max(block.low, int(best * 0.8) or block.low)
+            target = max(block.low, int(top * 0.8) or block.low)
             why = "Volume cut while the knee settles."
-        elif action == "hold" or not best:
-            target = max(block.low, min(best or block.low, block.high))
-            why = "Repeat last time." if best else "Starting point."
-        elif best >= block.high:
+        elif action == "hold" or not top:
+            target = max(block.low, min(top or block.low, block.high))
+            why = "Repeat last time." if top else "Starting point."
+        elif not complete:
+            target = max(block.low, min(top, block.high))
+            why = f"{short} — repeat it before adding reps."
+        elif weakest < top:
+            target = max(block.low, min(top, block.high))
+            why = f"Last set dropped to {weakest} — repeat {target} before adding."
+        elif top >= block.high:
             target = block.high
-            why = f"At the top of the range — hold {block.high} and slow the tempo."
+            why = f"Every set at {block.high} — hold there and slow the tempo."
         else:
-            target = min(block.high, best + 1)
-            why = f"One more rep than last time's {best}."
+            target = min(block.high, top + 1)
+            why = f"Every set hit {top} — one more."
         detail = f"{sets} x {target} reps"
         if ex.is_unilateral:
             detail += " each side"
@@ -409,7 +436,9 @@ def _prescribe(block, ex, last_sets, action, loads):
     else:  # load
         prev = [s for s in last_sets if s.weight_kg is not None]
         last_w = max((s.weight_kg for s in prev), default=None)
-        last_reps = min((s.reps or 0) for s in prev) if prev else 0
+        counts = [(s.reps or 0) for s in prev]
+        top_reps = max(counts) if counts else 0
+        last_reps = min(counts) if counts else 0
         rpes = [s.rpe for s in prev if s.rpe is not None]
         easy = all(r <= RPE_CEILING for r in rpes) if rpes else True
 
@@ -424,14 +453,28 @@ def _prescribe(block, ex, last_sets, action, loads):
         elif action == "hold":
             weight, target = last_w, max(block.low, last_reps)
             why = "Same load again."
+        elif not complete:
+            weight, target = last_w, max(block.low, top_reps)
+            why = f"{short} — repeat it before adding load."
+        elif last_reps < top_reps:
+            weight, target = last_w, max(block.low, top_reps)
+            why = f"Last set dropped to {last_reps} — repeat {target} at {last_w}kg."
         elif last_reps >= block.high and easy:
             weight = _next_load(last_w, loads, up=True)
             target = block.low
-            why = (f"You hit {block.high} reps at {last_w}kg, so load goes up and "
+            why = (f"Every set hit {block.high} at {last_w}kg, so load goes up and "
                    f"reps reset to {block.low}.")
         else:
-            weight, target = last_w, min(block.high, last_reps + 1)
-            why = f"One more rep at {last_w}kg before adding weight."
+            weight, target = last_w, min(block.high, top_reps + 1)
+            if target <= top_reps:
+                # Already at the top of the range, held back by effort rather
+                # than by reps, so say that instead of "one more rep".
+                hardest = max(rpes) if rpes else None
+                why = (f"{top_reps} reps at {last_w}kg but RPE {hardest} — repeat "
+                       f"before adding load." if hardest
+                       else f"Repeat {top_reps} at {last_w}kg.")
+            else:
+                why = f"One more rep at {last_w}kg before adding weight."
         detail = f"{sets} x {target} reps"
         if ex.is_unilateral:
             detail += " each side"
