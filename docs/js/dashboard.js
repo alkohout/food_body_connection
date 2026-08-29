@@ -3867,6 +3867,14 @@ function trRenderRunner() {
 
   body.appendChild(trEl("h4", b.exercise));
   body.appendChild(trEl("p", b.prescription));
+  // Strength comes from working close to your limit, not from reaching it, so
+  // the target is a stopping point rather than a challenge.
+  const effort = {
+    load: "Stop about 2 reps short of failure — that is the point of the number.",
+    reps: "Stop about 2 reps short of failure, or when form goes.",
+    iso: "Stop when form breaks, not at collapse.",
+  }[b.scheme];
+  if (effort) body.appendChild(trEl("p", effort, "tr-hint"));
   if (b.why) body.appendChild(trEl("p", b.why, "logs-loading"));
   if (b.form_cues) body.appendChild(trEl("p", b.form_cues, "tr-cues"));
   if (b.video_url) {

@@ -202,6 +202,13 @@ SET_PAIN_HOLD = 3         # >= this -> hold progression rather than back off
 RPE_CEILING = 8           # progress load only if the last sets were <= this
 RECENT_SCORES = 5         # how many recent next-day scores decide a phase
 MIN_EXERCISES_FOR_CREDIT = 3   # exercises needed for a session to count
+STALL_SESSIONS = 3        # identical failed attempts before backing the target off
+STALL_FACTOR = 0.75       # how far back a stalled target drops
+# A stalled target has to be allowed below the prescribed range, or the range's
+# own floor blocks the reduction and the loop survives the fix. These are the
+# absolute floors; at them, the exercise itself is the problem.
+REPS_FLOOR = 5
+SECONDS_FLOOR = 10
 
 
 def achievable_loads(profile) -> list[float]:
@@ -264,6 +271,56 @@ def _last_sets(db, user_id, exercise_id):
         return [], None
     latest = max(s.date_time for _, s in dated)
     return [st for st, s in dated if s.date_time == latest], latest
+
+
+def _stalled(db, user_id, exercise_id, scheme) -> bool:
+    """Has this exercise been stuck at the same failed target for a while?
+
+    Repeating a target the person cannot complete is not a training plan, it is
+    a loop. Three attempts at the identical figure without meeting it means the
+    target is too hard, not that they need to try harder.
+
+    "Identical" matters: a figure that is merely unchanged would also describe
+    someone sitting at the top of a rep range and succeeding, who should not be
+    dropped back. So a stall needs the last attempt to have actually fallen
+    short as well.
+    """
+    rows = (
+        db.query(SetLog, WorkoutSession)
+        .join(WorkoutSession, SetLog.session_id == WorkoutSession.session_id)
+        .filter(SetLog.user_id == user_id, SetLog.exercise_id == exercise_id)
+        .all()
+    )
+    by_session = {}
+    for st, s in rows:
+        if s.date_time:
+            by_session.setdefault(s.date_time, []).append(st)
+    if len(by_session) < STALL_SESSIONS:
+        return False
+
+    field = {"iso": "hold_seconds", "reps": "reps", "load": "reps"}.get(scheme)
+    if field is None:
+        return False
+
+    signatures, recent = [], sorted(by_session, reverse=True)[:STALL_SESSIONS]
+    for when in recent:
+        sets = by_session[when]
+        vals = [getattr(x, field) or 0 for x in sets]
+        top = max(vals) if vals else 0
+        if scheme == "load":
+            weights = [x.weight_kg for x in sets if x.weight_kg is not None]
+            signatures.append((max(weights) if weights else 0, top))
+        else:
+            signatures.append(top)
+
+    if len(set(signatures)) != 1:
+        return False
+
+    # The most recent attempt must have fallen short, or this is someone
+    # holding steady at the top of a range on purpose.
+    latest = by_session[recent[0]]
+    vals = [getattr(x, field) or 0 for x in latest]
+    return bool(vals) and min(vals) < max(vals)
 
 
 def knee_state(db, user_id) -> dict:
@@ -398,7 +455,8 @@ def current_phase(db, user_id) -> dict:
             "to_advance": to_advance}
 
 
-def _prescribe(block, ex, last_sets, action, loads, last_done=None):
+def _prescribe(block, ex, last_sets, action, loads, last_done=None,
+               stalled=False):
     """Turn one template block plus history into a concrete instruction."""
     sets = block.sets
     detail, why = "", ""
@@ -438,6 +496,15 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None):
         elif not complete:
             target = max(block.low, min(top, block.high))
             why = f"{short} — repeat it before going longer."
+        elif stalled:
+            target = max(SECONDS_FLOOR, int(top * STALL_FACTOR))
+            if target >= top:
+                why = (f"Stuck at {top}s for {STALL_SESSIONS} sessions and already "
+                       f"as low as this hold goes — swap it for an easier "
+                       f"variation rather than grinding at it.")
+            else:
+                why = (f"Stuck at {top}s for {STALL_SESSIONS} sessions without "
+                       f"finishing it — dropping to {target}s to build back up.")
         elif weakest < top:
             # Worked at `top` and one set fell short of it, so the prescription
             # was not completed. Repeat it rather than asking for more.
@@ -460,6 +527,15 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None):
         elif not complete:
             target = max(block.low, min(top, block.high))
             why = f"{short} — repeat it before adding reps."
+        elif stalled:
+            target = max(REPS_FLOOR, int(top * STALL_FACTOR))
+            if target >= top:
+                why = (f"Stuck at {top} for {STALL_SESSIONS} sessions and already "
+                       f"as low as this goes — swap it for an easier variation "
+                       f"rather than grinding at it.")
+            else:
+                why = (f"Stuck at {top} for {STALL_SESSIONS} sessions without "
+                       f"finishing it — dropping to {target} to build back up.")
         elif weakest < top:
             target = max(block.low, min(top, block.high))
             why = f"Last set dropped to {weakest} — repeat {target} before adding."
@@ -496,6 +572,16 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None):
         elif not complete:
             weight, target = last_w, max(block.low, top_reps)
             why = f"{short} — repeat it before adding load."
+        elif stalled:
+            weight = _next_load(last_w, loads, up=False)
+            target = block.low
+            if weight == last_w:
+                why = (f"Stuck at {last_w}kg for {STALL_SESSIONS} sessions and "
+                       f"there is no lighter load to build — swap it for an "
+                       f"easier variation rather than grinding at it.")
+            else:
+                why = (f"Stuck at {last_w}kg for {STALL_SESSIONS} sessions without "
+                       f"finishing it — back to {weight}kg to build up again.")
         elif last_reps < top_reps:
             weight, target = last_w, max(block.low, top_reps)
             why = f"Last set dropped to {last_reps} — repeat {target} at {last_w}kg."
@@ -644,7 +730,10 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
             missing.append(block.name)
             continue
         prior, when = _last_sets(db, user_id, ex.exercise_id)
-        item = _prescribe(block, ex, prior, knee["action"], loads, last_done=when)
+        item = _prescribe(
+            block, ex, prior, knee["action"], loads, last_done=when,
+            stalled=_stalled(db, user_id, ex.exercise_id, block.scheme),
+        )
         item["group"] = group
         blocks.append(item)
 
