@@ -21,11 +21,11 @@ from app.data.programs import DEFAULT_FOCUS, PROGRAMS
 from app.data.exercise_library import LIBRARY
 from app.database import get_db
 from app.models.table_class import (
-    Exercise, SetLog, TrainingProfile, User, WorkoutSession,
+    Exercise, PracticeItem, SetLog, TrainingProfile, User, WorkoutSession,
 )
 from app.schemas import (
     ExerciseCreate, ExerciseOut,
-    SetCreate, SetUpdate, SessionCreate, SessionUpdate,
+    SetCreate, SetUpdate, SessionCreate, SessionUpdate, PracticeItemIn,
     TrainingProfileIn, TrainingProfileOut,
 )
 
@@ -507,3 +507,119 @@ def assessment(
             "pain goes above 3/10. Log it as a session of type 'assessment'."
         ),
     }
+
+
+# ── Practice ─────────────────────────────────────────────────────────────────
+
+def _practice_out(item: PracticeItem) -> dict:
+    return {
+        "practice_item_id": item.practice_item_id,
+        "exercise_id": item.exercise_id,
+        "exercise": item.exercise.exercise_name if item.exercise else None,
+        "slot": item.slot,
+        "position": item.position,
+        "scheme": item.scheme,
+        "sets": item.sets,
+        "low": item.low,
+        "high": item.high,
+        "alternates_with_id": item.alternates_with_id,
+        "alternates_with": item.alternate.exercise_name if item.alternate else None,
+    }
+
+
+def _user_practice(db, user_id):
+    return sorted(
+        db.query(PracticeItem).filter(PracticeItem.user_id == user_id).all(),
+        key=lambda i: (i.slot != "before", i.position, i.practice_item_id),
+    )
+
+
+@router.get("/practice")
+def list_practice(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """The user's own routine. Empty means the programme's default is used."""
+    items = _user_practice(db, current_user.user_id)
+    return {
+        "items": [_practice_out(i) for i in items],
+        "using_default": not items,
+    }
+
+
+def _own_exercise(db, user_id, exercise_id):
+    ex = db.query(Exercise).filter(
+        Exercise.exercise_id == exercise_id, Exercise.user_id == user_id
+    ).first()
+    if ex is None:
+        raise HTTPException(status_code=404, detail="Exercise not found.")
+    return ex
+
+
+@router.post("/practice", status_code=201)
+def add_practice(
+    payload: PracticeItemIn,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _own_exercise(db, current_user.user_id, payload.exercise_id)
+    if payload.alternates_with_id is not None:
+        _own_exercise(db, current_user.user_id, payload.alternates_with_id)
+        if payload.alternates_with_id == payload.exercise_id:
+            raise HTTPException(
+                status_code=400,
+                detail="An exercise cannot alternate with itself.",
+            )
+
+    # Append to the end of its slot.
+    tail = [i for i in _user_practice(db, current_user.user_id) if i.slot == payload.slot]
+    item = PracticeItem(
+        user_id=current_user.user_id,
+        position=(tail[-1].position + 1) if tail else 0,
+        **payload.model_dump(),
+    )
+    db.add(item)
+    db.commit()
+    return {"items": [_practice_out(i) for i in _user_practice(db, current_user.user_id)]}
+
+
+@router.patch("/practice/{item_id}")
+def move_practice(
+    item_id: int,
+    direction: str = Query(..., pattern="^(up|down)$"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Reorder within a slot. Order matters: a warm-up before, a wind-down after."""
+    items = _user_practice(db, current_user.user_id)
+    item = next((i for i in items if i.practice_item_id == item_id), None)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Practice item not found.")
+
+    same = [i for i in items if i.slot == item.slot]
+    idx = same.index(item)
+    swap = idx - 1 if direction == "up" else idx + 1
+    if 0 <= swap < len(same):
+        # Renumber the whole slot rather than swapping two values, so positions
+        # stay contiguous however the rows were created.
+        same[idx], same[swap] = same[swap], same[idx]
+        for n, i in enumerate(same):
+            i.position = n
+        db.commit()
+    return {"items": [_practice_out(i) for i in _user_practice(db, current_user.user_id)]}
+
+
+@router.delete("/practice/{item_id}", status_code=204)
+def remove_practice(
+    item_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    item = db.query(PracticeItem).filter(
+        PracticeItem.practice_item_id == item_id,
+        PracticeItem.user_id == current_user.user_id,
+    ).first()
+    if item is None:
+        raise HTTPException(status_code=404, detail="Practice item not found.")
+    db.delete(item)
+    db.commit()

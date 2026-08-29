@@ -28,6 +28,7 @@ class User(Base):
     workout_sessions = relationship("WorkoutSession", back_populates="user", cascade="all, delete-orphan")
     set_logs = relationship("SetLog", back_populates="user", cascade="all, delete-orphan")
     training_profile = relationship("TrainingProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    practice_items = relationship("PracticeItem", back_populates="user", cascade="all, delete-orphan")
 
 class Allergen(Base):
     __tablename__ = 'allergen'
@@ -338,3 +339,39 @@ class TrainingProfile(Base):
                         onupdate=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="training_profile")
+
+
+class PracticeItem(Base):
+    """A user's own routine, bookending the prescribed strength work.
+
+    The tai chi and kung fu that used to be hard-coded into one programme
+    lives here instead, so anyone can build their own — yoga, a warm-up, a
+    walk — without it being someone else's practice appended to their session.
+    """
+    __tablename__ = 'practice_item'
+
+    practice_item_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False)
+    exercise_id = Column(Integer, ForeignKey('exercise.exercise_id'), nullable=False)
+
+    slot = Column(String(10), nullable=False, default='before')   # before | after
+    position = Column(Integer, nullable=False, default=0)
+
+    # check = it either happened or it did not, which is most practice.
+    scheme = Column(String(10), nullable=False, default='check')  # check | reps | iso
+    sets = Column(Integer, nullable=False, default=1)
+    low = Column(Integer, nullable=False, default=0)
+    high = Column(Integer, nullable=False, default=0)
+
+    # Two things done in turn — the 42 and 37 forms, or left and right routines.
+    # Whichever was practised last, the other is due.
+    alternates_with_id = Column(Integer, ForeignKey('exercise.exercise_id'), nullable=True)
+
+    user = relationship("User", back_populates="practice_items")
+    exercise = relationship("Exercise", foreign_keys=[exercise_id])
+    alternate = relationship("Exercise", foreign_keys=[alternates_with_id])
+
+    __table_args__ = (
+        CheckConstraint("slot IN ('before', 'after')", name='check_practice_slot'),
+        CheckConstraint("scheme IN ('check', 'reps', 'iso')", name='check_practice_scheme'),
+    )

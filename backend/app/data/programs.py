@@ -317,29 +317,17 @@ PROGRAMS = {
 
 DEFAULT_FOCUS = "general"
 
-# The practice that bookends a session. This really belongs to the person
-# rather than to the programme — tai chi has nothing to do with knees — but
-# per-user practice is a bigger feature than this, and appending someone
-# else's martial routine to every user's session would be worse than the
-# approximation. Whoever needs their own can have it made configurable.
-TAI_CHI_FORM = "__TAI_CHI_FORM__"
-TAI_CHI_FORMS = ["Tai Chi Form 42", "Tai Chi Form 37"]
-
+# What bookends a session when the user has not built their own routine. A
+# starting point only: practice is personal — tai chi, yoga, a warm-up walk —
+# and lives in the practice_item table, not in a programme. Appending one
+# person's martial routine to everybody's session was never right.
 PRACTICE = {
     "general": {
         "before": [],
         "after": [Block("Stretches", "check", 1, 0, 0)],
     },
     "knee": {
-        "before": [
-            Block("Tai Chi Exercises", "check", 1, 0, 0),
-            Block(TAI_CHI_FORM, "check", 1, 0, 0),
-            Block("Tai Chi Sword", "check", 1, 0, 0),
-        ],
-        "after": [
-            Block("Stretches", "check", 1, 0, 0),
-            Block("Kung Fu Pattern", "check", 1, 0, 0),
-            Block("Side Kick", "reps", 2, 10, 20),
-        ],
+        "before": [],
+        "after": [Block("Stretches", "check", 1, 0, 0)],
     },
 }

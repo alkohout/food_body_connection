@@ -131,3 +131,33 @@ class TrainingProfileOut(BaseModel):
     updated_at: Optional[datetime]
 
     model_config = {"from_attributes": True}
+
+
+# ── Practice ─────────────────────────────────────────────────────────────────
+
+Slot = Literal["before", "after"]
+PracticeScheme = Literal["check", "reps", "iso"]
+
+
+class PracticeItemIn(BaseModel):
+    exercise_id: int
+    slot: Slot = "before"
+    scheme: PracticeScheme = "check"
+    sets: int = Field(default=1, ge=1, le=10)
+    low: int = Field(default=0, ge=0)
+    high: int = Field(default=0, ge=0)
+    alternates_with_id: Optional[int] = None
+
+
+class PracticeItemOut(BaseModel):
+    practice_item_id: int
+    exercise_id: int
+    exercise: str
+    slot: str
+    position: int
+    scheme: str
+    sets: int
+    low: int
+    high: int
+    alternates_with_id: Optional[int]
+    alternates_with: Optional[str]

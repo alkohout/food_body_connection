@@ -3682,7 +3682,7 @@ function setupTraining() {
     if (!sec) return;
     const opening = sec.style.display === "none";
     sec.style.display = opening ? "" : "none";
-    if (opening) await trLoadEquipment();
+    if (opening) await trRenderEquipmentPanel();
   });
   const manBtn = getElement("tr-manual-toggle");
   if (manBtn) manBtn.addEventListener("click", () => {
@@ -3799,7 +3799,133 @@ let trKindOverride = null;
 // Kit arrives in instalments, so what is available is a list rather than a
 // home/away flag. It lives on the profile, not in this browser: it describes
 // what the user owns, which does not change because they opened a laptop.
-async function trLoadEquipment() {
+// Your own routine: what you do around the prescribed work. The tai chi and
+// kung fu that used to be built into one programme is just rows here now, so
+// anyone can build their own.
+async function trRenderPractice(host) {
+  const res = await fetch(`${API_URL}/training/practice`, { headers: trAuth() });
+  if (!res.ok) return;
+  const data = await res.json();
+
+  const card = trEl("div", null, "tr-card");
+  card.appendChild(trEl("p", "My routine", "tr-card-title"));
+  card.appendChild(trEl("p",
+    "Anything you do around the prescribed work — a warm-up, tai chi, a walk, "
+    + "stretches. Before comes first in the session, after comes last.",
+    "tr-hint"));
+  if (data.using_default) {
+    card.appendChild(trEl("p",
+      "Nothing set, so your sessions end with stretches. Add anything you like.",
+      "tr-hint"));
+  }
+
+  const refresh = async () => {
+    await trRenderEquipmentPanel();
+    await trLoadPlan();
+  };
+
+  ["before", "after"].forEach((slot) => {
+    const rows = data.items.filter((i) => i.slot === slot);
+    if (!rows.length) return;
+    card.appendChild(trEl("p", slot === "before" ? "Before the strength work"
+                                                 : "After the strength work", "tr-hint"));
+    rows.forEach((item, idx) => {
+      const row = trEl("div", null, "tr-equip-row");
+      const name = trEl("span");
+      name.appendChild(trEl("div", item.exercise));
+      const bits = [];
+      if (item.scheme === "reps") bits.push(`${item.sets} x ${item.low}-${item.high} reps`);
+      if (item.scheme === "iso") bits.push(`${item.sets} x ${item.low}-${item.high}s`);
+      if (item.alternates_with) bits.push(`alternates with ${item.alternates_with}`);
+      if (bits.length) name.appendChild(trEl("div", bits.join(" · "), "tr-hint"));
+      row.appendChild(name);
+
+      const move = async (direction) => {
+        await fetch(`${API_URL}/training/practice/${item.practice_item_id}?direction=${direction}`,
+          { method: "PATCH", headers: trAuth() });
+        await refresh();
+      };
+      const up = trEl("button", "↑", "secondary");
+      up.type = "button";
+      up.disabled = idx === 0;
+      up.addEventListener("click", () => move("up"));
+      const down = trEl("button", "↓", "secondary");
+      down.type = "button";
+      down.disabled = idx === rows.length - 1;
+      down.addEventListener("click", () => move("down"));
+      const del = trEl("button", "Remove", "secondary");
+      del.type = "button";
+      del.addEventListener("click", async () => {
+        await fetch(`${API_URL}/training/practice/${item.practice_item_id}`,
+          { method: "DELETE", headers: trAuth() });
+        await refresh();
+      });
+      [up, down, del].forEach((b) => row.appendChild(b));
+      card.appendChild(row);
+    });
+  });
+
+  // Add an existing exercise to the routine.
+  const addRow = trEl("div", null, "tr-equip-row");
+  const pick = document.createElement("select");
+  trExercises.forEach((e) => {
+    const o = trEl("option", e.exercise_name);
+    o.value = e.exercise_id;
+    pick.appendChild(o);
+  });
+  const slotSel = document.createElement("select");
+  [["before", "Before"], ["after", "After"]].forEach(([v, l]) => {
+    const o = trEl("option", l); o.value = v; slotSel.appendChild(o);
+  });
+  const add = trEl("button", "Add", "secondary");
+  add.type = "button";
+  add.addEventListener("click", async () => {
+    await fetch(`${API_URL}/training/practice`, {
+      method: "POST",
+      headers: { ...trAuth(), "Content-Type": "application/json" },
+      body: JSON.stringify({ exercise_id: Number(pick.value), slot: slotSel.value }),
+    });
+    await refresh();
+  });
+  addRow.append(pick, slotSel, add);
+  card.appendChild(addRow);
+
+  // Create something the catalogue does not have.
+  const newRow = trEl("div", null, "tr-equip-row");
+  const nameIn = document.createElement("input");
+  nameIn.type = "text";
+  nameIn.placeholder = "New exercise, e.g. Yoga Flow";
+  const make = trEl("button", "Create", "secondary");
+  make.type = "button";
+  const status = trEl("span", "", "tr-hint");
+  make.addEventListener("click", async () => {
+    const name = nameIn.value.trim();
+    if (!name) return;
+    status.textContent = "Adding…";
+    const res = await fetch(`${API_URL}/training/exercises`, {
+      method: "POST",
+      headers: { ...trAuth(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        exercise_name: name, category: "mobility", target: "whole",
+        equipment: "none",
+      }),
+    });
+    if (!res.ok) {
+      status.textContent = `Could not add (${res.status}).`;
+      return;
+    }
+    nameIn.value = "";
+    status.textContent = "Added — now pick it above.";
+    await trLoadExercises();
+    await refresh();
+  });
+  newRow.append(nameIn, make, status);
+  card.appendChild(newRow);
+
+  host.appendChild(card);
+}
+
+async function trRenderEquipmentPanel() {
   const box = getElement("tr-equip");
   if (!box) return;
   box.replaceChildren(trEl("p", "Loading…", "tr-hint"));
@@ -3833,7 +3959,7 @@ async function trLoadEquipment() {
         });
         if (!save.ok) return;
         await trLoadPlan();
-        await trLoadEquipment();
+        await trRenderEquipmentPanel();
       });
       row.appendChild(radio);
       const text = trEl("span");
@@ -3844,6 +3970,8 @@ async function trLoadEquipment() {
     });
     box.appendChild(fCard);
   }
+
+  await trRenderPractice(box);
 
   const card = trEl("div", null, "tr-card");
   card.appendChild(trEl("p", "What have you got?", "tr-card-title"));
@@ -3876,7 +4004,7 @@ async function trLoadEquipment() {
         return;
       }
       await trLoadPlan();
-      await trLoadEquipment();
+      await trRenderEquipmentPanel();
     });
     row.appendChild(cb);
     row.appendChild(trEl("span", item.label));

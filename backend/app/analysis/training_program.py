@@ -21,11 +21,10 @@ import logging
 from collections import namedtuple
 from datetime import datetime, timedelta
 
-from app.data.programs import (
-    Block, DEFAULT_FOCUS, PRACTICE, PROGRAMS, TAI_CHI_FORM, TAI_CHI_FORMS,
-)
+from app.data.programs import Block, DEFAULT_FOCUS, PRACTICE, PROGRAMS
 from app.models.table_class import (
-    Exercise, SetLog, Symptom, SymptomLog, TrainingProfile, WorkoutSession,
+    Exercise, PracticeItem, SetLog, Symptom, SymptomLog, TrainingProfile,
+    WorkoutSession,
 )
 
 logger = logging.getLogger(__name__)
@@ -77,34 +76,27 @@ DAY_ORDER = ["A", "B", "C"]
 # The existing practice, appended to every day. "check" means there is nothing
 # to count — it either happened or it did not — which still records that the
 # knees were loaded that day.
-TAI_CHI_FORM = "__TAI_CHI_FORM__"          # resolved to 42 or 37 at build time
-TAI_CHI_FORMS = ["Tai Chi Form 42", "Tai Chi Form 37"]
+def due_of_pair(db, user_id, first_id, second_id):
+    """Of two exercises done in turn, whichever was not done last.
 
-def next_tai_chi_form(db, user_id) -> str:
-    """The form that is due, since the two alternate and are easy to lose track of.
-
-    Whichever was done most recently, the other one is next.
+    Ordered by session time then by set id, so two logged in the same session
+    fall back to the order they were entered — comparing anything else would
+    tie-break on something unrelated to which came last.
     """
     rows = (
-        db.query(SetLog, WorkoutSession, Exercise)
+        db.query(SetLog, WorkoutSession)
         .join(WorkoutSession, SetLog.session_id == WorkoutSession.session_id)
-        .join(Exercise, SetLog.exercise_id == Exercise.exercise_id)
-        .filter(SetLog.user_id == user_id)
+        .filter(SetLog.user_id == user_id,
+                SetLog.exercise_id.in_([first_id, second_id]))
         .all()
     )
-    # Ordered by session time then by set id, so two forms logged in the same
-    # session fall back to the order they were entered. Comparing the names
-    # instead would tie-break alphabetically, which has nothing to do with
-    # which was practised last.
-    seen = [
-        (s.date_time, st.set_id, e.exercise_name)
-        for st, s, e in rows
-        if s.date_time and e.exercise_name in TAI_CHI_FORMS
-    ]
+    seen = [(s.date_time, st.set_id, st.exercise_id)
+            for st, s in rows if s.date_time]
     if not seen:
-        return TAI_CHI_FORMS[0]
+        return first_id
     last = max(seen)[2]
-    return TAI_CHI_FORMS[1] if last == TAI_CHI_FORMS[0] else TAI_CHI_FORMS[0]
+    return second_id if last == first_id else first_id
+
 
 # ── Knee back-off ────────────────────────────────────────────────────────────
 # Pain during a set and pain the next morning are different measurements. The
@@ -812,17 +804,28 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
     decision = {"kind": kind, "why": "Chosen explicitly."} if kind in ("strength", "practice") \
         else choose_kind(db, user_id, tz_offset)
 
-    practice = PRACTICE.get(focus, PRACTICE[DEFAULT_FOCUS])
-    uses_form = any(b.name == TAI_CHI_FORM
-                    for b in practice["before"] + practice["after"])
-    due_form = next_tai_chi_form(db, user_id) if uses_form else None
-
-    def resolve(block):
-        """Templates name the form indirectly, because which one is due depends
-        on what was done last rather than on the plan."""
-        if block.name == TAI_CHI_FORM:
-            return block._replace(name=due_form)
-        return block
+    # A user's own routine wins. The programme default is a starting point for
+    # someone who has not built one, not something to append over the top.
+    rows = db.query(PracticeItem).filter(PracticeItem.user_id == user_id).all()
+    due_form = None
+    if rows:
+        practice = {"before": [], "after": []}
+        for item in sorted(rows, key=lambda i: (i.position, i.practice_item_id)):
+            ex_row = item.exercise
+            if ex_row is None:
+                continue
+            name = ex_row.exercise_name
+            if item.alternates_with_id and item.alternate is not None:
+                due_id = due_of_pair(db, user_id, item.exercise_id,
+                                     item.alternates_with_id)
+                name = (ex_row.exercise_name if due_id == item.exercise_id
+                        else item.alternate.exercise_name)
+                due_form = name
+            practice.setdefault(item.slot, []).append(
+                Block(name, item.scheme, item.sets, item.low, item.high)
+            )
+    else:
+        practice = PRACTICE.get(focus, PRACTICE[DEFAULT_FOCUS])
 
     if decision["kind"] == "strength":
         middle = [(b, "strength") for b in prog["phases"][phase["phase"]]["days"][day]]
@@ -834,9 +837,9 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
         theme = "Practice and maintenance"
 
     blocks, missing = [], []
-    templates = [(resolve(b), "practice") for b in practice["before"]]
+    templates = [(b, "practice") for b in practice["before"]]
     templates += middle
-    templates += [(resolve(b), "practice") for b in practice["after"]]
+    templates += [(b, "practice") for b in practice["after"]]
 
     dropped, used_ids = [], set()
     for block, group in templates:

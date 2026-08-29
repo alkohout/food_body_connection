@@ -11,4 +11,5 @@ from .training import (
     SetCreate, SetOut, SetUpdate,
     SessionCreate, SessionUpdate, SessionOut,
     TrainingProfileIn, TrainingProfileOut,
+    PracticeItemIn, PracticeItemOut,
 )
