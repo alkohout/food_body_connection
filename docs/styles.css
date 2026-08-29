@@ -114,17 +114,16 @@ h1 {
 .tabs {
   display: flex;
   /* One row, scrolling sideways when the tabs outrun the width. Seven of them
-     need about 725px and the container gives 560px, so they cannot all fit
-     without shrinking the text to 0.7rem — and on a phone it would take
-     0.4rem, which is unreadable. Scrolling keeps them on a single row at a
-     legible size instead.
+     need about 725px and the container gives 560px, so fitting them all would
+     mean 0.7rem on a desktop and 0.4rem on a phone.
 
-     The scrollbar is deliberately left visible: hiding it is what made the
-     last tab unreachable with nothing on screen to say it existed. */
+     No scrollbar: the tab clipped at the right edge is the cue that there is
+     more, which is how it was before the seventh tab pushed the last one out
+     of sight entirely. */
   flex-wrap: nowrap;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   margin-bottom: 1.5rem;
   border-bottom: 1px solid #ddd;
 }
@@ -157,22 +156,14 @@ h1 {
   }
 }
 
-/* A slim scrollbar under the tabs, rather than none at all: it is the only
-   thing telling you there is more to the right. */
-.tabs::-webkit-scrollbar { height: 4px; }
-.tabs::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 2px;
-}
+.tabs::-webkit-scrollbar { display: none; }
 
 /* Active tab styling */
 .tab.active {
+  /* Same blue as the rest: the current tab is marked by weight and the
+     underline rather than by a different colour. */
   font-weight: 600;
-  /* Same family, much darker: the set reads as blue while the current tab is
-     still marked three ways — darker, bolder, underlined. Relying on the
-     underline alone is a 3px cue that is easy to miss on a phone. */
-  color: #3730a3;
-  border-bottom-color: #3730a3;
+  border-bottom-color: #2563eb;
 }
 
 
