@@ -342,6 +342,12 @@ def assessment(
         if ex is None:
             missing.append(name)
             continue
+        # Shaped like a plan block so the session runner can drive it: one
+        # set, and no target, because the point is to find out what the
+        # numbers are rather than to hit one. A hold with no target counts up.
+        scheme = ("iso" if ex.is_isometric
+                  else "load" if ex.equipment in ("dumbbell", "barbell")
+                  else "reps")
         items.append({
             "exercise_id": ex.exercise_id,
             "exercise": ex.exercise_name,
@@ -349,6 +355,14 @@ def assessment(
             "why": why,
             "form_cues": ex.form_cues,
             "video_url": ex.video_url,
+            "scheme": scheme,
+            "group": "assessment",
+            "prescription": how,
+            "sets": 1,
+            "target_reps": None,
+            "target_seconds": None,
+            "target_weight": None,
+            "per_side": bool(ex.is_unilateral),
         })
 
     already = (

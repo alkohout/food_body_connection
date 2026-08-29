@@ -204,6 +204,10 @@ RECENT_SCORES = 5         # how many recent next-day scores decide a phase
 MIN_EXERCISES_FOR_CREDIT = 3   # exercises needed for a session to count
 STALL_SESSIONS = 3        # identical failed attempts before backing the target off
 STALL_FACTOR = 0.75       # how far back a stalled target drops
+# A single max effort is not a working set. Three sets at the number you could
+# just about reach once is the exact mistake that leaving reps in reserve
+# exists to avoid, so the assessment is scaled down to a level that repeats.
+ASSESSMENT_FACTOR = 0.75
 # A stalled target has to be allowed below the prescribed range, or the range's
 # own floor blocks the reduction and the loop survives the fix. These are the
 # absolute floors; at them, the exercise itself is the problem.
@@ -268,9 +272,12 @@ def _last_sets(db, user_id, exercise_id):
     )
     dated = [(st, s) for st, s in rows if s.date_time]
     if not dated:
-        return [], None
+        return [], None, False
     latest = max(s.date_time for _, s in dated)
-    return [st for st, s in dated if s.date_time == latest], latest
+    sets = [st for st, s in dated if s.date_time == latest]
+    was_assessment = any(s.session_type == "assessment"
+                         for _, s in dated if s.date_time == latest)
+    return sets, latest, was_assessment
 
 
 # Easier versions of the same movement, hardest first. Only used once a stall
@@ -504,7 +511,7 @@ def current_phase(db, user_id) -> dict:
 
 
 def _prescribe(block, ex, last_sets, action, loads, last_done=None,
-               stalled=False):
+               stalled=False, from_assessment=False):
     """Turn one template block plus history into a concrete instruction."""
     sets = block.sets
     detail, why = "", ""
@@ -544,6 +551,11 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         elif action == "hold" or not top:
             target = max(block.low, top or block.low)
             why = "Repeat last time's hold." if top else "Starting point."
+        elif from_assessment:
+            target = max(block.low, min(int(top * ASSESSMENT_FACTOR), block.high))
+            why = (f"From your assessment: one max effort of {top}s. Working "
+                   f"sets start at {target}s, about three quarters of it, "
+                   f"because three sets at your limit is not a working level.")
         elif not complete:
             target = max(block.low, min(top, block.high))
             why = f"{short} — repeat it before going longer."
@@ -574,6 +586,11 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         elif action == "hold" or not top:
             target = max(block.low, min(top or block.low, block.high))
             why = "Repeat last time." if top else "Starting point."
+        elif from_assessment:
+            target = max(block.low, min(int(top * ASSESSMENT_FACTOR), block.high))
+            why = (f"From your assessment: one max effort of {top}. Working "
+                   f"sets start at {target}, about three quarters of it, "
+                   f"because three sets at your limit is not a working level.")
         elif not complete:
             target = max(block.low, min(top, block.high))
             why = f"{short} — repeat it before adding reps."
@@ -618,6 +635,12 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         elif action == "hold":
             weight, target = last_w, max(block.low, last_reps)
             why = "Same load again."
+        elif from_assessment:
+            # The assessed load was already chosen as a submaximal set, so the
+            # load stands and the reps start at the bottom of the range.
+            weight, target = last_w, block.low
+            why = (f"From your assessment: {top_reps} reps at {last_w}kg. Starting "
+                   f"at {target} reps across {sets} sets at that load.")
         elif not complete:
             weight, target = last_w, max(block.low, top_reps)
             why = f"{short} — repeat it before adding load."
@@ -778,10 +801,11 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
         if ex is None:
             missing.append(block.name)
             continue
-        prior, when = _last_sets(db, user_id, ex.exercise_id)
+        prior, when, from_test = _last_sets(db, user_id, ex.exercise_id)
         item = _prescribe(
             block, ex, prior, knee["action"], loads, last_done=when,
             stalled=_stalled(db, user_id, ex.exercise_id, block.scheme),
+            from_assessment=from_test,
         )
 
         if item.pop("exhausted", False):
@@ -793,11 +817,12 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
                                 "swap it for something you can complete.")
             else:
                 sub_block, sub_ex = swap
-                sub_prior, sub_when = _last_sets(db, user_id, sub_ex.exercise_id)
+                sub_prior, sub_when, sub_test = _last_sets(db, user_id, sub_ex.exercise_id)
                 item = _prescribe(
                     sub_block, sub_ex, sub_prior, knee["action"], loads,
                     last_done=sub_when,
                     stalled=_stalled(db, user_id, sub_ex.exercise_id, sub_block.scheme),
+                    from_assessment=sub_test,
                 )
                 item.pop("exhausted", None)
                 item["substituted_from"] = ex.exercise_name

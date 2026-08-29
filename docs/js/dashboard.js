@@ -3783,6 +3783,10 @@ async function trToggleAssessment() {
   if (data.completed_before) {
     intro.appendChild(trEl("p", `${data.completed_before} logged before.`, "tr-hint"));
   }
+  const go = trEl("button", "Start assessment", "primary tr-big tr-block");
+  go.type = "button";
+  go.addEventListener("click", trStartAssessment);
+  intro.appendChild(go);
   box.appendChild(intro);
   const ol = document.createElement("ol");
   ol.className = "tr-plan-list";
@@ -3815,6 +3819,9 @@ async function trToggleAssessment() {
 
 let trRun = null;
 let trTimer = { handle: null, startedAt: 0, elapsed: 0 };
+// "plan" or "assessment" — the assessment is a measurement, not training, so
+// it must not be reclassified as a strength session when it finishes.
+let trRunKind = "plan";
 
 function trTimerStop() {
   if (trTimer.handle) clearInterval(trTimer.handle);
@@ -3825,10 +3832,40 @@ function trCurrentBlock() {
   return trRun && trRun.plan.blocks[trRun.idx];
 }
 
-function trStartRunner() {
-  if (!trPlan || !trSession) return;
-  trRun = { plan: trPlan, idx: 0, done: {}, skipped: [], sides: {} };
+function trStartRunner(blocks) {
+  if (!trSession) return;
+  const plan = blocks ? { blocks } : trPlan;
+  if (!plan) return;
+  trRun = { plan, idx: 0, done: {}, skipped: [], sides: {} };
   trRenderRunner();
+}
+
+async function trStartAssessment() {
+  const res = await fetch(`${API_URL}/training/assessment`, { headers: trAuth() });
+  if (!res.ok) {
+    trSetStatus("tr-status", `Could not load the assessment (${res.status}).`);
+    return;
+  }
+  const data = await res.json();
+  if (!data.items.length) {
+    trSetStatus("tr-status", "Load the starter exercise library first.");
+    return;
+  }
+  const made = await fetch(`${API_URL}/training/sessions`, {
+    method: "POST",
+    headers: { ...trAuth(), "Content-Type": "application/json" },
+    body: JSON.stringify({ session_type: "assessment" }),
+  });
+  if (!made.ok) {
+    trSetStatus("tr-status", `Could not start the assessment (${made.status}).`);
+    return;
+  }
+  trSession = await made.json();
+  trRunKind = "assessment";
+  const box = getElement("tr-assess");
+  if (box) box.style.display = "none";
+  trRenderSession();
+  trStartRunner(data.items);
 }
 
 function trRunnerVisible(on) {
@@ -4116,6 +4153,11 @@ async function trFinishSession() {
     const b = trRun && trRun.plan.blocks.find((x) => x.exercise_id === s.exercise_id);
     return b && b.group === "strength";   // knee-minimum days do not count
   });
+  // An assessment is a measurement. Counting it as a strength session would
+  // let a test of what you can do stand in for having done it.
+  const sessionType = trRunKind === "assessment"
+    ? "assessment"
+    : (didStrength ? "strength" : "tai_chi");
   const notes = trRun && trRun.skipped.length
     ? `Skipped: ${trRun.skipped.join(", ")}`
     : null;
@@ -4124,13 +4166,14 @@ async function trFinishSession() {
     method: "PATCH",
     headers: { ...trAuth(), "Content-Type": "application/json" },
     body: JSON.stringify({
-      session_type: didStrength ? "strength" : "tai_chi",
+      session_type: sessionType,
       ...(notes ? { notes } : {}),
     }),
   });
 
   trTimerStop();
   trKindOverride = null;
+  trRunKind = "plan";
   trRun = null;
   trSession = null;
   trRunnerVisible(false);
