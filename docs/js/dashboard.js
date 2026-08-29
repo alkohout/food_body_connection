@@ -3515,8 +3515,26 @@ function trRenderPlan() {
   }
 
   const ph = trPlan.phase;
+  // The theme leads: it is what tells you at a glance what today is for.
+  const heading = trPlan.kind === "strength"
+    ? `Day ${trPlan.day} — ${trPlan.theme}`
+    : trPlan.theme;
+  box.appendChild(trEl("h4", heading));
+  box.appendChild(trEl("p", trPlan.kind_why, "logs-loading"));
   box.appendChild(trEl("p", `Phase ${ph.phase} — ${ph.label}. ${ph.aim}`));
-  box.appendChild(trEl("p", `Day ${trPlan.day} · ${ph.sessions_done} strength sessions logged · next phase: ${ph.to_advance}`, "logs-loading"));
+  box.appendChild(trEl("p", `${ph.sessions_done} strength sessions logged · next phase: ${ph.to_advance}`, "logs-loading"));
+
+  // The rest rule is a default, not a cage — some days you feel like more.
+  const swap = trEl("button",
+    trPlan.kind === "strength" ? "Make today practice only" : "Do a strength session anyway");
+  swap.type = "button";
+  swap.className = "secondary";
+  swap.style.width = "auto";
+  swap.addEventListener("click", async () => {
+    trKindOverride = trPlan.kind === "strength" ? "practice" : "strength";
+    await trLoadPlan();
+  });
+  box.appendChild(swap);
 
   // The knee verdict is the most important line here, so it is called out
   // rather than left to be inferred from the numbers.
@@ -3548,8 +3566,12 @@ function trRenderPlan() {
   if (nd) nd.style.display = trPlan.knee.awaiting_next_day ? "" : "none";
 }
 
+let trKindOverride = null;
+
 async function trLoadPlan() {
-  const res = await fetch(`${API_URL}/training/today`, { headers: trAuth() });
+  const tz = new Date().getTimezoneOffset();
+  const q = `tz_offset=${tz}` + (trKindOverride ? `&kind=${trKindOverride}` : "");
+  const res = await fetch(`${API_URL}/training/today?${q}`, { headers: trAuth() });
   trPlan = res.ok ? await res.json() : null;
   trRenderPlan();
 }
@@ -3672,7 +3694,8 @@ function trRenderRunner() {
   const doneCount = trRun.done[trRun.idx] || 0;
   // "3 sets each side" means six logged sets, so the target counts both.
   const needed = b.per_side ? b.sets * 2 : b.sets;
-  head.textContent = `${trRun.idx + 1} of ${blocks.length} — ${b.group === "practice" ? "practice" : "strength"}`;
+  const groupLabel = { practice: "practice", knee: "knee maintenance", strength: "strength" }[b.group] || b.group;
+  head.textContent = `${trRun.idx + 1} of ${blocks.length} — ${groupLabel}`;
 
   body.appendChild(trEl("h4", b.exercise));
   body.appendChild(trEl("p", b.prescription));
@@ -3873,7 +3896,7 @@ async function trFinishSession() {
   // would advance the phase on work that never happened.
   const didStrength = trSession.sets.some((s) => {
     const b = trRun && trRun.plan.blocks.find((x) => x.exercise_id === s.exercise_id);
-    return b && b.group === "strength";
+    return b && b.group === "strength";   // knee-minimum days do not count
   });
   const notes = trRun && trRun.skipped.length
     ? `Skipped: ${trRun.skipped.join(", ")}`
@@ -3889,6 +3912,7 @@ async function trFinishSession() {
   });
 
   trTimerStop();
+  trKindOverride = null;
   trRun = null;
   trSession = null;
   trRunnerVisible(false);

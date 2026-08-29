@@ -285,6 +285,8 @@ def save_profile(
 @router.get("/today")
 def todays_session(
     day: Optional[str] = Query(None, pattern="^[ABC]$"),
+    tz_offset: int = Query(0),
+    kind: Optional[str] = Query(None, pattern="^(strength|practice)$"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -293,7 +295,8 @@ def todays_session(
     Loads come from logged history through fixed rules rather than from a
     model, so the knee back-off is a guarantee rather than a suggestion.
     """
-    return build_session(db, current_user.user_id, day=day)
+    return build_session(db, current_user.user_id, day=day,
+                         tz_offset=tz_offset, kind=kind)
 
 
 @router.get("/assessment")

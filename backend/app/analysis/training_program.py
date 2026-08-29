@@ -19,6 +19,7 @@ promote someone whose knees are complaining.
 import json
 import logging
 from collections import namedtuple
+from datetime import datetime, timedelta
 
 from app.models.table_class import Exercise, SetLog, TrainingProfile, WorkoutSession
 
@@ -31,6 +32,7 @@ PHASES = {
     1: {
         "label": "Settle",
         "aim": "Calm the knees down and build tolerance without loaded squatting.",
+        "themes": {'A': 'Knee tolerance and core', 'B': 'Hips, posterior chain and shins', 'C': 'Knee control, core and arms'},
         "days": {
             "A": [
                 Block("Spanish Squat", "iso", 3, 20, 45),
@@ -58,6 +60,7 @@ PHASES = {
     2: {
         "label": "Load",
         "aim": "Introduce eccentric control and light external load.",
+        "themes": {'A': 'Squat and push', 'B': 'Hinge and pull', 'C': 'Single-leg control and shoulders'},
         "days": {
             "A": [
                 Block("Spanish Squat", "iso", 2, 30, 45),
@@ -85,6 +88,7 @@ PHASES = {
     3: {
         "label": "Build",
         "aim": "Heavier and deeper, towards downhill and telemark demands.",
+        "themes": {'A': 'Squat and push', 'B': 'Hinge and pull', 'C': 'Single-leg control and shoulders'},
         "days": {
             "A": [
                 Block("Goblet Squat", "load", 4, 6, 10),
@@ -118,6 +122,15 @@ DAY_ORDER = ["A", "B", "C"]
 # knees were loaded that day.
 TAI_CHI_FORM = "__TAI_CHI_FORM__"          # resolved to 42 or 37 at build time
 TAI_CHI_FORMS = ["Tai Chi Form 42", "Tai Chi Form 37"]
+
+# Knee work on the days between strength sessions. Tendon and quad tolerance
+# responds to frequent low-load exposure far better than to one hard session a
+# week, which is the single strongest argument against a body-part split here:
+# on a split, the knees would be trained once every seven days.
+KNEE_MINIMUM = [
+    Block("Terminal Knee Extension", "reps", 2, 10, 15),
+    Block("Spanish Squat", "iso", 2, 20, 45),
+]
 
 PRACTICE = [
     Block("Tai Chi Exercises", "check", 1, 0, 0),
@@ -441,7 +454,48 @@ def _prescribe(block, ex, last_sets, action, loads):
     }
 
 
-def build_session(db, user_id, day=None) -> dict:
+def _local_date(dt, tz_offset):
+    if dt is None:
+        return None
+    naive = dt.replace(tzinfo=None) if dt.tzinfo else dt
+    return (naive - timedelta(minutes=tz_offset)).date()
+
+
+def choose_kind(db, user_id, tz_offset) -> dict:
+    """Strength today, or practice and the knee minimum?
+
+    Muscle needs roughly a day between hard sessions, so strength days are kept
+    apart: if one was done today or yesterday, today is a practice day. Over a
+    week that settles into three or four strength sessions, which is where the
+    evidence for a 3-day week sits — and it means every muscle is trained
+    two or three times a week rather than once, as it would be on a split.
+    """
+    today = (datetime.utcnow() - timedelta(minutes=tz_offset)).date()
+
+    last = None
+    for s in db.query(WorkoutSession).filter(WorkoutSession.user_id == user_id).all():
+        if s.session_type != "strength" or not s.date_time:
+            continue
+        d = _local_date(s.date_time, tz_offset)
+        if last is None or d > last:
+            last = d
+
+    if last is None:
+        return {"kind": "strength", "why": "No strength session logged yet — start here."}
+    gap = (today - last).days
+    if gap >= 2:
+        return {"kind": "strength",
+                "why": f"Last strength session was {gap} days ago."}
+    return {
+        "kind": "practice",
+        "why": ("Strength was "
+                + ("today" if gap == 0 else "yesterday")
+                + " — today is practice plus the knee minimum, so the muscle "
+                  "gets its recovery day while the knees still get their work."),
+    }
+
+
+def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
     """The whole prescription for the next session."""
     phase = current_phase(db, user_id)
     knee = knee_state(db, user_id)
@@ -462,6 +516,9 @@ def build_session(db, user_id, day=None) -> dict:
             Exercise.user_id == user_id, Exercise.is_archived.is_(False)).all()
     }
 
+    decision = {"kind": kind, "why": "Chosen explicitly."} if kind in ("strength", "practice") \
+        else choose_kind(db, user_id, tz_offset)
+
     due_form = next_tai_chi_form(db, user_id)
 
     def resolve(block):
@@ -472,7 +529,14 @@ def build_session(db, user_id, day=None) -> dict:
         return block
 
     blocks, missing = [], []
-    templates = [(b, "strength") for b in PHASES[phase["phase"]]["days"][day]]
+    if decision["kind"] == "strength":
+        templates = [(b, "strength") for b in PHASES[phase["phase"]]["days"][day]]
+        theme = PHASES[phase["phase"]]["themes"][day]
+    else:
+        # Between strength days the knees still get their work; the muscle gets
+        # its recovery day.
+        templates = [(b, "knee") for b in KNEE_MINIMUM]
+        theme = "Practice and knee maintenance"
     templates += [(resolve(b), "practice") for b in PRACTICE]
 
     for block, group in templates:
@@ -504,4 +568,7 @@ def build_session(db, user_id, day=None) -> dict:
         "notes": notes,
         "achievable_loads": loads,
         "tai_chi_form_due": due_form,
+        "kind": decision["kind"],
+        "kind_why": decision["why"],
+        "theme": theme,
     }
