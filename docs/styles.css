@@ -825,7 +825,7 @@ select:focus {
 }
 
 .tr-block { width: 100%; }
-.tr-big { font-size: 1.1rem; padding: 0.9rem 1.25rem; min-height: 3.25rem; }
+.tr-big { font-size: 0.95rem; padding: 0.6rem 1rem; min-height: 2.6rem; }
 
 .tr-inline { display: flex; gap: 0.5rem; align-items: center; }
 .tr-inline input { width: 6rem; margin: 0; }
@@ -861,3 +861,33 @@ select:focus {
 .tr-set-list li { font-size: 0.8rem; color: #4b5563; margin-bottom: 0.15rem; }
 
 .tr-list { display: flex; flex-direction: column; }
+
+/* Spacing above the pain field, which sat flush against the button above it. */
+.tr-field { margin-top: 0.9rem; }
+
+.tr-card-actions { display: flex; gap: 0.4rem; margin-top: 0.6rem; }
+.tr-card-actions button {
+  width: auto; margin: 0; padding: 0.25rem 0.75rem; font-size: 0.8rem;
+}
+
+.tr-set-rows { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
+
+.tr-set-row {
+  border-top: 1px solid #f3f4f6;
+  padding-top: 0.5rem;
+}
+
+.tr-set-name { font-size: 0.85rem; font-weight: 600; }
+
+.tr-set-fields { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.35rem 0; }
+
+.tr-set-field { display: flex; flex-direction: column; gap: 0.1rem; }
+.tr-set-field span { font-size: 0.7rem; color: #9ca3af; }
+.tr-set-field input, .tr-set-field select {
+  width: 5rem; margin: 0; padding: 0.25rem 0.4rem; font-size: 0.85rem;
+}
+
+.tr-set-actions { display: flex; gap: 0.4rem; align-items: center; }
+.tr-set-actions button {
+  width: auto; margin: 0; padding: 0.2rem 0.7rem; font-size: 0.78rem;
+}

@@ -8,7 +8,7 @@ from .medication import MedicationCreate, MedicationOut
 from .medication import MedicationRegimenCreate, MedicationRegimenUpdate, MedicationRegimenOut
 from .training import (
     ExerciseCreate, ExerciseOut,
-    SetCreate, SetOut,
+    SetCreate, SetOut, SetUpdate,
     SessionCreate, SessionUpdate, SessionOut,
     TrainingProfileIn, TrainingProfileOut,
 )

@@ -3425,20 +3425,119 @@ async function trAddSet() {
   trRenderSession();
 }
 
+const trExpanded = new Set();
+
+// Fields worth correcting, and the step each one moves in. Only the ones that
+// were actually recorded are shown, so a hold does not sprout a weight box.
+const TR_EDITABLE = [
+  ["reps", "Reps", 1],
+  ["weight_kg", "Weight kg", 0.25],
+  ["band_kg", "Band kg", 0.5],
+  ["hold_seconds", "Hold s", 1],
+  ["rpe", "RPE", 1],
+  ["pain", "Pain", 1],
+];
+
+async function trDeleteSession(id) {
+  if (!window.confirm("Delete this whole session and every set in it?")) return;
+  const res = await fetch(`${API_URL}/training/sessions/${id}`, {
+    method: "DELETE", headers: trAuth(),
+  });
+  if (!res.ok) return;
+  trExpanded.delete(id);
+  await trLoadHistory();
+  await trLoadPlan();       // history drives the prescription, so refresh it
+}
+
+async function trDeleteSet(setId) {
+  const res = await fetch(`${API_URL}/training/sets/${setId}`, {
+    method: "DELETE", headers: trAuth(),
+  });
+  if (!res.ok) return;
+  await trLoadHistory();
+  await trLoadPlan();
+}
+
+async function trSaveSet(setId, patch, statusEl) {
+  statusEl.textContent = "Saving…";
+  const res = await fetch(`${API_URL}/training/sets/${setId}`, {
+    method: "PATCH",
+    headers: { ...trAuth(), "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  statusEl.textContent = res.ok ? "Saved." : `Could not save (${res.status}).`;
+  if (res.ok) {
+    await trLoadHistory();
+    await trLoadPlan();
+  }
+}
+
+function trRenderSetRow(st, host) {
+  const row = trEl("div", null, "tr-set-row");
+  row.appendChild(trEl("span", st.exercise_name, "tr-set-name"));
+
+  const inputs = {};
+  const fields = trEl("div", null, "tr-set-fields");
+  TR_EDITABLE.forEach(([key, label, step]) => {
+    if (st[key] === null || st[key] === undefined) return;
+    const wrap = trEl("label", null, "tr-set-field");
+    wrap.appendChild(trEl("span", label));
+    const inp = document.createElement("input");
+    inp.type = "number";
+    inp.step = String(step);
+    inp.value = st[key];
+    wrap.appendChild(inp);
+    inputs[key] = inp;
+    fields.appendChild(wrap);
+  });
+  if (st.side) {
+    const wrap = trEl("label", null, "tr-set-field");
+    wrap.appendChild(trEl("span", "Side"));
+    const sel = document.createElement("select");
+    [["left", "Left"], ["right", "Right"]].forEach(([v, l]) => {
+      const o = trEl("option", l); o.value = v; sel.appendChild(o);
+    });
+    sel.value = st.side;
+    wrap.appendChild(sel);
+    inputs.side = sel;
+    fields.appendChild(wrap);
+  }
+  row.appendChild(fields);
+
+  const status = trEl("span", "", "tr-hint");
+  const actions = trEl("div", null, "tr-set-actions");
+  const save = trEl("button", "Save", "secondary");
+  save.type = "button";
+  save.addEventListener("click", () => {
+    const patch = {};
+    Object.entries(inputs).forEach(([k, el]) => {
+      patch[k] = k === "side" ? el.value : (el.value === "" ? null : Number(el.value));
+    });
+    trSaveSet(st.set_id, patch, status);
+  });
+  const del = trEl("button", "Delete", "secondary");
+  del.type = "button";
+  del.addEventListener("click", () => trDeleteSet(st.set_id));
+  actions.append(save, del, status);
+  row.appendChild(actions);
+  host.appendChild(row);
+}
+
 async function trLoadHistory() {
   const box = getElement("tr-history");
   if (!box) return;
   const res = await fetch(`${API_URL}/training/sessions?limit=10`, { headers: trAuth() });
   box.replaceChildren();
   if (!res.ok) {
-    box.appendChild(trEl("p", `Could not load history (${res.status}).`));
+    box.appendChild(trEl("p", `Could not load history (${res.status}).`, "tr-hint"));
     return;
   }
   const sessions = await res.json();
   if (!sessions.length) {
-    box.appendChild(trEl("p", "No sessions logged yet."));
+    box.appendChild(trEl("p", "No sessions logged yet.", "tr-hint"));
     return;
   }
+
   sessions.forEach((s) => {
     const d = new Date(s.date_time);
     const card = trEl("div", null, "tr-card");
@@ -3452,22 +3551,47 @@ async function trLoadHistory() {
     card.appendChild(trEl("p", bits.join(" · "), "tr-hint"));
     if (s.notes) card.appendChild(trEl("p", s.notes, "tr-hint"));
 
-    // One line per exercise rather than per set: three identical sets read as
-    // noise when you are scanning back through a fortnight.
-    const byExercise = new Map();
-    s.sets.forEach((st) => {
-      const list = byExercise.get(st.exercise_name) || [];
-      list.push(st);
-      byExercise.set(st.exercise_name, list);
+    const open = trExpanded.has(s.session_id);
+    if (!open) {
+      // Collapsed: one line per exercise. Three identical sets are noise when
+      // scanning back through a fortnight.
+      const byExercise = new Map();
+      s.sets.forEach((st) => {
+        const list = byExercise.get(st.exercise_name) || [];
+        list.push(st);
+        byExercise.set(st.exercise_name, list);
+      });
+      const ul = document.createElement("ul");
+      ul.className = "tr-set-list";
+      byExercise.forEach((sets, name) => {
+        const detail = trDescribeSet(sets[0]);
+        ul.appendChild(trEl("li",
+          sets.length > 1 ? `${name} — ${sets.length} x ${detail}` : `${name} — ${detail}`));
+      });
+      card.appendChild(ul);
+    } else {
+      // Expanded: every set individually, because that is the level a
+      // correction happens at.
+      const list = trEl("div", null, "tr-set-rows");
+      s.sets.forEach((st) => trRenderSetRow(st, list));
+      if (!s.sets.length) list.appendChild(trEl("p", "No sets in this session.", "tr-hint"));
+      card.appendChild(list);
+    }
+
+    const actions = trEl("div", null, "tr-card-actions");
+    const edit = trEl("button", open ? "Done editing" : "Edit sets", "secondary");
+    edit.type = "button";
+    edit.addEventListener("click", () => {
+      if (open) trExpanded.delete(s.session_id);
+      else trExpanded.add(s.session_id);
+      trLoadHistory();
     });
-    const ul = document.createElement("ul");
-    ul.className = "tr-set-list";
-    byExercise.forEach((sets, name) => {
-      const detail = trDescribeSet(sets[0]);
-      const label = sets.length > 1 ? `${name} — ${sets.length} x ${detail}` : `${name} — ${detail}`;
-      ul.appendChild(trEl("li", label));
-    });
-    card.appendChild(ul);
+    const del = trEl("button", "Delete session", "secondary");
+    del.type = "button";
+    del.addEventListener("click", () => trDeleteSession(s.session_id));
+    actions.append(edit, del);
+    card.appendChild(actions);
+
     box.appendChild(card);
   });
 }
@@ -3721,11 +3845,16 @@ function trRenderRunner() {
   const blocks = trRun.plan.blocks;
   if (trRun.idx >= blocks.length) {
     head.textContent = "Session complete";
-    body.appendChild(trEl("p", "Every exercise has been worked through."));
-    const fin = trEl("button", "Finish and save");
+    body.appendChild(trEl("p", "Every exercise has been worked through.", "tr-body"));
+    const row = trEl("div", null, "tr-nav");
+    const back = trEl("button", "Back", "secondary");
+    back.type = "button";
+    back.addEventListener("click", () => { trRun.idx = blocks.length - 1; trRenderRunner(); });
+    const fin = trEl("button", "Finish and save", "primary tr-big");
     fin.type = "button";
     fin.addEventListener("click", trFinishSession);
-    body.appendChild(fin);
+    row.append(back, fin);
+    body.appendChild(row);
     return;
   }
 
@@ -3756,7 +3885,7 @@ function trRenderRunner() {
 
   // Pain is asked for every exercise because it is what drives the back-off
   // rule, but never required — a blank is honest, a zero would not be.
-  const painWrap = trEl("div", null, "form-row");
+  const painWrap = trEl("div", null, "form-row tr-field");
   painWrap.appendChild(trEl("label", "Pain 0-10 (optional)"));
   const painIn = document.createElement("input");
   painIn.type = "number"; painIn.min = "0"; painIn.max = "10"; painIn.id = "tr-run-pain";
@@ -3768,6 +3897,14 @@ function trRenderRunner() {
   // difference. Part-way through it is a real choice: some sets are done and
   // that is not a skip.
   const nav = trEl("div", null, "tr-nav");
+  if (trRun.idx > 0) {
+    // Sets already logged for the earlier exercise are kept, so stepping back
+    // resumes it rather than restarting it.
+    const back = trEl("button", "Back", "secondary");
+    back.type = "button";
+    back.addEventListener("click", () => { trRun.idx -= 1; trRenderRunner(); });
+    nav.appendChild(back);
+  }
   if (doneCount === 0) {
     const skip = trEl("button", "Skip this one", "secondary");
     skip.type = "button";

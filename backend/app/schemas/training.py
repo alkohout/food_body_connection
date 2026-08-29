@@ -52,6 +52,21 @@ class SetCreate(BaseModel):
     pain: Optional[int] = Field(default=None, ge=0, le=10)
 
 
+class SetUpdate(BaseModel):
+    """A correction to a logged set. Only the fields sent are changed.
+
+    Every field is optional, so clearing one is done by sending null rather
+    than by omitting it — omitting means "leave alone".
+    """
+    reps: Optional[int] = Field(default=None, ge=0)
+    weight_kg: Optional[float] = Field(default=None, ge=0)
+    band_kg: Optional[float] = Field(default=None, ge=0)
+    hold_seconds: Optional[int] = Field(default=None, ge=0)
+    side: Optional[Side] = None
+    rpe: Optional[int] = Field(default=None, ge=1, le=10)
+    pain: Optional[int] = Field(default=None, ge=0, le=10)
+
+
 class SetOut(BaseModel):
     set_id: int
     session_id: int

@@ -20,7 +20,7 @@ from app.models.table_class import (
 )
 from app.schemas import (
     ExerciseCreate, ExerciseOut,
-    SetCreate, SessionCreate, SessionUpdate,
+    SetCreate, SetUpdate, SessionCreate, SessionUpdate,
     TrainingProfileIn, TrainingProfileOut,
 )
 
@@ -224,6 +224,28 @@ def add_set(
     db.commit()
     db.refresh(st)
     return _session_out(_owned_session(db, current_user.user_id, session_id))
+
+
+@router.patch("/sets/{set_id}")
+def update_set(
+    set_id: int,
+    payload: SetUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Correct a logged set. Mistyped a weight, logged the wrong side, and so on."""
+    st = db.query(SetLog).filter(
+        SetLog.set_id == set_id, SetLog.user_id == current_user.user_id
+    ).first()
+    if st is None:
+        raise HTTPException(status_code=404, detail="Set not found.")
+
+    # exclude_unset, not exclude_none: sending an explicit null clears a value,
+    # while leaving the field out leaves it alone.
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(st, field, value)
+    db.commit()
+    return _session_out(_owned_session(db, current_user.user_id, st.session_id))
 
 
 @router.delete("/sets/{set_id}", status_code=204)
