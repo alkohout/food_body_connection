@@ -3330,9 +3330,9 @@ function trRenderSession() {
     bar.appendChild(btn);
     // A one-line reminder of what today is, without opening the plan.
     if (trPlan) {
-      const label = trPlan.kind === "strength"
+      const label = (trPlan.kind === "strength"
         ? `Day ${trPlan.day} — ${trPlan.theme}`
-        : trPlan.theme;
+        : trPlan.theme) + (trPlan.travel ? " · travel mode" : "");
       bar.appendChild(trEl("p", label, "tr-today"));
     }
     if (logSection) logSection.style.display = "none";
@@ -3686,6 +3686,9 @@ function trRenderPlan() {
   const heading = trPlan.kind === "strength"
     ? `Day ${trPlan.day} — ${trPlan.theme}`
     : trPlan.theme;
+  if (trPlan.travel) {
+    card.appendChild(trEl("p", "Travel mode — bodyweight only", "tr-warn"));
+  }
   card.appendChild(trEl("p", heading, "tr-card-title"));
   card.appendChild(trEl("p", trPlan.kind_why, "tr-hint"));
   card.appendChild(trEl("p", `Phase ${ph.phase} — ${ph.label}. ${ph.aim}`, "tr-body"));
@@ -3703,6 +3706,17 @@ function trRenderPlan() {
     await trLoadPlan();
   });
   box.appendChild(swap);
+
+  const away = trEl("button",
+    trPlan.travel ? "Back home — use my equipment" : "I'm away from my equipment",
+    "secondary");
+  away.type = "button";
+  away.style.width = "auto";
+  away.addEventListener("click", async () => {
+    trSetTravel(!trPlan.travel);
+    await trLoadPlan();
+  });
+  box.appendChild(away);
 
   // The knee verdict is the most important line here, so it is called out
   // rather than left to be inferred from the numbers.
@@ -3738,9 +3752,31 @@ function trRenderPlan() {
 
 let trKindOverride = null;
 
+// Travel lasts days, not one session, so it survives a reload. It is shown on
+// the plan whenever it is on, because a mode you cannot see is a mode you
+// forget to turn off and then wonder why the dumbbells never come back.
+function trTravel() {
+  try {
+    return localStorage.getItem("training_travel") === "1";
+  } catch (err) {
+    return false;   // private browsing and similar: just train at home
+  }
+}
+
+function trSetTravel(on) {
+  try {
+    if (on) localStorage.setItem("training_travel", "1");
+    else localStorage.removeItem("training_travel");
+  } catch (err) {
+    console.error("could not persist travel mode:", err);
+  }
+}
+
 async function trLoadPlan() {
   const tz = new Date().getTimezoneOffset();
-  const q = `tz_offset=${tz}` + (trKindOverride ? `&kind=${trKindOverride}` : "");
+  const q = `tz_offset=${tz}`
+    + (trKindOverride ? `&kind=${trKindOverride}` : "")
+    + (trTravel() ? "&travel=true" : "");
   const res = await fetch(`${API_URL}/training/today?${q}`, { headers: trAuth() });
   trPlan = res.ok ? await res.json() : null;
   trRenderPlan();

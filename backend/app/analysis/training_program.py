@@ -310,6 +310,45 @@ REGRESSIONS = {
 }
 
 
+# Bodyweight stand-ins for the days the kit is not there. Unlike REGRESSIONS
+# these are not easier, just equipment-free: the same movement done another way.
+# Anything with no honest bodyweight equivalent is left out rather than replaced
+# with something unrelated — a session missing its rows is more use than one
+# that pretends a plank is a row.
+TRAVEL_SUBSTITUTES = {
+    "goblet squat": ("Wide Leg Squat", "reps", 8, 15),
+    "box squat": ("Wide Leg Squat", "reps", 8, 15),
+    "split squat": ("Lunge", "reps", 6, 12),
+    "single leg squat": ("Lunge", "reps", 6, 12),
+    "romanian deadlift": ("Single Leg Glute Bridge", "reps", 8, 15),
+    "spanish squat": ("Wall Sit", "iso", 20, 45),
+    "terminal knee extension": ("Quad Set", "iso", 10, 30),
+    "standing hip abduction": ("Side Lying Hip Abduction", "reps", 10, 20),
+    "lateral band walk": ("Side Lying Hip Abduction", "reps", 10, 20),
+    "dumbbell shoulder press": ("Pike Push Up", "reps", 5, 12),
+    "dumbbell floor press": ("Push Up", "reps", 8, 15),
+    "standing calf raise": ("Standing Calf Raise", "reps", 12, 20),
+}
+
+# What counts as available when travelling. "none" covers the martial practice,
+# which needs nothing.
+TRAVEL_EQUIPMENT = {"bodyweight", "none"}
+
+
+def _travel_swap(name, equipment, by_name):
+    """Replace an exercise the kit is needed for. None means drop it."""
+    if equipment in TRAVEL_EQUIPMENT:
+        return "keep"
+    spec = TRAVEL_SUBSTITUTES.get(name.strip().lower())
+    if spec is None:
+        return None
+    sub_name, scheme, low, high = spec
+    ex = by_name.get(sub_name.strip().lower())
+    if ex is None or ex.equipment not in TRAVEL_EQUIPMENT:
+        return None
+    return Block(sub_name, scheme, 3, low, high), ex
+
+
 def _substitute(db, user_id, name, by_name):
     """The easiest-first alternative the user actually owns and is not stuck on.
 
@@ -749,7 +788,8 @@ def choose_kind(db, user_id, tz_offset) -> dict:
     }
 
 
-def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
+def build_session(db, user_id, day=None, tz_offset=0, kind=None,
+                  travel=False) -> dict:
     """The whole prescription for the next session."""
     phase = current_phase(db, user_id)
     knee = knee_state(db, user_id)
@@ -796,11 +836,34 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
     templates += middle
     templates += [(resolve(b), "practice") for b in PRACTICE_AFTER]
 
+    dropped, used_ids = [], set()
     for block, group in templates:
         ex = by_name.get(block.name.strip().lower())
         if ex is None:
             missing.append(block.name)
             continue
+
+        travelled_from = None
+        if travel:
+            swap = _travel_swap(block.name, ex.equipment, by_name)
+            if swap is None:
+                # No honest bodyweight equivalent. Leaving it out is more use
+                # than substituting something that trains a different thing.
+                dropped.append(ex.exercise_name)
+                continue
+            if swap != "keep":
+                travelled_from = block.name
+                block, ex = swap
+
+        # After any substitution, not just on the swap path: a travel swap can
+        # land on an exercise the day already contains, and whichever of the two
+        # comes first claims the slot. Prescribing it twice would be wrong
+        # either way round.
+        if ex.exercise_id in used_ids:
+            if travelled_from:
+                dropped.append(travelled_from)
+            continue
+
         prior, when, from_test = _last_sets(db, user_id, ex.exercise_id)
         item = _prescribe(
             block, ex, prior, knee["action"], loads, last_done=when,
@@ -837,7 +900,11 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
                 item["why"] = (f"Replacing {ex.exercise_name}. " + item["why"]).strip()
 
         item.pop("exhausted", None)
+        used_ids.add(item["exercise_id"])
         item["group"] = group
+        if travel and travelled_from and item["exercise"] != travelled_from:
+            item["travel_substitute"] = True
+            item["why"] = f"Bodyweight stand-in while you are away. {item['why']}"
         blocks.append(item)
 
     notes = []
@@ -847,6 +914,13 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
     if missing:
         notes.append("Not in your library yet: " + ", ".join(missing)
                      + ". Load the starter library to add them.")
+    if travel:
+        note = "Travel mode: bodyweight only."
+        if dropped:
+            note += (" No equipment-free version of " + ", ".join(sorted(set(dropped)))
+                     + ", so they are left out rather than replaced with something "
+                       "that trains a different thing.")
+        notes.append(note)
     if knee["awaiting_next_day"]:
         notes.append("Score how your knee felt the morning after your last "
                      "session — it is what decides whether load goes up.")
@@ -859,6 +933,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
         "notes": notes,
         "achievable_loads": loads,
         "tai_chi_form_due": due_form,
+        "travel": bool(travel),
         "kind": decision["kind"],
         "kind_why": decision["why"],
         "theme": theme,

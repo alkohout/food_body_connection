@@ -309,6 +309,7 @@ def todays_session(
     day: Optional[str] = Query(None, pattern="^[ABC]$"),
     tz_offset: int = Query(0),
     kind: Optional[str] = Query(None, pattern="^(strength|practice)$"),
+    travel: bool = Query(False, description="Away from the equipment: bodyweight only."),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -318,7 +319,7 @@ def todays_session(
     model, so the knee back-off is a guarantee rather than a suggestion.
     """
     return build_session(db, current_user.user_id, day=day,
-                         tz_offset=tz_offset, kind=kind)
+                         tz_offset=tz_offset, kind=kind, travel=travel)
 
 
 @router.get("/assessment")

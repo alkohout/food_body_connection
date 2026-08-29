@@ -114,6 +114,18 @@ LIBRARY = [
     ("Bicep Curl", "strength", "upper", "dumbbell", False, False,
      "Elbows still, no swinging.", None),
 
+    # ── Bodyweight stand-ins, for training away from the kit. ──────────────
+    ("Quad Set", "strength", "knee", "bodyweight", True, True,
+     "Leg straight, press the back of the knee down and tighten the thigh. "
+     "Hold. The band-free version of a terminal knee extension.", None),
+    ("Side Lying Hip Abduction", "strength", "hip", "bodyweight", True, False,
+     "On your side, top leg straight and slightly behind the line of the body. "
+     "Lift without rolling back — the same glute work as the banded version.",
+     None),
+    ("Pike Push Up", "strength", "upper", "bodyweight", False, False,
+     "Hips high, head travels towards the floor between the hands. Shoulder "
+     "work when there is no dumbbell to press.", None),
+
     # ── The existing practice. Logged because it loads the knees. ───────────
     ("Tai Chi Exercises", "martial", "whole", "none", False, False, None, None),
     ("Tai Chi Form 42", "martial", "whole", "none", False, False, None, None),
