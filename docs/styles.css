@@ -128,10 +128,12 @@ h1 {
 .tab {
   flex: 0 0 auto;
   white-space: nowrap;
-  padding: 0.6rem 0.75rem;
+  /* The original desktop size. Natural-width tabs wrap to two rows inside the
+     640px container at either size, so the larger one costs no extra row. */
+  padding: 0.75rem;
   background: none;
   border: none;
-  font-size: 0.85rem;
+  font-size: 1rem;
   cursor: pointer;
   /* Blue throughout, as the phone looked before the buttons were styled. The
      iOS default that produced that look is #007aff, which manages only 4.02:1
@@ -139,6 +141,14 @@ h1 {
      at 5.17:1 instead. */
   color: #2563eb;
   border-bottom: 3px solid transparent; /* For active indicator */
+}
+
+/* Phones only: same layout, smaller so seven tabs stay within two rows. */
+@media (max-width: 640px) {
+  .tab {
+    font-size: 0.85rem;
+    padding: 0.6rem 0.75rem;
+  }
 }
 
 /* Active tab styling */
