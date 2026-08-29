@@ -113,12 +113,18 @@ h1 {
 /* Tab container with bottom divider */
 .tabs {
   display: flex;
-  /* Wrap rather than stretch or scroll. Stretching made each tab a seventh of
-     the bar on a wide screen and looked nothing like the phone; scrolling put
-     roughly 250px of tabs off the right of a phone with the scrollbar hidden,
-     so Training — the last one — was invisible with nothing to suggest it was
-     there. Wrapping keeps every tab reachable at any width. */
-  flex-wrap: wrap;
+  /* One row, scrolling sideways when the tabs outrun the width. Seven of them
+     need about 725px and the container gives 560px, so they cannot all fit
+     without shrinking the text to 0.7rem — and on a phone it would take
+     0.4rem, which is unreadable. Scrolling keeps them on a single row at a
+     legible size instead.
+
+     The scrollbar is deliberately left visible: hiding it is what made the
+     last tab unreachable with nothing on screen to say it existed. */
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
   margin-bottom: 1.5rem;
   border-bottom: 1px solid #ddd;
 }
@@ -143,12 +149,20 @@ h1 {
   border-bottom: 3px solid transparent; /* For active indicator */
 }
 
-/* Phones only: same layout, smaller so seven tabs stay within two rows. */
+/* Phones: tighter, so fewer tabs sit beyond the edge before scrolling. */
 @media (max-width: 640px) {
   .tab {
     font-size: 0.85rem;
     padding: 0.6rem 0.75rem;
   }
+}
+
+/* A slim scrollbar under the tabs, rather than none at all: it is the only
+   thing telling you there is more to the right. */
+.tabs::-webkit-scrollbar { height: 4px; }
+.tabs::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
 }
 
 /* Active tab styling */
