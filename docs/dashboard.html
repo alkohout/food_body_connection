@@ -114,17 +114,16 @@
             id="new-symptom-name"
             placeholder="New symptom name"
           />
+          <select id="new-symptom-group"></select>
           <input
             type="text"
-            id="new-symptom-group"
-            list="symptom-group-options"
-            placeholder="Group (e.g. Musculoskeletal)"
+            id="new-symptom-group-new"
+            placeholder="New group name"
+            style="display:none"
           />
           <button type="button" class="secondary" id="add-symptom-btn">Add</button>
         </div>
       </div>
-
-      <datalist id="symptom-group-options"></datalist>
 
       <!-- Editing symptoms: a name typed in a hurry used to be permanent, and
            a symptom with no group is missing from the grouped analysis. -->

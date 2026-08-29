@@ -514,10 +514,18 @@ function setupAddSymptom() {
     if (!name) return alert("Enter a symptom name");
     // Grouping at creation, because a symptom added without one is absent
     // from the grouped analysis and nothing says so.
-    const groupInput = getElement("new-symptom-group");
-    const created = await addNewSymptom(name, groupInput ? groupInput.value.trim() : "");
+    const groupSel = getElement("new-symptom-group");
+    const groupNew = getElement("new-symptom-group-new");
+    const group = symChosenGroup(groupSel, groupNew);
+    if (!group) {
+      return alert("Choose a group, or add a new one. Ungrouped symptoms are "
+                   + "left out of the grouped analysis.");
+    }
+    const created = await addNewSymptom(name, group);
     if (!created) return;
-    if (groupInput) groupInput.value = "";
+    if (groupNew) { groupNew.value = ""; groupNew.style.display = "none"; }
+    await symRefreshGroupChoices();
+    if (groupSel) groupSel.value = group;
 
     // Select newly created symptom
     select.value = created.symptom_id;
@@ -4474,6 +4482,63 @@ async function trFinishSession() {
 }
 
 
+// A group has to come from somewhere, and typing it from memory is how six
+// symptoms ended up ungrouped and invisible to the grouped analysis. So: a
+// dropdown of the groups already in use, plus an explicit way to start a new
+// one. Shared by the add form and the editor.
+const NEW_GROUP = "__new__";
+
+function symGroupOptions(symptoms) {
+  return [...new Set(symptoms.map((s) => s.symptom_group).filter(Boolean))].sort();
+}
+
+function symFillGroupSelect(select, groups, selected, { includeNew = true } = {}) {
+  if (!select) return;
+  select.replaceChildren();
+  const blank = trEl("option", "Choose a group…");
+  blank.value = "";
+  select.appendChild(blank);
+  groups.forEach((g) => {
+    const o = trEl("option", g);
+    o.value = g;
+    o.selected = g === selected;
+    select.appendChild(o);
+  });
+  if (includeNew) {
+    const o = trEl("option", "+ New group…");
+    o.value = NEW_GROUP;
+    select.appendChild(o);
+  }
+}
+
+// Resolves what the user actually chose, including a freshly typed group.
+function symChosenGroup(select, textInput) {
+  if (!select) return "";
+  if (select.value === NEW_GROUP) return textInput ? textInput.value.trim() : "";
+  return select.value;
+}
+
+function symWireNewGroup(select, textInput) {
+  if (!select || !textInput) return;
+  select.addEventListener("change", () => {
+    const creating = select.value === NEW_GROUP;
+    textInput.style.display = creating ? "" : "none";
+    if (creating) textInput.focus();
+    else textInput.value = "";
+  });
+}
+
+async function symRefreshGroupChoices() {
+  const select = getElement("new-symptom-group");
+  if (!select) return;
+  try {
+    const symptoms = await fetchSymptoms();
+    symFillGroupSelect(select, symGroupOptions(symptoms), select.value);
+  } catch (err) {
+    console.error("Could not load symptom groups:", err);
+  }
+}
+
 // =========================================================
 // Editing symptoms
 //
@@ -4499,16 +4564,7 @@ async function symLoadManager() {
   const symptoms = await res.json();
 
   // Offer the groups already in use rather than inventing a fixed list.
-  const groups = [...new Set(symptoms.map((s) => s.symptom_group).filter(Boolean))].sort();
-  const datalist = getElement("symptom-group-options");
-  if (datalist) {
-    datalist.replaceChildren();
-    groups.forEach((g) => {
-      const o = document.createElement("option");
-      o.value = g;
-      datalist.appendChild(o);
-    });
-  }
+  const groups = symGroupOptions(symptoms);
 
   box.replaceChildren();
   const ungrouped = symptoms.filter((s) => !s.symptom_group).length;
@@ -4528,11 +4584,13 @@ async function symLoadManager() {
       const name = document.createElement("input");
       name.type = "text";
       name.value = s.symptom_name;
-      const group = document.createElement("input");
-      group.type = "text";
-      group.setAttribute("list", "symptom-group-options");
-      group.value = s.symptom_group || "";
-      group.placeholder = "no group";
+      const group = document.createElement("select");
+      symFillGroupSelect(group, groups, s.symptom_group || "");
+      const groupNew = document.createElement("input");
+      groupNew.type = "text";
+      groupNew.placeholder = "New group name";
+      groupNew.style.display = "none";
+      symWireNewGroup(group, groupNew);
       if (!s.symptom_group) group.classList.add("sym-nogroup");
 
       const save = trEl("button", "Save", "secondary");
@@ -4545,7 +4603,7 @@ async function symLoadManager() {
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             symptom_name: name.value.trim(),
-            symptom_group: group.value.trim(),
+            symptom_group: symChosenGroup(group, groupNew),
           }),
         });
         if (!r.ok) {
@@ -4571,12 +4629,14 @@ async function symLoadManager() {
         await symLoadManager();
       });
 
-      row.append(name, group, save, status);
+      row.append(name, group, groupNew, save, status);
       box.appendChild(row);
     });
 }
 
 function setupSymptomManager() {
+  symWireNewGroup(getElement("new-symptom-group"), getElement("new-symptom-group-new"));
+  symRefreshGroupChoices();
   const btn = getElement("sym-manage-toggle");
   if (!btn) return;
   btn.addEventListener("click", async () => {

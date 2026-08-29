@@ -908,8 +908,15 @@ select:focus {
 
 /* Editing symptoms */
 .sym-edit-row { display: flex; gap: 0.4rem; align-items: center; padding: 0.25rem 0; }
-.sym-edit-row input { margin: 0; padding: 0.25rem 0.4rem; font-size: 0.85rem; }
+.sym-edit-row input, .sym-edit-row select {
+  margin: 0; padding: 0.25rem 0.4rem; font-size: 0.85rem; width: auto;
+}
 .sym-edit-row input:first-child { flex: 2; }
-.sym-edit-row input:nth-child(2) { flex: 1; }
+.sym-edit-row select { flex: 1; }
+.sym-edit-row input[placeholder="New group name"] { flex: 1; }
 .sym-edit-row button { width: auto; margin: 0; padding: 0.2rem 0.7rem; font-size: 0.78rem; }
 .sym-nogroup { background: #fffbeb; border-color: #fde68a; }
+
+/* Group pickers on the add-symptom row */
+.inline-add select { width: auto; margin: 0; padding: 0.3rem 0.4rem; }
+.inline-add input[type="text"] { min-width: 8rem; }
