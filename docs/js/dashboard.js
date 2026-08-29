@@ -3324,20 +3324,28 @@ function trRenderSession() {
   bar.replaceChildren();
 
   if (!trSession) {
-    const btn = trEl("button", "Start a session");
+    const btn = trEl("button", "Start session", "primary tr-big tr-block");
     btn.type = "button";
     btn.addEventListener("click", () => trStartSession());
     bar.appendChild(btn);
+    // A one-line reminder of what today is, without opening the plan.
+    if (trPlan) {
+      const label = trPlan.kind === "strength"
+        ? `Day ${trPlan.day} — ${trPlan.theme}`
+        : trPlan.theme;
+      bar.appendChild(trEl("p", label, "tr-today"));
+    }
     if (logSection) logSection.style.display = "none";
     trRunnerVisible(false);
     return;
   }
 
   const when = new Date(trSession.date_time);
-  bar.appendChild(trEl("p", `Session started ${when.toLocaleTimeString()} — ${trSession.sets.length} sets logged`));
-  const done = trEl("button", "Finish session");
+  bar.appendChild(trEl("p",
+    `Started ${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · ${trSession.sets.length} sets logged`,
+    "tr-hint"));
+  const done = trEl("button", "Finish session", "secondary");
   done.type = "button";
-  done.className = "secondary";
   done.addEventListener("click", trFinishSession);
   bar.appendChild(done);
   // The runner is the way through a session; the manual form stays available
@@ -3433,12 +3441,34 @@ async function trLoadHistory() {
   }
   sessions.forEach((s) => {
     const d = new Date(s.date_time);
-    const head = trEl("p", `${d.toLocaleDateString()} — ${s.session_type} — ${s.sets.length} sets`
-      + (s.next_day_knee !== null && s.next_day_knee !== undefined ? ` — next-day knee ${s.next_day_knee}` : ""));
-    box.appendChild(head);
+    const card = trEl("div", null, "tr-card");
+    card.appendChild(trEl("p", d.toLocaleDateString(undefined,
+      { weekday: "short", day: "numeric", month: "short" }), "tr-card-title"));
+
+    const bits = [s.session_type.replace("_", " "), `${s.sets.length} sets`];
+    if (s.next_day_knee !== null && s.next_day_knee !== undefined) {
+      bits.push(`next-day knee ${s.next_day_knee}/10`);
+    }
+    card.appendChild(trEl("p", bits.join(" · "), "tr-hint"));
+    if (s.notes) card.appendChild(trEl("p", s.notes, "tr-hint"));
+
+    // One line per exercise rather than per set: three identical sets read as
+    // noise when you are scanning back through a fortnight.
+    const byExercise = new Map();
+    s.sets.forEach((st) => {
+      const list = byExercise.get(st.exercise_name) || [];
+      list.push(st);
+      byExercise.set(st.exercise_name, list);
+    });
     const ul = document.createElement("ul");
-    s.sets.forEach((st) => ul.appendChild(trEl("li", `${st.exercise_name} — ${trDescribeSet(st)}`)));
-    box.appendChild(ul);
+    ul.className = "tr-set-list";
+    byExercise.forEach((sets, name) => {
+      const detail = trDescribeSet(sets[0]);
+      const label = sets.length > 1 ? `${name} — ${sets.length} x ${detail}` : `${name} — ${detail}`;
+      ul.appendChild(trEl("li", label));
+    });
+    card.appendChild(ul);
+    box.appendChild(card);
   });
 }
 
@@ -3470,6 +3500,11 @@ function setupTraining() {
   if (ndBtn) ndBtn.addEventListener("click", trSaveNextDay);
   const asBtn = getElement("tr-assess-toggle");
   if (asBtn) asBtn.addEventListener("click", trToggleAssessment);
+  const planBtn = getElement("tr-plan-toggle");
+  if (planBtn) planBtn.addEventListener("click", () => {
+    const sec = getElement("tr-plan");
+    if (sec) sec.style.display = sec.style.display === "none" ? "" : "none";
+  });
   const manBtn = getElement("tr-manual-toggle");
   if (manBtn) manBtn.addEventListener("click", () => {
     const sec = getElement("tr-log-section");
@@ -3515,20 +3550,21 @@ function trRenderPlan() {
   }
 
   const ph = trPlan.phase;
-  // The theme leads: it is what tells you at a glance what today is for.
+  const card = trEl("div", null, "tr-card");
   const heading = trPlan.kind === "strength"
     ? `Day ${trPlan.day} — ${trPlan.theme}`
     : trPlan.theme;
-  box.appendChild(trEl("h4", heading));
-  box.appendChild(trEl("p", trPlan.kind_why, "logs-loading"));
-  box.appendChild(trEl("p", `Phase ${ph.phase} — ${ph.label}. ${ph.aim}`));
-  box.appendChild(trEl("p", `${ph.sessions_done} strength sessions logged · next phase: ${ph.to_advance}`, "logs-loading"));
+  card.appendChild(trEl("p", heading, "tr-card-title"));
+  card.appendChild(trEl("p", trPlan.kind_why, "tr-hint"));
+  card.appendChild(trEl("p", `Phase ${ph.phase} — ${ph.label}. ${ph.aim}`, "tr-body"));
+  card.appendChild(trEl("p", `${ph.sessions_done} strength sessions logged · next phase: ${ph.to_advance}`, "tr-hint"));
+  box.appendChild(card);
 
   // The rest rule is a default, not a cage — some days you feel like more.
   const swap = trEl("button",
-    trPlan.kind === "strength" ? "Make today practice only" : "Do a strength session anyway");
+    trPlan.kind === "strength" ? "Make today practice only" : "Do a strength session anyway",
+    "secondary");
   swap.type = "button";
-  swap.className = "secondary";
   swap.style.width = "auto";
   swap.addEventListener("click", async () => {
     trKindOverride = trPlan.kind === "strength" ? "practice" : "strength";
@@ -3538,18 +3574,19 @@ function trRenderPlan() {
 
   // The knee verdict is the most important line here, so it is called out
   // rather than left to be inferred from the numbers.
-  const knee = trEl("p", trPlan.knee.reason);
-  knee.className = trPlan.knee.action === "progress" ? "logs-loading" : "tr-warn";
+  const knee = trEl("p", trPlan.knee.reason,
+    trPlan.knee.action === "progress" ? "tr-hint" : "tr-warn");
   box.appendChild(knee);
 
   trPlan.notes.forEach((n) => box.appendChild(trEl("p", n, "tr-warn")));
 
   const ol = document.createElement("ol");
+  ol.className = "tr-plan-list";
   trPlan.blocks.forEach((b) => {
     const li = document.createElement("li");
-    li.appendChild(trEl("strong", `${b.exercise} — ${b.prescription}`));
-    if (b.why) li.appendChild(trEl("div", b.why, "logs-loading"));
-    if (b.form_cues) li.appendChild(trEl("div", b.form_cues, "tr-cues"));
+    li.appendChild(trEl("span", `${b.exercise} — ${b.prescription}`, "tr-plan-name"));
+    if (b.why) li.appendChild(trEl("div", b.why, "tr-hint"));
+    if (b.form_cues) li.appendChild(trEl("div", b.form_cues, "tr-hint"));
     if (b.video_url) {
       const a = trEl("a", "Form guide →");
       a.href = b.video_url;
@@ -3615,16 +3652,20 @@ async function trToggleAssessment() {
   }
   const data = await res.json();
   box.replaceChildren();
-  box.appendChild(trEl("p", data.guidance));
+  const intro = trEl("div", null, "tr-card");
+  intro.appendChild(trEl("p", "Baseline assessment", "tr-card-title"));
+  intro.appendChild(trEl("p", data.guidance, "tr-body"));
   if (data.completed_before) {
-    box.appendChild(trEl("p", `You have logged ${data.completed_before} assessment session(s) before.`, "logs-loading"));
+    intro.appendChild(trEl("p", `${data.completed_before} logged before.`, "tr-hint"));
   }
+  box.appendChild(intro);
   const ol = document.createElement("ol");
+  ol.className = "tr-plan-list";
   data.items.forEach((it) => {
     const li = document.createElement("li");
-    li.appendChild(trEl("strong", it.exercise));
-    li.appendChild(trEl("div", it.how));
-    li.appendChild(trEl("div", it.why, "logs-loading"));
+    li.appendChild(trEl("span", it.exercise, "tr-plan-name"));
+    li.appendChild(trEl("div", it.how, "tr-body"));
+    li.appendChild(trEl("div", it.why, "tr-hint"));
     if (it.video_url) {
       const a = trEl("a", "Form guide →");
       a.href = it.video_url;
@@ -3667,9 +3708,7 @@ function trStartRunner() {
 
 function trRunnerVisible(on) {
   const r = getElement("tr-runner-section");
-  const m = getElement("tr-manual-wrap");
   if (r) r.style.display = on ? "" : "none";
-  if (m) m.style.display = on ? "" : "none";
 }
 
 function trRenderRunner() {
@@ -3749,7 +3788,7 @@ function trRenderRunner() {
 }
 
 function trRenderCheck(body, b) {
-  const btn = trEl("button", "Done", "tr-big");
+  const btn = trEl("button", "Done", "primary tr-big tr-block");
   btn.type = "button";
   btn.addEventListener("click", () => trLogRunSet(b, {}));
   body.appendChild(btn);
@@ -3795,7 +3834,7 @@ function trRenderCounter(body, b) {
     body.appendChild(sRow);
   }
 
-  const log = trEl("button", "Log set", "tr-big");
+  const log = trEl("button", "Log set", "primary tr-big tr-block");
   log.type = "button";
   log.addEventListener("click", () => {
     const payload = { reps: Number(val.textContent) };
@@ -3812,21 +3851,29 @@ function trRenderCounter(body, b) {
 
 function trRenderTimer(body, b) {
   const target = b.target_seconds || 0;
-  const display = trEl("div", "0s", "tr-timer");
+
+  // Counts down, so what is on screen is how much is left rather than how
+  // much has gone. With no target to count towards it falls back to counting
+  // up, which is the only sensible thing to show.
+  const held = () => trTimer.elapsed
+    + (trTimer.handle ? Math.floor((Date.now() - trTimer.startedAt) / 1000) : 0);
+  const shown = (secs) => (target ? `${Math.max(0, target - secs)}s` : `${secs}s`);
+
+  const display = trEl("div", shown(0), "tr-timer");
   body.appendChild(display);
-  body.appendChild(trEl("p", `Target ${target}s`, "logs-loading"));
+  body.appendChild(trEl("p", target ? `of ${target}s` : "counting up", "tr-hint"));
 
   const showStart = (label) => { startBtn.textContent = label; };
 
   const tick = () => {
-    const secs = trTimer.elapsed + Math.floor((Date.now() - trTimer.startedAt) / 1000);
-    display.textContent = `${secs}s`;
+    const secs = held();
+    display.textContent = shown(secs);
     // Stop at the target rather than running on: the prescription is the
     // point, and holding to failure every time is how this knee gets angry.
     if (target && secs >= target) {
       trTimerStop();
       trTimer.elapsed = secs;
-      display.textContent = `${secs}s — done`;
+      display.textContent = "done";
       showStart("Restart");
     }
   };
@@ -3835,7 +3882,7 @@ function trRenderTimer(body, b) {
   // looking properly.
   const controls = trEl("div", null, "tr-timer-controls");
 
-  const startBtn = trEl("button", "Start", "tr-big");
+  const startBtn = trEl("button", "Start", "primary tr-big");
   startBtn.type = "button";
   startBtn.addEventListener("click", () => {
     if (trTimer.handle) {
@@ -3844,7 +3891,7 @@ function trRenderTimer(body, b) {
       clearInterval(trTimer.handle);
       trTimer.handle = null;
       showStart("Resume");
-      display.textContent = `${trTimer.elapsed}s`;
+      display.textContent = shown(trTimer.elapsed);
       return;
     }
     if (startBtn.textContent === "Restart") trTimer.elapsed = 0;
@@ -3857,17 +3904,17 @@ function trRenderTimer(body, b) {
   resetBtn.type = "button";
   resetBtn.addEventListener("click", () => {
     trTimerStop();
-    display.textContent = "0s";
+    display.textContent = shown(0);
     showStart("Start");
   });
 
-  const log = trEl("button", "Log", "tr-big");
+  const log = trEl("button", "Log", "primary tr-big");
   log.type = "button";
   log.addEventListener("click", () => {
-    let secs = trTimer.elapsed;
-    if (trTimer.handle) secs += Math.floor((Date.now() - trTimer.startedAt) / 1000);
+    // Logs seconds actually held, not what is left on the clock.
+    const secs = held();
     trTimerStop();
-    display.textContent = "0s";
+    display.textContent = shown(0);
     showStart("Start");
     // Falling back to the target lets a hold be logged without the timer,
     // which is what happens when you forget to press start.

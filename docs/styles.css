@@ -785,18 +785,79 @@ select:focus {
 .med-row--ended td {
   color: #9ca3af;
 }
-/* Training */
-.tr-cues { font-size: 0.9rem; color: #4b5563; margin: 0.25rem 0; }
-.tr-warn { color: #92400e; font-weight: 600; }
-#tr-plan ol, #tr-assess ol { padding-left: 1.25rem; }
-#tr-plan li, #tr-assess li { margin-bottom: 0.75rem; }
+/* ── Training ─────────────────────────────────────────────────────────── */
+
+.tr-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  margin-bottom: 0.6rem;
+}
+
+.tr-card-title { font-weight: 600; font-size: 0.95rem; margin: 0 0 0.15rem; }
+.tr-body { font-size: 0.85rem; color: #4b5563; margin: 0.2rem 0; }
+.tr-hint { font-size: 0.75rem; color: #9ca3af; margin: 0.15rem 0; }
+.tr-today { font-size: 0.8rem; color: #4b5563; text-align: center; margin: 0.5rem 0 0; }
+
+.tr-warn {
+  font-size: 0.8rem;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin: 0.4rem 0;
+}
+
+.tr-notice { border-color: #fde68a; background: #fffbeb; }
+
+.tr-toggles { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.tr-toggles button { width: auto; margin: 0; padding: 0.35rem 0.8rem; font-size: 0.8rem; }
+.tr-panel { margin-top: 0.75rem; }
+
+.tr-step {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.4rem;
+}
+
+.tr-block { width: 100%; }
+.tr-big { font-size: 1.1rem; padding: 0.9rem 1.25rem; min-height: 3.25rem; }
+
+.tr-inline { display: flex; gap: 0.5rem; align-items: center; }
+.tr-inline input { width: 6rem; margin: 0; }
+.tr-inline button { width: auto; margin: 0; }
+
 .tr-counter { display: flex; align-items: center; gap: 0.75rem; margin: 0.75rem 0; }
-.tr-counter button { width: 3rem; font-size: 1.5rem; line-height: 1; }
-.tr-counter span { font-size: 1.75rem; min-width: 3rem; text-align: center; }
-.tr-timer { font-size: 3rem; font-weight: 700; text-align: center; margin: 0.5rem 0; }
-.tr-nav { display: flex; gap: 0.75rem; margin-top: 1rem; }
-.tr-nav button { flex: 1; }
-.tr-timer-controls { display: flex; gap: 0.75rem; align-items: stretch; margin: 0.5rem 0 1rem; }
-.tr-timer-controls .tr-big { flex: 2; }
-.tr-timer-controls .secondary { flex: 1; }
-.tr-big { font-size: 1.35rem; font-weight: 700; padding: 1rem 1.25rem; min-height: 3.5rem; }
+.tr-counter button { width: 3.25rem; margin: 0; font-size: 1.4rem; padding: 0.4rem 0; }
+.tr-counter span { font-size: 1.75rem; font-weight: 600; min-width: 2.5rem; text-align: center; }
+
+.tr-timer { font-size: 3rem; font-weight: 700; text-align: center; margin: 0.5rem 0; color: #111827; }
+.tr-timer-controls { display: flex; gap: 0.5rem; align-items: stretch; margin: 0.5rem 0 1rem; }
+.tr-timer-controls .tr-big { flex: 2; margin: 0; }
+.tr-timer-controls .secondary { flex: 1; margin: 0; width: auto; }
+
+.tr-nav { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+.tr-nav button { flex: 1; margin: 0; }
+
+/* Form cues are instructions to follow mid-set, so they stay readable rather
+   than being demoted to hint grey. */
+.tr-cues {
+  font-size: 0.85rem;
+  color: #374151;
+  border-left: 3px solid #e5e7eb;
+  padding-left: 0.6rem;
+  margin: 0.5rem 0;
+}
+
+.tr-plan-list { padding-left: 1.1rem; margin: 0.5rem 0 0; }
+.tr-plan-list li { margin-bottom: 0.6rem; }
+.tr-plan-name { font-weight: 600; font-size: 0.9rem; }
+
+.tr-set-list { padding-left: 1.1rem; margin: 0.4rem 0 0; }
+.tr-set-list li { font-size: 0.8rem; color: #4b5563; margin-bottom: 0.15rem; }
+
+.tr-list { display: flex; flex-direction: column; }
