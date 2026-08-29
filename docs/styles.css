@@ -891,3 +891,6 @@ select:focus {
 .tr-set-actions button {
   width: auto; margin: 0; padding: 0.2rem 0.7rem; font-size: 0.78rem;
 }
+.tr-equip-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.4rem 0; }
+.tr-equip-row input { width: auto; margin: 0; }
+.tr-equip-row span:first-of-type { flex: 1; font-size: 0.9rem; }

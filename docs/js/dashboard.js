@@ -3330,9 +3330,9 @@ function trRenderSession() {
     bar.appendChild(btn);
     // A one-line reminder of what today is, without opening the plan.
     if (trPlan) {
-      const label = (trPlan.kind === "strength"
+      const label = trPlan.kind === "strength"
         ? `Day ${trPlan.day} — ${trPlan.theme}`
-        : trPlan.theme) + (trPlan.travel ? " · travel mode" : "");
+        : trPlan.theme;
       bar.appendChild(trEl("p", label, "tr-today"));
     }
     if (logSection) logSection.style.display = "none";
@@ -3632,6 +3632,14 @@ function setupTraining() {
     const sec = getElement("tr-plan");
     if (sec) sec.style.display = sec.style.display === "none" ? "" : "none";
   });
+  const eqBtn = getElement("tr-equip-toggle");
+  if (eqBtn) eqBtn.addEventListener("click", async () => {
+    const sec = getElement("tr-equip");
+    if (!sec) return;
+    const opening = sec.style.display === "none";
+    sec.style.display = opening ? "" : "none";
+    if (opening) await trLoadEquipment();
+  });
   const manBtn = getElement("tr-manual-toggle");
   if (manBtn) manBtn.addEventListener("click", () => {
     const sec = getElement("tr-log-section");
@@ -3686,9 +3694,6 @@ function trRenderPlan() {
   const heading = trPlan.kind === "strength"
     ? `Day ${trPlan.day} — ${trPlan.theme}`
     : trPlan.theme;
-  if (trPlan.travel) {
-    card.appendChild(trEl("p", "Travel mode — bodyweight only", "tr-warn"));
-  }
   card.appendChild(trEl("p", heading, "tr-card-title"));
   card.appendChild(trEl("p", trPlan.kind_why, "tr-hint"));
   card.appendChild(trEl("p", `Phase ${ph.phase} — ${ph.label}. ${ph.aim}`, "tr-body"));
@@ -3707,16 +3712,6 @@ function trRenderPlan() {
   });
   box.appendChild(swap);
 
-  const away = trEl("button",
-    trPlan.travel ? "Back home — use my equipment" : "I'm away from my equipment",
-    "secondary");
-  away.type = "button";
-  away.style.width = "auto";
-  away.addEventListener("click", async () => {
-    trSetTravel(!trPlan.travel);
-    await trLoadPlan();
-  });
-  box.appendChild(away);
 
   // The knee verdict is the most important line here, so it is called out
   // rather than left to be inferred from the numbers.
@@ -3752,31 +3747,67 @@ function trRenderPlan() {
 
 let trKindOverride = null;
 
-// Travel lasts days, not one session, so it survives a reload. It is shown on
-// the plan whenever it is on, because a mode you cannot see is a mode you
-// forget to turn off and then wonder why the dumbbells never come back.
-function trTravel() {
-  try {
-    return localStorage.getItem("training_travel") === "1";
-  } catch (err) {
-    return false;   // private browsing and similar: just train at home
+// Kit arrives in instalments, so what is available is a list rather than a
+// home/away flag. It lives on the profile, not in this browser: it describes
+// what the user owns, which does not change because they opened a laptop.
+async function trLoadEquipment() {
+  const box = getElement("tr-equip");
+  if (!box) return;
+  box.replaceChildren(trEl("p", "Loading…", "tr-hint"));
+
+  const res = await fetch(`${API_URL}/training/equipment`, { headers: trAuth() });
+  if (!res.ok) {
+    box.replaceChildren(trEl("p", `Could not load (${res.status}).`, "tr-hint"));
+    return;
   }
+  const data = await res.json();
+
+  box.replaceChildren();
+  const card = trEl("div", null, "tr-card");
+  card.appendChild(trEl("p", "What have you got?", "tr-card-title"));
+  card.appendChild(trEl("p",
+    "Anything unticked is swapped for something you can do without it, or left "
+    + "out when there is no honest substitute. Bodyweight work is always on.",
+    "tr-hint"));
+  if (data.unset) {
+    card.appendChild(trEl("p",
+      "Nothing set yet, so the plan currently assumes you have everything.",
+      "tr-warn"));
+  }
+
+  const chosen = new Set(data.items.filter((i) => i.available).map((i) => i.key));
+  data.items.forEach((item) => {
+    const row = trEl("label", null, "tr-equip-row");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = item.available;
+    cb.addEventListener("change", async () => {
+      if (cb.checked) chosen.add(item.key);
+      else chosen.delete(item.key);
+      const save = await fetch(`${API_URL}/training/equipment`, {
+        method: "PUT",
+        headers: { ...trAuth(), "Content-Type": "application/json" },
+        body: JSON.stringify([...chosen]),
+      });
+      if (!save.ok) {
+        cb.checked = !cb.checked;   // put it back rather than lie about the state
+        return;
+      }
+      await trLoadPlan();
+      await trLoadEquipment();
+    });
+    row.appendChild(cb);
+    row.appendChild(trEl("span", item.label));
+    row.appendChild(trEl("span", `${item.unlocks} exercises`, "tr-hint"));
+    card.appendChild(row);
+  });
+  box.appendChild(card);
 }
 
-function trSetTravel(on) {
-  try {
-    if (on) localStorage.setItem("training_travel", "1");
-    else localStorage.removeItem("training_travel");
-  } catch (err) {
-    console.error("could not persist travel mode:", err);
-  }
-}
 
 async function trLoadPlan() {
   const tz = new Date().getTimezoneOffset();
-  const q = `tz_offset=${tz}`
-    + (trKindOverride ? `&kind=${trKindOverride}` : "")
-    + (trTravel() ? "&travel=true" : "");
+  const q = `tz_offset=${tz}` + (trKindOverride ? `&kind=${trKindOverride}` : "");
   const res = await fetch(`${API_URL}/training/today?${q}`, { headers: trAuth() });
   trPlan = res.ok ? await res.json() : null;
   trRenderPlan();

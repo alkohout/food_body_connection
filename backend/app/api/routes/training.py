@@ -5,6 +5,7 @@ Every lookup filters on the authenticated user, and a session or set reached by
 id is re-checked against that user before it is touched — an id in a URL is not
 proof of ownership.
 """
+import json
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -12,7 +13,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
-from app.analysis.training_program import ASSESSMENT, build_session
+from app.analysis.training_program import (
+    ALWAYS_AVAILABLE, ASSESSMENT, available_equipment, build_session,
+)
 from app.data.exercise_library import LIBRARY
 from app.database import get_db
 from app.models.table_class import (
@@ -263,6 +266,45 @@ def delete_set(
     db.commit()
 
 
+@router.get("/equipment")
+def equipment(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """What kit the plan can draw on, and what each piece unlocks.
+
+    Built from the catalogue rather than hard-coded, so a kind of equipment
+    that no exercise uses is never offered — a checkbox that unlocks nothing
+    is just a question the user cannot answer usefully.
+    """
+    counts = {}
+    for _, _, _, equip, *_ in LIBRARY:
+        if equip in ALWAYS_AVAILABLE:
+            continue
+        counts[equip] = counts.get(equip, 0) + 1
+
+    profile = db.query(TrainingProfile).filter(
+        TrainingProfile.user_id == current_user.user_id).first()
+    owned = available_equipment(profile)
+
+    labels = {"dumbbell": "Dumbbells", "band": "Resistance bands",
+              "barbell": "Barbell", "tube": "Tube / pedal puller"}
+    return {
+        # Unset means everything, which is the right default before anyone has
+        # said otherwise.
+        "unset": owned is None,
+        "items": [
+            {
+                "key": key,
+                "label": labels.get(key, key.title()),
+                "unlocks": n,
+                "available": True if owned is None else key in owned,
+            }
+            for key, n in sorted(counts.items(), key=lambda kv: -kv[1])
+        ],
+    }
+
+
 # ── Profile ──────────────────────────────────────────────────────────────────
 
 @router.get("/profile", response_model=TrainingProfileOut)
@@ -281,6 +323,40 @@ def get_profile(
             barbell_bar_kg=None, equipment_json=None, updated_at=None,
         )
     return p
+
+
+@router.put("/equipment")
+def save_equipment(
+    payload: list[str],
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Record which kit is to hand. Merged into the profile, not overwriting it."""
+    valid = {equip for _, _, _, equip, *_ in LIBRARY} - ALWAYS_AVAILABLE
+    unknown = [k for k in payload if k not in valid]
+    if unknown:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Not equipment this app knows about: {', '.join(unknown)}.",
+        )
+
+    p = db.query(TrainingProfile).filter(
+        TrainingProfile.user_id == current_user.user_id).first()
+    if p is None:
+        p = TrainingProfile(user_id=current_user.user_id)
+        db.add(p)
+
+    try:
+        data = json.loads(p.equipment_json) if p.equipment_json else {}
+        if not isinstance(data, dict):
+            data = {}
+    except (ValueError, TypeError):
+        data = {}          # unreadable: rebuild rather than lose the setting
+    # Plate inventory lives in the same blob and must survive this write.
+    data["available"] = sorted(set(payload))
+    p.equipment_json = json.dumps(data)
+    db.commit()
+    return {"available": data["available"]}
 
 
 @router.put("/profile", response_model=TrainingProfileOut)
@@ -309,7 +385,6 @@ def todays_session(
     day: Optional[str] = Query(None, pattern="^[ABC]$"),
     tz_offset: int = Query(0),
     kind: Optional[str] = Query(None, pattern="^(strength|practice)$"),
-    travel: bool = Query(False, description="Away from the equipment: bodyweight only."),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -319,7 +394,7 @@ def todays_session(
     model, so the knee back-off is a guarantee rather than a suggestion.
     """
     return build_session(db, current_user.user_id, day=day,
-                         tz_offset=tz_offset, kind=kind, travel=travel)
+                         tz_offset=tz_offset, kind=kind)
 
 
 @router.get("/assessment")

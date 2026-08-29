@@ -310,7 +310,7 @@ REGRESSIONS = {
 }
 
 
-# Bodyweight stand-ins for the days the kit is not there. Unlike REGRESSIONS
+# Stand-ins for kit that is not there yet. Unlike REGRESSIONS
 # these are not easier, just equipment-free: the same movement done another way.
 # Anything with no honest bodyweight equivalent is left out rather than replaced
 # with something unrelated — a session missing its rows is more use than one
@@ -330,21 +330,40 @@ TRAVEL_SUBSTITUTES = {
     "standing calf raise": ("Standing Calf Raise", "reps", 12, 20),
 }
 
-# What counts as available when travelling. "none" covers the martial practice,
-# which needs nothing.
-TRAVEL_EQUIPMENT = {"bodyweight", "none"}
+# Needs nothing, so it is never something to own: "bodyweight" is a floor and
+# "none" is the martial practice.
+ALWAYS_AVAILABLE = {"bodyweight", "none"}
 
 
-def _travel_swap(name, equipment, by_name):
-    """Replace an exercise the kit is needed for. None means drop it."""
-    if equipment in TRAVEL_EQUIPMENT:
+def available_equipment(profile) -> set | None:
+    """What the user has. None means no restriction — assume everything.
+
+    Kit arrives in instalments, so this is a list rather than a home/away flag:
+    dumbbells one week and bands the next is the normal case, not an edge one.
+    """
+    if profile is None or not profile.equipment_json:
+        return None
+    try:
+        data = json.loads(profile.equipment_json)
+    except (ValueError, TypeError):
+        logger.warning("equipment_json unreadable; assuming everything is to hand")
+        return None
+    owned = data.get("available")
+    if not isinstance(owned, list):
+        return None
+    return {str(x) for x in owned} | ALWAYS_AVAILABLE
+
+
+def _equipment_swap(name, equipment, by_name, available):
+    """Replace an exercise needing kit that is not there. None means drop it."""
+    if available is None or equipment in available:
         return "keep"
     spec = TRAVEL_SUBSTITUTES.get(name.strip().lower())
     if spec is None:
         return None
     sub_name, scheme, low, high = spec
     ex = by_name.get(sub_name.strip().lower())
-    if ex is None or ex.equipment not in TRAVEL_EQUIPMENT:
+    if ex is None or ex.equipment not in available:
         return None
     return Block(sub_name, scheme, 3, low, high), ex
 
@@ -788,14 +807,14 @@ def choose_kind(db, user_id, tz_offset) -> dict:
     }
 
 
-def build_session(db, user_id, day=None, tz_offset=0, kind=None,
-                  travel=False) -> dict:
+def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
     """The whole prescription for the next session."""
     phase = current_phase(db, user_id)
     knee = knee_state(db, user_id)
     profile = db.query(TrainingProfile).filter(
         TrainingProfile.user_id == user_id).first()
     loads = achievable_loads(profile)
+    available = available_equipment(profile)
 
     # Rotate A/B/C by how many strength sessions have been done, so the next
     # one is simply the next in the cycle. Anything that is not a real day
@@ -843,25 +862,24 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
             missing.append(block.name)
             continue
 
-        travelled_from = None
-        if travel:
-            swap = _travel_swap(block.name, ex.equipment, by_name)
-            if swap is None:
-                # No honest bodyweight equivalent. Leaving it out is more use
-                # than substituting something that trains a different thing.
-                dropped.append(ex.exercise_name)
-                continue
-            if swap != "keep":
-                travelled_from = block.name
-                block, ex = swap
+        swapped_from = None
+        swap = _equipment_swap(block.name, ex.equipment, by_name, available)
+        if swap is None:
+            # No equivalent using what is to hand. Leaving it out is more use
+            # than substituting something that trains a different thing.
+            dropped.append(ex.exercise_name)
+            continue
+        if swap != "keep":
+            swapped_from = block.name
+            block, ex = swap
 
-        # After any substitution, not just on the swap path: a travel swap can
+        # After any substitution, not just on the swap path: a swap can
         # land on an exercise the day already contains, and whichever of the two
         # comes first claims the slot. Prescribing it twice would be wrong
         # either way round.
         if ex.exercise_id in used_ids:
-            if travelled_from:
-                dropped.append(travelled_from)
+            if swapped_from:
+                dropped.append(swapped_from)
             continue
 
         prior, when, from_test = _last_sets(db, user_id, ex.exercise_id)
@@ -902,9 +920,10 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         item.pop("exhausted", None)
         used_ids.add(item["exercise_id"])
         item["group"] = group
-        if travel and travelled_from and item["exercise"] != travelled_from:
-            item["travel_substitute"] = True
-            item["why"] = f"Bodyweight stand-in while you are away. {item['why']}"
+        if swapped_from and item["exercise"] != swapped_from:
+            item["equipment_substitute"] = swapped_from
+            item["why"] = (f"Standing in for {swapped_from}, which needs kit you "
+                           f"have not marked as available. {item['why']}")
         blocks.append(item)
 
     notes = []
@@ -914,13 +933,11 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
     if missing:
         notes.append("Not in your library yet: " + ", ".join(missing)
                      + ". Load the starter library to add them.")
-    if travel:
-        note = "Travel mode: bodyweight only."
-        if dropped:
-            note += (" No equipment-free version of " + ", ".join(sorted(set(dropped)))
-                     + ", so they are left out rather than replaced with something "
-                       "that trains a different thing.")
-        notes.append(note)
+    if dropped:
+        notes.append("Left out because nothing you have can stand in for "
+                     + ", ".join(sorted(set(dropped)))
+                     + " — better a gap than something that trains a different "
+                       "thing.")
     if knee["awaiting_next_day"]:
         notes.append("Score how your knee felt the morning after your last "
                      "session — it is what decides whether load goes up.")
@@ -933,7 +950,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         "notes": notes,
         "achievable_loads": loads,
         "tai_chi_form_due": due_form,
-        "travel": bool(travel),
+        "available_equipment": sorted(available) if available else None,
         "kind": decision["kind"],
         "kind_why": decision["why"],
         "theme": theme,
