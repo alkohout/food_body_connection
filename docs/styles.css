@@ -133,17 +133,22 @@ h1 {
   border: none;
   font-size: 0.85rem;
   cursor: pointer;
-  color: #4b5563;
+  /* Blue throughout, as the phone looked before the buttons were styled. The
+     iOS default that produced that look is #007aff, which manages only 4.02:1
+     on this background and fails AA at 0.85rem, so this is the app's own blue
+     at 5.17:1 instead. */
+  color: #2563eb;
   border-bottom: 3px solid transparent; /* For active indicator */
 }
 
 /* Active tab styling */
 .tab.active {
   font-weight: 600;
-  /* Matches the underline, so the selected tab reads as selected by more than
-     one signal — which also survives the underline being missed at a glance. */
-  color: #4f46e5;
-  border-bottom-color: #4f46e5;
+  /* Same family, much darker: the set reads as blue while the current tab is
+     still marked three ways — darker, bolder, underlined. Relying on the
+     underline alone is a 3px cue that is easy to miss on a phone. */
+  color: #3730a3;
+  border-bottom-color: #3730a3;
 }
 
 
