@@ -3596,18 +3596,23 @@ async function trLoadHistory() {
   });
 }
 
-async function trSeed() {
-  trSetStatus("tr-seed-status", "Loading…");
-  const res = await fetch(`${API_URL}/training/exercises/seed`, {
-    method: "POST", headers: trAuth(),
-  });
-  if (!res.ok) {
-    trSetStatus("tr-seed-status", `Failed (${res.status}).`);
-    return;
+// The exercise catalogue is a fixed list this app ships, not something to
+// choose. Asking the user to press a button called "load the starter exercise
+// library" made a detail of the implementation their problem, and left a new
+// account with an empty plan until they found it. It is now done on the way in,
+// and is only mentioned when it actually adds something.
+async function trSyncLibrary() {
+  try {
+    const res = await fetch(`${API_URL}/training/exercises/seed`, {
+      method: "POST", headers: trAuth(),
+    });
+    if (!res.ok) return 0;
+    const data = await res.json();
+    return data.added || 0;
+  } catch (err) {
+    console.error("library sync failed:", err);
+    return 0;   // a stale library is better than a broken tab
   }
-  const data = await res.json();
-  trSetStatus("tr-seed-status", `Added ${data.added}; you already had ${data.already_present}.`);
-  await trLoadExercises();
 }
 
 function setupTraining() {
@@ -3616,8 +3621,6 @@ function setupTraining() {
 
   const addBtn = getElement("tr-add-set");
   if (addBtn) addBtn.addEventListener("click", trAddSet);
-  const seedBtn = getElement("tr-seed");
-  if (seedBtn) seedBtn.addEventListener("click", trSeed);
   const sel = getElement("tr-exercise");
   if (sel) sel.addEventListener("change", trRenderCues);
   const ndBtn = getElement("tr-nextday-save");
@@ -3642,7 +3645,12 @@ function setupTraining() {
     if (loaded) return;
     loaded = true;
     try {
+      const added = await trSyncLibrary();
       await trLoadExercises();
+      if (added) {
+        trSetStatus("tr-seed-status",
+          `${added} new exercise${added === 1 ? "" : "s"} added to your library.`);
+      }
       trRenderSession();
       await trLoadPlan();
       await trLoadHistory();
