@@ -67,6 +67,24 @@ LIBRARY = [
      "Step out, lower straight down rather than forwards. Front shin near "
      "vertical to keep the load off the kneecap.", None),
 
+    # ── The rungs below a step down. Someone who cannot do the step-down
+    # motion at all has nowhere to start otherwise: the ladder went straight
+    # from it to a two-legged isometric. Both of these are done with a hand on
+    # a wall or chair, which takes out the balance and some of the load. ─────
+    ("Single Leg Balance", "strength", "knee", "bodyweight", True, True,
+     "Hand on a wall or chair. Stand on one leg with the knee softly bent — a "
+     "few degrees, not a squat — and hold. Knee stays over the middle toes. "
+     "Reduce the bend until it is pain-free; that angle is your starting "
+     "point.", None),
+    ("Supported Single Leg Squat", "strength", "knee", "bodyweight", True, False,
+     "Same hand on the support, now bending and straightening through the "
+     "range that stays pain-free. Take as much weight through the hand as you "
+     "need. Depth comes later; control comes first.", None),
+    ("Clamshell", "strength", "hip", "bodyweight", True, False,
+     "On your side, knees bent, heels together. Lift the top knee without "
+     "rolling the hips back. Trains the rotation that stops the knee drifting "
+     "inward.", None),
+
     # ── Hip: knee tracking is controlled at the hip, so this is knee work. ──
     ("Standing Hip Abduction", "strength", "hip", "band", True, False,
      "Band at the knees, support against a wall. Lift to the side without the "

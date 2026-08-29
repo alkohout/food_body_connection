@@ -148,7 +148,7 @@ KNEE_PHASES = {
                "while covering the rest of the body with what needs no equipment.",
         "themes": {"A": "Knees, push and core",
                    "B": "Hips, pull and shins",
-                   "C": "Knee control, pull and core"},
+                   "C": "Single-leg control and pull"},
         "days": {
             # Six rather than five: knee work is the priority but it is not a
             # whole session, and pushing without pulling is how shoulders end
@@ -169,12 +169,15 @@ KNEE_PHASES = {
                 Block("Tibialis Raise", "reps", 3, 12, 20),
                 Block("Side Plank", "iso", 3, 20, 40),
             ],
+            # Single-leg control, starting well below a step down. Terminal
+            # knee extension is already on day A, so this slot goes to the
+            # movement that actually needs building.
             "C": [
                 Block("Wall Sit", "iso", 3, 20, 45),
-                Block("Terminal Knee Extension", "reps", 3, 10, 15),
+                Block("Single Leg Balance", "iso", 3, 10, 30),
+                Block("Supported Single Leg Squat", "reps", 3, 5, 12),
+                Block("Clamshell", "reps", 3, 10, 20),
                 Block("Prone Y Raise", "reps", 3, 8, 15),
-                Block("Tricep Dip", "reps", 3, 5, 12),
-                Block("Bird Dog", "reps", 3, 6, 12),
                 Block("Sit Up", "reps", 3, 8, 15),
             ],
         },

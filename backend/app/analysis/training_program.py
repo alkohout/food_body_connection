@@ -224,9 +224,19 @@ REGRESSIONS = {
     "lunge": [("Wide Leg Squat", "reps", 8, 15)],
     "single leg squat": [("Split Squat", "load", 6, 10),
                          ("Wide Leg Squat", "reps", 8, 15)],
+    # Rungs, not a cliff: a step down that cannot be done drops to the same
+    # movement with a hand on support, then to holding the position, then to
+    # the two-legged isometric.
     "anterior step down": [("Lateral Step Down", "reps", 5, 10),
+                           ("Supported Single Leg Squat", "reps", 5, 12),
+                           ("Single Leg Balance", "iso", 10, 30),
                            ("Spanish Squat", "iso", 20, 45)],
-    "lateral step down": [("Spanish Squat", "iso", 20, 45)],
+    "lateral step down": [("Supported Single Leg Squat", "reps", 5, 12),
+                          ("Single Leg Balance", "iso", 10, 30),
+                          ("Spanish Squat", "iso", 20, 45)],
+    "supported single leg squat": [("Single Leg Balance", "iso", 10, 30),
+                                   ("Spanish Squat", "iso", 20, 45)],
+    "single leg balance": [("Spanish Squat", "iso", 20, 45)],
     "spanish squat": [("Wall Sit", "iso", 20, 45)],
     "push up": [("Incline Push Up", "reps", 5, 12)],
     "romanian deadlift": [("Single Leg Glute Bridge", "reps", 8, 15)],
@@ -248,6 +258,7 @@ TRAVEL_SUBSTITUTES = {
     "spanish squat": ("Wall Sit", "iso", 20, 45),
     "terminal knee extension": ("Quad Set", "iso", 10, 30),
     "standing hip abduction": ("Side Lying Hip Abduction", "reps", 10, 20),
+    "clamshell": ("Clamshell", "reps", 10, 20),
     "lateral band walk": ("Side Lying Hip Abduction", "reps", 10, 20),
     "dumbbell shoulder press": ("Pike Push Up", "reps", 5, 12),
     "dumbbell floor press": ("Push Up", "reps", 8, 15),
