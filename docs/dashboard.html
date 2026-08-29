@@ -32,6 +32,7 @@
       <button class="tab" data-tab="analysis">Analysis</button>
       <button class="tab" data-tab="medication">Medications</button>
       <button class="tab" data-tab="documents">Documents</button>
+      <button class="tab" data-tab="training">Training</button>
     </div>
 
     <!-- Allergen tab -->
@@ -980,6 +981,77 @@
     </form>
 
     <!-- Documents tab -->
+    <form id="training-form" class="form">
+      <p>Strength and practice log. Sessions here sit in the same database as your
+         symptom logs, so training load can be compared against how you actually felt.</p>
+
+      <!-- Today's session -->
+      <section class="med-section">
+        <h3>Today</h3>
+        <div id="tr-session-bar">
+          <p class="logs-loading">Loading…</p>
+        </div>
+      </section>
+
+      <!-- Log a set -->
+      <section class="med-section" id="tr-log-section" style="display:none">
+        <h3>Log a set</h3>
+        <div class="form-row">
+          <label for="tr-exercise">Exercise</label>
+          <select id="tr-exercise"></select>
+        </div>
+        <div id="tr-cues" class="tr-cues"></div>
+        <div class="form-row">
+          <label for="tr-reps">Reps</label>
+          <input type="number" id="tr-reps" min="0" step="1" placeholder="8" />
+        </div>
+        <div class="form-row">
+          <label for="tr-weight">Weight (kg, incl. bar)</label>
+          <input type="number" id="tr-weight" min="0" step="0.25" placeholder="12.5" />
+        </div>
+        <div class="form-row">
+          <label for="tr-band">Band (kg)</label>
+          <input type="number" id="tr-band" min="0" step="0.5" placeholder="7.5" />
+        </div>
+        <div class="form-row">
+          <label for="tr-hold">Hold (seconds)</label>
+          <input type="number" id="tr-hold" min="0" step="1" placeholder="30" />
+        </div>
+        <div class="form-row">
+          <label for="tr-side">Side</label>
+          <select id="tr-side">
+            <option value="">n/a</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="tr-rpe">RPE (1-10)</label>
+          <input type="number" id="tr-rpe" min="1" max="10" step="1" placeholder="7" />
+        </div>
+        <div class="form-row">
+          <label for="tr-pain">Knee pain during set (0-10)</label>
+          <input type="number" id="tr-pain" min="0" max="10" step="1" placeholder="0" />
+        </div>
+        <button type="button" id="tr-add-set">Add set</button>
+        <p id="tr-status" class="logs-loading"></p>
+        <div id="tr-current-sets"></div>
+      </section>
+
+      <!-- History -->
+      <section class="med-section">
+        <h3>Recent sessions</h3>
+        <div id="tr-history"><p class="logs-loading">Loading…</p></div>
+      </section>
+
+      <section class="med-section">
+        <button type="button" id="tr-seed" class="secondary" style="width:auto">
+          Load starter exercise library
+        </button>
+        <p class="logs-loading" id="tr-seed-status"></p>
+      </section>
+    </form>
+
     <form id="documents-form" class="form">
       <h2>Health Documents</h2>
       <p>Upload health reports, test results, or other documents. The AI analysis will automatically read and reference them when generating your summary.</p>

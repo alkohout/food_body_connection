@@ -24,6 +24,10 @@ class User(Base):
     medication_regimen = relationship("MedicationRegimen", back_populates="user", cascade="all, delete-orphan")
     documents = relationship("UserDocument", back_populates="user", cascade="all, delete-orphan")
     checkins = relationship("DailyCheckin", back_populates="user", cascade="all, delete-orphan")
+    exercises = relationship("Exercise", back_populates="user", cascade="all, delete-orphan")
+    workout_sessions = relationship("WorkoutSession", back_populates="user", cascade="all, delete-orphan")
+    set_logs = relationship("SetLog", back_populates="user", cascade="all, delete-orphan")
+    training_profile = relationship("TrainingProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 class Allergen(Base):
     __tablename__ = 'allergen'
@@ -191,3 +195,141 @@ class DailyCheckin(Base):
         UniqueConstraint('user_id', 'checkin_date', 'period', name='uq_user_checkin_date_period'),
         CheckConstraint("period IN ('morning', 'evening')", name='check_checkin_period'),
     )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Training
+#
+# Names are encrypted like every other user-supplied label in this file, so they
+# cannot be grouped or filtered in SQL — aggregation happens in Python, as it
+# does for allergens and symptoms. The classification columns below are plain
+# text on purpose: they are a fixed vocabulary rather than user data, and the
+# programme logic has to filter on them.
+# ──────────────────────────────────────────────────────────────────────────────
+
+class Exercise(Base):
+    __tablename__ = 'exercise'
+
+    exercise_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False)
+    exercise_name = Column(EncryptedString, nullable=False)
+
+    # strength | mobility | martial | conditioning
+    category = Column(String(30), nullable=False, default='strength')
+    # knee | hip | core | upper | posterior | calf | whole
+    target = Column(String(30), nullable=True)
+    # bodyweight | dumbbell | barbell | band | tube | none
+    equipment = Column(String(30), nullable=False, default='bodyweight')
+
+    # Loaded one side at a time, so a set belongs to a side and both sides need
+    # logging before the exercise is done.
+    is_unilateral = Column(Boolean, nullable=False, default=False)
+    # Held rather than repped, so reps are meaningless and hold_seconds is the
+    # progression variable.
+    is_isometric = Column(Boolean, nullable=False, default=False)
+
+    form_cues = Column(EncryptedString, nullable=True)
+    video_url = Column(String(500), nullable=True)
+    is_archived = Column(Boolean, nullable=False, default=False)
+
+    user = relationship("User", back_populates="exercises")
+    set_logs = relationship("SetLog", back_populates="exercise", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'exercise_name', name='uq_user_exercise'),
+    )
+
+
+class WorkoutSession(Base):
+    __tablename__ = 'workout_session'
+
+    session_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False)
+    date_time = Column(DateTime(timezone=True), nullable=False,
+                       default=lambda: datetime.now(timezone.utc))
+
+    # strength | tai_chi | kung_fu | mixed | other — martial practice loads the
+    # knees too, so leaving it out would make load management meaningless.
+    session_type = Column(String(30), nullable=False, default='strength')
+    duration_min = Column(Integer, nullable=True)
+    overall_rpe = Column(Integer, nullable=True)
+    notes = Column(EncryptedString, nullable=True)
+
+    # Filled in the following day, not at the time. This is the input to the
+    # back-off rule: knee pain that is worse 24h later means the last session
+    # was too much, however it felt while training.
+    next_day_knee = Column(Integer, nullable=True)
+
+    user = relationship("User", back_populates="workout_sessions")
+    sets = relationship("SetLog", back_populates="session", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        CheckConstraint('overall_rpe IS NULL OR (overall_rpe >= 1 AND overall_rpe <= 10)',
+                        name='check_session_rpe_range'),
+        CheckConstraint('next_day_knee IS NULL OR (next_day_knee >= 0 AND next_day_knee <= 10)',
+                        name='check_next_day_knee_range'),
+    )
+
+
+class SetLog(Base):
+    __tablename__ = 'set_log'
+
+    set_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False)
+    session_id = Column(Integer, ForeignKey('workout_session.session_id'), nullable=False)
+    exercise_id = Column(Integer, ForeignKey('exercise.exercise_id'), nullable=False)
+
+    set_number = Column(Integer, nullable=False, default=1)
+    reps = Column(Integer, nullable=True)
+    # Total load moved, bar included, so it is comparable across sessions
+    # without needing to know how the dumbbell was made up.
+    weight_kg = Column(Float, nullable=True)
+    # Band resistance rating rather than an actual force. Not interchangeable
+    # with weight_kg, so it is kept in its own column instead of being faked
+    # into one number.
+    band_kg = Column(Float, nullable=True)
+    hold_seconds = Column(Integer, nullable=True)
+    side = Column(String(10), nullable=True)   # left | right | null
+
+    rpe = Column(Integer, nullable=True)
+    # Pain during the set, 0-10. The whole programme turns on this: it drives
+    # the back-off rule and is what makes training comparable with the symptom
+    # logs in the rest of the app.
+    pain = Column(Integer, nullable=True)
+
+    user = relationship("User", back_populates="set_logs")
+    session = relationship("WorkoutSession", back_populates="sets")
+    exercise = relationship("Exercise", back_populates="set_logs")
+
+    __table_args__ = (
+        CheckConstraint('rpe IS NULL OR (rpe >= 1 AND rpe <= 10)',
+                        name='check_set_rpe_range'),
+        CheckConstraint('pain IS NULL OR (pain >= 0 AND pain <= 10)',
+                        name='check_set_pain_range'),
+        CheckConstraint("side IS NULL OR side IN ('left', 'right')",
+                        name='check_set_side'),
+    )
+
+
+class TrainingProfile(Base):
+    __tablename__ = 'training_profile'
+
+    profile_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False, unique=True)
+
+    goals = Column(EncryptedString, nullable=True)
+    constraints = Column(EncryptedString, nullable=True)
+
+    # Bars are weighed, not assumed: spin-lock bars vary by a kilo or more and
+    # every working load is quoted including the bar.
+    dumbbell_bar_kg = Column(Float, nullable=True)
+    barbell_bar_kg = Column(Float, nullable=True)
+    # JSON: what plates and bands are actually owned, so the programme only
+    # ever prescribes a load that can be built.
+    equipment_json = Column(String, nullable=True)
+
+    updated_at = Column(DateTime(timezone=True), nullable=False,
+                        default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="training_profile")

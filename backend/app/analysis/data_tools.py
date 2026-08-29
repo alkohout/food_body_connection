@@ -21,11 +21,14 @@ from app.models.table_class import (
     Allergen,
     AllergenLog,
     DailyCheckin,
+    Exercise,
     Medication,
     MedicationRegimen,
+    SetLog,
     Symptom,
     SymptomLog,
     Unit,
+    WorkoutSession,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,7 +67,7 @@ TOOLS = [
             "properties": {
                 "kind": {
                     "type": "string",
-                    "enum": ["allergen", "symptom", "medication", "all"],
+                    "enum": ["allergen", "symptom", "medication", "exercise", "all"],
                     "description": "Which category to list. Use 'all' if unsure.",
                 }
             },
@@ -147,6 +150,65 @@ TOOLS = [
                     "description": "Which scores to return. Omit for all of them.",
                 },
             },
+        },
+    },
+    {
+        "name": "query_training",
+        "description": (
+            "Return individual logged training sets — one row per set — with the "
+            "exercise, reps, load, band, hold time, side, RPE and the pain score "
+            "recorded during that set. Use it to SEE what was actually done in a "
+            "session. Weights are total load including the bar."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "names": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": (
+                        "Exercise names as returned by list_tracked_items with "
+                        "kind='exercise'. Omit for all exercises."
+                    ),
+                },
+                "date_from": {"type": "string", "description": "YYYY-MM-DD, inclusive."},
+                "date_to": {"type": "string", "description": "YYYY-MM-DD, inclusive."},
+                "limit": {
+                    "type": "integer",
+                    "description": f"Max rows (default 100, hard cap {MAX_ROWS}).",
+                },
+            },
+        },
+    },
+    {
+        "name": "aggregate_training",
+        "description": (
+            "Summarise training over time or by exercise. metric is one of: "
+            "volume (reps x kg, counted only where both a load and reps exist, so "
+            "band and isometric work is excluded), sets, reps, max_weight, "
+            "mean_pain, mean_rpe.\n\n"
+            "This is the tool for load-versus-symptom questions. To test whether "
+            "knee pain follows training load, aggregate training volume by week "
+            "and compare it against the knee symptom logs from aggregate_logs "
+            "over the same weeks. Correlation over a handful of weeks is weak "
+            "evidence — say so rather than implying cause."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "group_by": {
+                    "type": "string",
+                    "enum": ["day", "week", "month", "exercise", "target", "session_type"],
+                },
+                "metric": {
+                    "type": "string",
+                    "enum": ["volume", "sets", "reps", "max_weight", "mean_pain", "mean_rpe"],
+                },
+                "names": {"type": "array", "items": {"type": "string"}},
+                "date_from": {"type": "string", "description": "YYYY-MM-DD, inclusive."},
+                "date_to": {"type": "string", "description": "YYYY-MM-DD, inclusive."},
+            },
+            "required": ["group_by"],
         },
     },
 ]
@@ -293,6 +355,24 @@ def _list_tracked_items(db, user_id, tz_offset, kind="all"):
         rows.sort(key=lambda r: (str(r[0]).lower(), str(r[3])))
         sections["medications"] = _table(
             ["name", "dose", "unit", "start", "end", "current", "note"], rows
+        )
+
+    if kind in ("exercise", "all"):
+        counts = {}
+        for st in db.query(SetLog).filter(SetLog.user_id == user_id).all():
+            counts[st.exercise_id] = counts.get(st.exercise_id, 0) + 1
+        rows = []
+        for e in db.query(Exercise).filter(
+            Exercise.user_id == user_id, Exercise.is_archived.is_(False)
+        ).all():
+            rows.append([
+                e.exercise_name, e.category, e.target, e.equipment,
+                counts.get(e.exercise_id, 0), e.video_url,
+            ])
+        rows.sort(key=lambda r: (-r[4], str(r[0]).lower()))
+        sections["exercises"] = _table(
+            ["name", "category", "target", "equipment", "sets_logged", "form_guide"],
+            rows,
         )
 
     return sections
@@ -505,11 +585,156 @@ def _get_checkins(db, user_id, tz_offset, date_from=None, date_to=None, fields=N
     )
 
 
+
+# ──────────────────────────────────────────────
+# Training
+#
+# Training sits in the same database as the symptom logs and on the same
+# user, which is the whole reason it is worth logging here rather than in a
+# separate app: "does my knee pain track squat volume" is a question about
+# both, and neither half can answer it alone.
+# ──────────────────────────────────────────────
+
+def _set_rows(db, user_id, tz_offset, names=None, date_from=None, date_to=None,
+              limit=100):
+    limit = max(1, min(int(limit or 100), MAX_ROWS))
+    from_utc = _to_utc(_parse_day(date_from), tz_offset)
+    to_utc = _to_utc(_parse_day(date_to, end_of_day=True), tz_offset)
+
+    lookup = {
+        e.exercise_id: e
+        for e in _match(
+            db.query(Exercise).filter(Exercise.user_id == user_id).all(),
+            names, "exercise_name",
+        )
+    }
+
+    q = (
+        db.query(SetLog, WorkoutSession)
+        .join(WorkoutSession, SetLog.session_id == WorkoutSession.session_id)
+        .filter(SetLog.user_id == user_id,
+                SetLog.exercise_id.in_(lookup.keys() or [-1]))
+    )
+    if from_utc:
+        q = q.filter(WorkoutSession.date_time >= from_utc)
+    if to_utc:
+        q = q.filter(WorkoutSession.date_time <= to_utc)
+
+    rows = []
+    for st, sess in q.all():
+        if not sess.date_time:
+            continue
+        ex = lookup.get(st.exercise_id)
+        rows.append({
+            "when": _to_local(sess.date_time, tz_offset),
+            "session_id": sess.session_id,
+            "session_type": sess.session_type,
+            "exercise": ex.exercise_name if ex else None,
+            "target": ex.target if ex else None,
+            "set_number": st.set_number,
+            "reps": st.reps,
+            "weight_kg": st.weight_kg,
+            "band_kg": st.band_kg,
+            "hold_seconds": st.hold_seconds,
+            "side": st.side,
+            "rpe": st.rpe,
+            "pain": st.pain,
+            "next_day_knee": sess.next_day_knee,
+        })
+    rows.sort(key=lambda r: r["when"])
+    return rows, limit
+
+
+def _query_training(db, user_id, tz_offset, names=None, date_from=None,
+                    date_to=None, limit=100):
+    rows, limit = _set_rows(db, user_id, tz_offset, names, date_from, date_to, limit)
+    total = len(rows)
+    shown = rows[-limit:] if total > limit else rows
+    cols = ["date", "exercise", "set", "reps", "weight_kg", "band_kg",
+            "hold_s", "side", "rpe", "pain"]
+    out = [
+        [r["when"].strftime("%Y-%m-%d %H:%M"), r["exercise"], r["set_number"],
+         r["reps"], r["weight_kg"], r["band_kg"], r["hold_seconds"], r["side"],
+         r["rpe"], r["pain"]]
+        for r in shown
+    ]
+    return _table(cols, out, truncated=total > limit, total=total)
+
+
+def _aggregate_training(db, user_id, tz_offset, group_by, metric="volume",
+                        names=None, date_from=None, date_to=None):
+    rows, _ = _set_rows(db, user_id, tz_offset, names, date_from, date_to, MAX_ROWS)
+
+    keyers = {
+        "day":     lambda r: r["when"].strftime("%Y-%m-%d"),
+        "week":    lambda r: (r["when"] - timedelta(days=r["when"].weekday())).strftime("%Y-%m-%d"),
+        "month":   lambda r: r["when"].strftime("%Y-%m"),
+        "exercise": lambda r: r["exercise"],
+        "target":  lambda r: r["target"] or "unspecified",
+        "session_type": lambda r: r["session_type"],
+    }
+    keyer = keyers.get(group_by)
+    if keyer is None:
+        return {"error": f"Unknown group_by '{group_by}'. "
+                         f"Use one of: {', '.join(sorted(keyers))}."}
+
+    valid_metrics = ("volume", "sets", "reps", "max_weight", "mean_pain", "mean_rpe")
+    if metric not in valid_metrics:
+        return {"error": f"Unknown metric '{metric}'. "
+                         f"Use one of: {', '.join(valid_metrics)}."}
+
+    buckets = {}
+    for r in rows:
+        b = buckets.setdefault(keyer(r), {"sets": 0, "reps": 0, "volume": 0.0,
+                                          "max_weight": None, "pain": [], "rpe": []})
+        b["sets"] += 1
+        b["reps"] += r["reps"] or 0
+        # Volume is only meaningful where both a load and a rep count exist;
+        # band and isometric work contributes to neither and is not silently
+        # counted as zero-weight reps.
+        if r["reps"] and r["weight_kg"]:
+            b["volume"] += r["reps"] * r["weight_kg"]
+        if r["weight_kg"] is not None:
+            b["max_weight"] = max(b["max_weight"] or 0, r["weight_kg"])
+        if r["pain"] is not None:
+            b["pain"].append(r["pain"])
+        if r["rpe"] is not None:
+            b["rpe"].append(r["rpe"])
+
+    def value(b):
+        if metric == "volume":     return round(b["volume"], 1)
+        if metric == "sets":       return b["sets"]
+        if metric == "reps":       return b["reps"]
+        if metric == "max_weight": return b["max_weight"]
+        vals = b["pain"] if metric == "mean_pain" else b["rpe"]
+        return round(sum(vals) / len(vals), 2) if vals else None
+
+    if group_by in ("exercise", "target", "session_type"):
+        keys = sorted(buckets, key=lambda k: -buckets[k]["sets"])
+    else:
+        keys = sorted(buckets)
+
+    partial = None
+    if group_by in ("day", "week", "month") and keys:
+        now_local = datetime.utcnow() - timedelta(minutes=tz_offset)
+        current = keyers[group_by]({"when": now_local})
+        if keys[-1] == current:
+            partial = (
+                f"The last row ({current}) is the current {group_by} and is still "
+                f"in progress, so it covers only part of the period."
+            )
+
+    out = [[k, value(buckets[k]), buckets[k]["sets"]] for k in keys]
+    return _table([group_by, metric, "sets"], out, note=partial)
+
+
 _DISPATCH = {
     "list_tracked_items": _list_tracked_items,
     "query_logs": _query_logs,
     "aggregate_logs": _aggregate_logs,
     "get_checkins": _get_checkins,
+    "query_training": _query_training,
+    "aggregate_training": _aggregate_training,
 }
 
 

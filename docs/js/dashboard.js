@@ -2513,6 +2513,7 @@ async function init() {
 
     // Set up UI components
     setupLogout();
+    setupTraining();
     setupDefaults();
     setupTabs();
 
@@ -3231,4 +3232,254 @@ function initializeCaptions() {
   if (captionAllergenDose && allergenIntInput) {
     captionAllergenDose.textContent = allergenIntInput.value || "";
   }
+}
+
+// =========================================================
+// Training
+//
+// Deliberately thin: this is the logging surface for the data model, not the
+// session runner. Everything renders with textContent rather than innerHTML,
+// so a stray character in an exercise name or note cannot become markup.
+// =========================================================
+
+let trExercises = [];
+let trSession = null;
+
+function trAuth() {
+  return { Authorization: `Bearer ${localStorage.getItem("access_token")}` };
+}
+
+function trEl(tag, text, cls) {
+  const el = document.createElement(tag);
+  if (text !== undefined && text !== null) el.textContent = String(text);
+  if (cls) el.className = cls;
+  return el;
+}
+
+function trSetStatus(id, msg) {
+  const el = getElement(id);
+  if (el) el.textContent = msg || "";
+}
+
+// A set is described by whichever fields were filled in: reps and weight for
+// loaded work, seconds for a hold, a band rating on its own for band work.
+function trDescribeSet(s) {
+  const bits = [];
+  if (s.reps) bits.push(`${s.reps} reps`);
+  if (s.weight_kg) bits.push(`${s.weight_kg} kg`);
+  if (s.band_kg) bits.push(`${s.band_kg} kg band`);
+  if (s.hold_seconds) bits.push(`${s.hold_seconds}s hold`);
+  if (s.side) bits.push(s.side);
+  if (s.rpe) bits.push(`RPE ${s.rpe}`);
+  if (s.pain !== null && s.pain !== undefined) bits.push(`pain ${s.pain}`);
+  return bits.join(" · ");
+}
+
+async function trLoadExercises() {
+  const res = await fetch(`${API_URL}/training/exercises`, { headers: trAuth() });
+  if (!res.ok) throw new Error(`exercises: ${res.status}`);
+  trExercises = await res.json();
+
+  const sel = getElement("tr-exercise");
+  if (!sel) return;
+  sel.replaceChildren();
+  // Grouped by body area, because picking the right exercise matters more
+  // than picking it quickly.
+  const byTarget = {};
+  trExercises.forEach((e) => (byTarget[e.target || "other"] ||= []).push(e));
+  Object.keys(byTarget).sort().forEach((target) => {
+    const group = document.createElement("optgroup");
+    group.label = target;
+    byTarget[target].forEach((e) => {
+      const opt = trEl("option", e.exercise_name);
+      opt.value = e.exercise_id;
+      group.appendChild(opt);
+    });
+    sel.appendChild(group);
+  });
+  trRenderCues();
+}
+
+function trRenderCues() {
+  const box = getElement("tr-cues");
+  const sel = getElement("tr-exercise");
+  if (!box || !sel) return;
+  box.replaceChildren();
+  const ex = trExercises.find((e) => String(e.exercise_id) === sel.value);
+  if (!ex) return;
+  if (ex.form_cues) box.appendChild(trEl("p", ex.form_cues));
+  if (ex.video_url) {
+    const a = trEl("a", "Form guide →");
+    a.href = ex.video_url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    box.appendChild(a);
+  }
+}
+
+function trRenderSession() {
+  const bar = getElement("tr-session-bar");
+  const logSection = getElement("tr-log-section");
+  if (!bar) return;
+  bar.replaceChildren();
+
+  if (!trSession) {
+    const btn = trEl("button", "Start a session");
+    btn.type = "button";
+    btn.addEventListener("click", () => trStartSession());
+    bar.appendChild(btn);
+    if (logSection) logSection.style.display = "none";
+    return;
+  }
+
+  const when = new Date(trSession.date_time);
+  bar.appendChild(trEl("p", `Session started ${when.toLocaleTimeString()} — ${trSession.sets.length} sets logged`));
+  const done = trEl("button", "Finish session");
+  done.type = "button";
+  done.className = "secondary";
+  done.addEventListener("click", () => {
+    trSession = null;
+    trRenderSession();
+    trLoadHistory();
+  });
+  bar.appendChild(done);
+  if (logSection) logSection.style.display = "";
+  trRenderCurrentSets();
+}
+
+function trRenderCurrentSets() {
+  const box = getElement("tr-current-sets");
+  if (!box) return;
+  box.replaceChildren();
+  if (!trSession || !trSession.sets.length) return;
+  const ul = document.createElement("ul");
+  trSession.sets.forEach((s) => {
+    ul.appendChild(trEl("li", `${s.exercise_name} — ${trDescribeSet(s)}`));
+  });
+  box.appendChild(ul);
+}
+
+async function trStartSession() {
+  const res = await fetch(`${API_URL}/training/sessions`, {
+    method: "POST",
+    headers: { ...trAuth(), "Content-Type": "application/json" },
+    body: JSON.stringify({ session_type: "strength" }),
+  });
+  if (!res.ok) {
+    trSetStatus("tr-status", `Could not start a session (${res.status}).`);
+    return;
+  }
+  trSession = await res.json();
+  trRenderSession();
+}
+
+function trNum(id) {
+  const el = getElement(id);
+  if (!el || el.value === "") return null;
+  const n = Number(el.value);
+  return Number.isFinite(n) ? n : null;
+}
+
+async function trAddSet() {
+  if (!trSession) return;
+  const sel = getElement("tr-exercise");
+  const sideEl = getElement("tr-side");
+  const payload = {
+    exercise_id: Number(sel.value),
+    // Sets are numbered per exercise within the session, so the count is of
+    // this exercise only rather than of everything logged so far.
+    set_number: trSession.sets.filter((s) => s.exercise_id === Number(sel.value)).length + 1,
+    reps: trNum("tr-reps"),
+    weight_kg: trNum("tr-weight"),
+    band_kg: trNum("tr-band"),
+    hold_seconds: trNum("tr-hold"),
+    side: sideEl && sideEl.value ? sideEl.value : null,
+    rpe: trNum("tr-rpe"),
+    pain: trNum("tr-pain"),
+  };
+
+  trSetStatus("tr-status", "Saving…");
+  const res = await fetch(`${API_URL}/training/sessions/${trSession.session_id}/sets`, {
+    method: "POST",
+    headers: { ...trAuth(), "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    trSetStatus("tr-status", `Could not save that set (${res.status}).`);
+    return;
+  }
+  trSession = await res.json();
+  trSetStatus("tr-status", "Saved.");
+  // Reps and load usually repeat across sets, so they are left in place;
+  // pain is cleared because carrying it over would fabricate a reading.
+  ["tr-pain"].forEach((id) => { const el = getElement(id); if (el) el.value = ""; });
+  trRenderSession();
+}
+
+async function trLoadHistory() {
+  const box = getElement("tr-history");
+  if (!box) return;
+  const res = await fetch(`${API_URL}/training/sessions?limit=10`, { headers: trAuth() });
+  box.replaceChildren();
+  if (!res.ok) {
+    box.appendChild(trEl("p", `Could not load history (${res.status}).`));
+    return;
+  }
+  const sessions = await res.json();
+  if (!sessions.length) {
+    box.appendChild(trEl("p", "No sessions logged yet."));
+    return;
+  }
+  sessions.forEach((s) => {
+    const d = new Date(s.date_time);
+    const head = trEl("p", `${d.toLocaleDateString()} — ${s.session_type} — ${s.sets.length} sets`
+      + (s.next_day_knee !== null && s.next_day_knee !== undefined ? ` — next-day knee ${s.next_day_knee}` : ""));
+    box.appendChild(head);
+    const ul = document.createElement("ul");
+    s.sets.forEach((st) => ul.appendChild(trEl("li", `${st.exercise_name} — ${trDescribeSet(st)}`)));
+    box.appendChild(ul);
+  });
+}
+
+async function trSeed() {
+  trSetStatus("tr-seed-status", "Loading…");
+  const res = await fetch(`${API_URL}/training/exercises/seed`, {
+    method: "POST", headers: trAuth(),
+  });
+  if (!res.ok) {
+    trSetStatus("tr-seed-status", `Failed (${res.status}).`);
+    return;
+  }
+  const data = await res.json();
+  trSetStatus("tr-seed-status", `Added ${data.added}; you already had ${data.already_present}.`);
+  await trLoadExercises();
+}
+
+function setupTraining() {
+  const tab = document.querySelector('.tab[data-tab="training"]');
+  if (!tab) return;
+
+  const addBtn = getElement("tr-add-set");
+  if (addBtn) addBtn.addEventListener("click", trAddSet);
+  const seedBtn = getElement("tr-seed");
+  if (seedBtn) seedBtn.addEventListener("click", trSeed);
+  const sel = getElement("tr-exercise");
+  if (sel) sel.addEventListener("change", trRenderCues);
+
+  // Loaded on first visit rather than at startup: most page loads never open
+  // this tab, and it is two more requests against a small server.
+  let loaded = false;
+  tab.addEventListener("click", async () => {
+    if (loaded) return;
+    loaded = true;
+    try {
+      await trLoadExercises();
+      trRenderSession();
+      await trLoadHistory();
+    } catch (err) {
+      console.error("training load failed:", err);
+      trSetStatus("tr-status", "Could not load training data.");
+      loaded = false;   // let a later click retry
+    }
+  });
 }

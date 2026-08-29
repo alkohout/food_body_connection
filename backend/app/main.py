@@ -25,6 +25,7 @@ import app.api.routes.medications as medications
 import app.api.routes.documents as documents
 import app.api.routes.plot_triptan_monthly as plot_triptan_monthly
 import app.api.routes.chat as chat
+import app.api.routes.training as training
 import app.api.routes.checkin as checkin
 import app.api.routes.plot_checkin_trends as plot_checkin_trends
 import app.api.routes.plot_symptom_calendar as plot_symptom_calendar
@@ -71,6 +72,7 @@ app.include_router(plot_time_series_analysis.router)
 app.include_router(documents.router)
 app.include_router(plot_triptan_monthly.router)
 app.include_router(chat.router)
+app.include_router(training.router)
 app.include_router(checkin.router)
 app.include_router(plot_checkin_trends.router)
 app.include_router(plot_symptom_calendar.router)
