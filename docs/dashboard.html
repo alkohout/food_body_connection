@@ -985,6 +985,31 @@
       <p>Strength and practice log. Sessions here sit in the same database as your
          symptom logs, so training load can be compared against how you actually felt.</p>
 
+      <!-- Today's prescription -->
+      <section class="med-section">
+        <h3>Today's plan</h3>
+        <div id="tr-plan"><p class="logs-loading">Loading…</p></div>
+      </section>
+
+      <!-- Yesterday's knee, which decides whether load goes up -->
+      <section class="med-section" id="tr-nextday-section" style="display:none">
+        <h3>How was the knee the morning after?</h3>
+        <div class="form-row">
+          <label for="tr-nextday">Knee 0-10</label>
+          <input type="number" id="tr-nextday" min="0" max="10" step="1" />
+        </div>
+        <button type="button" id="tr-nextday-save">Save</button>
+        <p class="logs-loading" id="tr-nextday-status"></p>
+      </section>
+
+      <!-- Baseline assessment -->
+      <section class="med-section">
+        <button type="button" id="tr-assess-toggle" class="secondary" style="width:auto">
+          Baseline assessment
+        </button>
+        <div id="tr-assess" style="display:none; margin-top:1rem"></div>
+      </section>
+
       <!-- Today's session -->
       <section class="med-section">
         <h3>Today</h3>

@@ -3465,6 +3465,10 @@ function setupTraining() {
   if (seedBtn) seedBtn.addEventListener("click", trSeed);
   const sel = getElement("tr-exercise");
   if (sel) sel.addEventListener("change", trRenderCues);
+  const ndBtn = getElement("tr-nextday-save");
+  if (ndBtn) ndBtn.addEventListener("click", trSaveNextDay);
+  const asBtn = getElement("tr-assess-toggle");
+  if (asBtn) asBtn.addEventListener("click", trToggleAssessment);
 
   // Loaded on first visit rather than at startup: most page loads never open
   // this tab, and it is two more requests against a small server.
@@ -3475,6 +3479,7 @@ function setupTraining() {
     try {
       await trLoadExercises();
       trRenderSession();
+      await trLoadPlan();
       await trLoadHistory();
     } catch (err) {
       console.error("training load failed:", err);
@@ -3482,4 +3487,124 @@ function setupTraining() {
       loaded = false;   // let a later click retry
     }
   });
+}
+
+// =========================================================
+// Training: today's prescription
+//
+// The plan comes from the server's rules, not from this file. The knee
+// back-off in particular has to be decided in one place, so the UI only
+// renders what it is told and never computes a load of its own.
+// =========================================================
+
+let trPlan = null;
+
+function trRenderPlan() {
+  const box = getElement("tr-plan");
+  if (!box) return;
+  box.replaceChildren();
+  if (!trPlan) {
+    box.appendChild(trEl("p", "Could not load today's plan."));
+    return;
+  }
+
+  const ph = trPlan.phase;
+  box.appendChild(trEl("p", `Phase ${ph.phase} — ${ph.label}. ${ph.aim}`));
+  box.appendChild(trEl("p", `Day ${trPlan.day} · ${ph.sessions_done} strength sessions logged · next phase: ${ph.to_advance}`, "logs-loading"));
+
+  // The knee verdict is the most important line here, so it is called out
+  // rather than left to be inferred from the numbers.
+  const knee = trEl("p", trPlan.knee.reason);
+  knee.className = trPlan.knee.action === "progress" ? "logs-loading" : "tr-warn";
+  box.appendChild(knee);
+
+  trPlan.notes.forEach((n) => box.appendChild(trEl("p", n, "tr-warn")));
+
+  const ol = document.createElement("ol");
+  trPlan.blocks.forEach((b) => {
+    const li = document.createElement("li");
+    li.appendChild(trEl("strong", `${b.exercise} — ${b.prescription}`));
+    if (b.why) li.appendChild(trEl("div", b.why, "logs-loading"));
+    if (b.form_cues) li.appendChild(trEl("div", b.form_cues, "tr-cues"));
+    if (b.video_url) {
+      const a = trEl("a", "Form guide →");
+      a.href = b.video_url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      li.appendChild(a);
+    }
+    ol.appendChild(li);
+  });
+  box.appendChild(ol);
+
+  // Only ask for the score when the server says one is outstanding.
+  const nd = getElement("tr-nextday-section");
+  if (nd) nd.style.display = trPlan.knee.awaiting_next_day ? "" : "none";
+}
+
+async function trLoadPlan() {
+  const res = await fetch(`${API_URL}/training/today`, { headers: trAuth() });
+  trPlan = res.ok ? await res.json() : null;
+  trRenderPlan();
+}
+
+async function trSaveNextDay() {
+  if (!trPlan || !trPlan.knee.awaiting_next_day) return;
+  const val = trNum("tr-nextday");
+  if (val === null) {
+    trSetStatus("tr-nextday-status", "Enter a number from 0 to 10.");
+    return;
+  }
+  trSetStatus("tr-nextday-status", "Saving…");
+  const res = await fetch(`${API_URL}/training/sessions/${trPlan.knee.awaiting_next_day}`, {
+    method: "PATCH",
+    headers: { ...trAuth(), "Content-Type": "application/json" },
+    body: JSON.stringify({ next_day_knee: val }),
+  });
+  if (!res.ok) {
+    trSetStatus("tr-nextday-status", `Could not save (${res.status}).`);
+    return;
+  }
+  trSetStatus("tr-nextday-status", "Saved — today's plan updated.");
+  await trLoadPlan();
+  await trLoadHistory();
+}
+
+async function trToggleAssessment() {
+  const box = getElement("tr-assess");
+  if (!box) return;
+  if (box.style.display !== "none") {
+    box.style.display = "none";
+    return;
+  }
+  box.style.display = "";
+  box.replaceChildren(trEl("p", "Loading…", "logs-loading"));
+
+  const res = await fetch(`${API_URL}/training/assessment`, { headers: trAuth() });
+  if (!res.ok) {
+    box.replaceChildren(trEl("p", `Could not load (${res.status}).`));
+    return;
+  }
+  const data = await res.json();
+  box.replaceChildren();
+  box.appendChild(trEl("p", data.guidance));
+  if (data.completed_before) {
+    box.appendChild(trEl("p", `You have logged ${data.completed_before} assessment session(s) before.`, "logs-loading"));
+  }
+  const ol = document.createElement("ol");
+  data.items.forEach((it) => {
+    const li = document.createElement("li");
+    li.appendChild(trEl("strong", it.exercise));
+    li.appendChild(trEl("div", it.how));
+    li.appendChild(trEl("div", it.why, "logs-loading"));
+    if (it.video_url) {
+      const a = trEl("a", "Form guide →");
+      a.href = it.video_url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      li.appendChild(a);
+    }
+    ol.appendChild(li);
+  });
+  box.appendChild(ol);
 }

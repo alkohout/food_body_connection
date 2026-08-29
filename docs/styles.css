@@ -785,3 +785,8 @@ select:focus {
 .med-row--ended td {
   color: #9ca3af;
 }
+/* Training */
+.tr-cues { font-size: 0.9rem; color: #4b5563; margin: 0.25rem 0; }
+.tr-warn { color: #92400e; font-weight: 600; }
+#tr-plan ol, #tr-assess ol { padding-left: 1.25rem; }
+#tr-plan li, #tr-assess li { margin-bottom: 0.75rem; }

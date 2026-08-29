@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
+from app.analysis.training_program import ASSESSMENT, build_session
 from app.data.exercise_library import LIBRARY
 from app.database import get_db
 from app.models.table_class import (
@@ -277,3 +278,66 @@ def save_profile(
     db.commit()
     db.refresh(p)
     return p
+
+
+# ── Programme ────────────────────────────────────────────────────────────────
+
+@router.get("/today")
+def todays_session(
+    day: Optional[str] = Query(None, pattern="^[ABC]$"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """What to do next, and why.
+
+    Loads come from logged history through fixed rules rather than from a
+    model, so the knee back-off is a guarantee rather than a suggestion.
+    """
+    return build_session(db, current_user.user_id, day=day)
+
+
+@router.get("/assessment")
+def assessment(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """The baseline tests, matched to the user's own exercise ids.
+
+    Submaximal throughout: a true 1RM is both the highest-risk thing here and
+    the exact stimulus that provokes this knee, and a rep test gives the same
+    programming information without it.
+    """
+    by_name = {
+        e.exercise_name.strip().lower(): e
+        for e in db.query(Exercise).filter(Exercise.user_id == current_user.user_id).all()
+    }
+    items, missing = [], []
+    for name, how, why in ASSESSMENT:
+        ex = by_name.get(name.strip().lower())
+        if ex is None:
+            missing.append(name)
+            continue
+        items.append({
+            "exercise_id": ex.exercise_id,
+            "exercise": ex.exercise_name,
+            "how": how,
+            "why": why,
+            "form_cues": ex.form_cues,
+            "video_url": ex.video_url,
+        })
+
+    already = (
+        db.query(WorkoutSession)
+        .filter(WorkoutSession.user_id == current_user.user_id,
+                WorkoutSession.session_type == "assessment")
+        .count()
+    )
+    return {
+        "items": items,
+        "missing": missing,
+        "completed_before": already,
+        "guidance": (
+            "Stop every set two reps short of failure, and stop any set where "
+            "pain goes above 3/10. Log it as a session of type 'assessment'."
+        ),
+    }
