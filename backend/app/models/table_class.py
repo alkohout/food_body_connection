@@ -1,4 +1,17 @@
 # backend/app/models/table_class.py
+#
+# Naming: "allergen" here is what the interface calls an EXPOSURE.
+#
+# The word stopped fitting once the log filled up with triptans, periods and
+# anything else that might bear on a symptom, so the front end and the AI were
+# renamed. The database was not: 594 references across 37 files, under 1,100
+# rows of health data, for a change nobody using the app can see. Python has no
+# compiler to catch a rename that is missed, so a stale allergen_id would sit
+# quietly until whichever path uses it least happened to run.
+#
+# So Allergen, AllergenLog, allergen_id and allergen_name all mean exposure.
+# Anything a user or the model reads should say exposure; anything addressing a
+# table or a column says allergen.
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, Date, ForeignKey, CheckConstraint, Boolean
 from sqlalchemy.orm import relationship
@@ -31,6 +44,8 @@ class User(Base):
     practice_items = relationship("PracticeItem", back_populates="user", cascade="all, delete-orphan")
 
 class Allergen(Base):
+    """An exposure: a food, drink, medication or event that might bear on a
+    symptom. Named allergen for the database's sake — see the file header."""
     __tablename__ = 'allergen'
     
     allergen_id = Column(Integer, primary_key=True)
@@ -74,6 +89,7 @@ class Symptom(Base):
 
 
 class AllergenLog(Base):
+    """One logged exposure. See Allergen for the naming."""
     __tablename__ = 'allergen_log'
     
     allergen_log_id = Column(Integer, primary_key=True)
