@@ -132,13 +132,18 @@ KNEE_MINIMUM = [
     Block("Spanish Squat", "iso", 2, 20, 45),
 ]
 
-PRACTICE = [
+# The session runs in the order it is actually trained: tai chi opens, the
+# strength work sits in the middle, and the pattern and kicks close it out.
+PRACTICE_BEFORE = [
     Block("Tai Chi Exercises", "check", 1, 0, 0),
     Block(TAI_CHI_FORM, "check", 1, 0, 0),
     Block("Tai Chi Sword", "check", 1, 0, 0),
+]
+
+PRACTICE_AFTER = [
+    Block("Stretches", "check", 1, 0, 0),
     Block("Kung Fu Pattern", "check", 1, 0, 0),
     Block("Side Kick", "reps", 2, 10, 20),
-    Block("Stretches", "check", 1, 0, 0),
 ]
 
 
@@ -528,16 +533,19 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
             return block._replace(name=due_form)
         return block
 
-    blocks, missing = [], []
     if decision["kind"] == "strength":
-        templates = [(b, "strength") for b in PHASES[phase["phase"]]["days"][day]]
+        middle = [(b, "strength") for b in PHASES[phase["phase"]]["days"][day]]
         theme = PHASES[phase["phase"]]["themes"][day]
     else:
         # Between strength days the knees still get their work; the muscle gets
-        # its recovery day.
-        templates = [(b, "knee") for b in KNEE_MINIMUM]
+        # its recovery day. It sits where the strength work would have been.
+        middle = [(b, "knee") for b in KNEE_MINIMUM]
         theme = "Practice and knee maintenance"
-    templates += [(resolve(b), "practice") for b in PRACTICE]
+
+    blocks, missing = [], []
+    templates = [(resolve(b), "practice") for b in PRACTICE_BEFORE]
+    templates += middle
+    templates += [(resolve(b), "practice") for b in PRACTICE_AFTER]
 
     for block, group in templates:
         ex = by_name.get(block.name.strip().lower())
