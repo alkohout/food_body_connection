@@ -4315,6 +4315,19 @@ function trRenderCounter(body, b) {
     [["left", "Left"], ["right", "Right"]].forEach(([v, label]) => {
       const o = trEl("option", label); o.value = v; sideSel.appendChild(o);
     });
+    // When the sides have different targets, the counter follows the side
+    // being worked. Otherwise the sore side gets the good side's number,
+    // which is the whole thing the split was meant to avoid.
+    if (b.side_targets) {
+      const applySide = () => {
+        const spec = b.side_targets[sideSel.value];
+        if (spec && spec.reps !== null && spec.reps !== undefined) {
+          val.textContent = spec.reps;
+        }
+      };
+      sideSel.addEventListener("change", applySide);
+      applySide();
+    }
     sRow.appendChild(sideSel);
     body.appendChild(sRow);
   }
@@ -4335,7 +4348,8 @@ function trRenderCounter(body, b) {
 }
 
 function trRenderTimer(body, b) {
-  const target = b.target_seconds || 0;
+  // let, not const: a side-specific hold changes the target when the side does.
+  let target = b.target_seconds || 0;
 
   // Counts down, so what is on screen is how much is left rather than how
   // much has gone. With no target to count towards it falls back to counting
@@ -4346,7 +4360,35 @@ function trRenderTimer(body, b) {
 
   const display = trEl("div", shown(0), "tr-timer");
   body.appendChild(display);
-  body.appendChild(trEl("p", target ? `of ${target}s` : "counting up", "tr-hint"));
+  const caption = trEl("p", target ? `of ${target}s` : "counting up", "tr-hint");
+  body.appendChild(caption);
+
+  // Holds were logged without recording which side was worked, so a
+  // side-specific hold had no way to be told apart afterwards.
+  let sideSel = null;
+  if (b.per_side) {
+    const sRow = trEl("div", null, "form-row");
+    sRow.appendChild(trEl("label", "Side"));
+    sideSel = document.createElement("select");
+    [["left", "Left"], ["right", "Right"]].forEach(([v, label]) => {
+      const o = trEl("option", label); o.value = v; sideSel.appendChild(o);
+    });
+    if (b.side_targets) {
+      const applySide = () => {
+        const spec = b.side_targets[sideSel.value];
+        if (spec && spec.seconds) {
+          target = spec.seconds;
+          trTimerStop();
+          display.textContent = shown(0);
+          caption.textContent = `of ${target}s`;
+        }
+      };
+      sideSel.addEventListener("change", applySide);
+      applySide();
+    }
+    sRow.appendChild(sideSel);
+    body.appendChild(sRow);
+  }
 
   const showStart = (label) => { startBtn.textContent = label; };
 
@@ -4403,7 +4445,13 @@ function trRenderTimer(body, b) {
     showStart("Start");
     // Falling back to the target lets a hold be logged without the timer,
     // which is what happens when you forget to press start.
-    trLogRunSet(b, { hold_seconds: secs || target });
+    const fields = { hold_seconds: secs || target };
+    if (sideSel) {
+      fields.side = sideSel.value;
+      sideSel.value = sideSel.value === "left" ? "right" : "left";
+      sideSel.dispatchEvent(new Event("change"));
+    }
+    trLogRunSet(b, fields);
   });
 
   controls.append(startBtn, resetBtn, log);

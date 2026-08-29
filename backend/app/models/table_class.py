@@ -229,6 +229,11 @@ class Exercise(Base):
     # progression variable.
     is_isometric = Column(Boolean, nullable=False, default=False)
 
+    # Requires standing on one leg. Not the same as unilateral: a lying quad
+    # set is done one leg at a time and needs no balance at all, so a knee
+    # that gives way is no reason to skip it.
+    needs_balance = Column(Boolean, nullable=False, default=False)
+
     form_cues = Column(EncryptedString, nullable=True)
     video_url = Column(String(500), nullable=True)
     is_archived = Column(Boolean, nullable=False, default=False)

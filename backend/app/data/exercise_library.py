@@ -1,5 +1,9 @@
 """The starting exercise catalogue.
 
+needs_balance is not in these rows; scripts/add_needs_balance.py sets it
+from a single list, so the standing single-leg movements are named in one
+place rather than repeated down a column of booleans.
+
 Covers the user's existing routine as well as the new knee work: tai chi, the
 kung fu pattern and side kicks load the knees too, so leaving them out would
 make any load-management rule meaningless.
