@@ -14,8 +14,9 @@ from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
 from app.analysis.training_program import (
-    ALWAYS_AVAILABLE, ASSESSMENT, available_equipment, build_session,
+    ALWAYS_AVAILABLE, available_equipment, build_session, program, user_focus,
 )
+from app.data.programs import DEFAULT_FOCUS, PROGRAMS
 from app.data.exercise_library import LIBRARY
 from app.database import get_db
 from app.models.table_class import (
@@ -266,6 +267,47 @@ def delete_set(
     db.commit()
 
 
+@router.get("/focus")
+def list_focus(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """The programmes on offer, and which one is selected."""
+    current = user_focus(db, current_user.user_id)
+    return {
+        "current": current,
+        "options": [
+            {"key": key, "label": spec["label"], "blurb": spec["blurb"],
+             "selected": key == current}
+            for key, spec in PROGRAMS.items()
+        ],
+    }
+
+
+@router.put("/focus")
+def set_focus(
+    payload: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Switch programme. Logged history is kept: it is the same exercises and
+    the same progression rules, only a different selection of them."""
+    focus = str(payload.get("focus") or "")
+    if focus not in PROGRAMS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown programme. Choose one of: {', '.join(PROGRAMS)}.",
+        )
+    p = db.query(TrainingProfile).filter(
+        TrainingProfile.user_id == current_user.user_id).first()
+    if p is None:
+        p = TrainingProfile(user_id=current_user.user_id)
+        db.add(p)
+    p.focus = focus
+    db.commit()
+    return {"focus": focus, "label": PROGRAMS[focus]["label"]}
+
+
 @router.get("/equipment")
 def equipment(
     current_user: User = Depends(get_current_user),
@@ -408,12 +450,13 @@ def assessment(
     the exact stimulus that provokes this knee, and a rep test gives the same
     programming information without it.
     """
+    focus = user_focus(db, current_user.user_id)
     by_name = {
         e.exercise_name.strip().lower(): e
         for e in db.query(Exercise).filter(Exercise.user_id == current_user.user_id).all()
     }
     items, missing = [], []
-    for name, how, why in ASSESSMENT:
+    for name, how, why in program(focus)["assessment"]:
         ex = by_name.get(name.strip().lower())
         if ex is None:
             missing.append(name)
@@ -450,6 +493,8 @@ def assessment(
     return {
         "items": items,
         "missing": missing,
+        "focus": focus,
+        "focus_label": program(focus)["label"],
         "completed_before": already,
         "guidance": (
             "Stop every set two reps short of failure, and stop any set where "

@@ -114,6 +114,24 @@ LIBRARY = [
     ("Bicep Curl", "strength", "upper", "dumbbell", False, False,
      "Elbows still, no swinging.", None),
 
+    # ── Pulling and posterior work. A knee programme can do without these;
+    # a general one cannot, and the catalogue had nothing but the dumbbell row.
+    ("Prone Y Raise", "strength", "upper", "bodyweight", False, False,
+     "Face down, arms out in a Y, thumbs up. Lift the arms a few inches and "
+     "hold briefly. Upper back work needing nothing at all.", None),
+    ("Band Pull Apart", "strength", "upper", "band", False, False,
+     "Band at chest height, arms straight, pull it apart until it touches the "
+     "chest. Shoulder blades do the work, not the hands.", None),
+    ("Glute Bridge", "strength", "hip", "bodyweight", False, False,
+     "Both feet down, drive through the heels, ribs down at the top. The "
+     "two-legged version, before the single-leg one.", None),
+    ("Bird Dog", "strength", "core", "bodyweight", True, False,
+     "Opposite arm and leg out, hips level, no rotation. Slow is the point.",
+     None),
+    ("Dead Bug", "strength", "core", "bodyweight", False, False,
+     "On your back, lower back pressed down, opposite arm and leg lower "
+     "together. Stop where the back starts to arch.", None),
+
     # ── Bodyweight stand-ins, for training away from the kit. ──────────────
     ("Quad Set", "strength", "knee", "bodyweight", True, True,
      "Leg straight, press the back of the knee down and tighten the thigh. "

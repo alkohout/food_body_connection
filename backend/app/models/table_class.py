@@ -317,6 +317,11 @@ class TrainingProfile(Base):
     profile_id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False, unique=True)
 
+    # Which programme to follow. Plain text, not encrypted, because the
+    # programme logic has to branch on it and a non-deterministic cipher cannot
+    # be compared in SQL. It is a training preference, not a diagnosis.
+    focus = Column(String(30), nullable=False, default="general")
+
     goals = Column(EncryptedString, nullable=True)
     constraints = Column(EncryptedString, nullable=True)
 

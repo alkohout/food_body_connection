@@ -998,7 +998,7 @@
       <!-- Only shown when a score is actually outstanding. -->
       <section class="med-section" id="tr-nextday-section" style="display:none">
         <div class="tr-card tr-notice">
-          <p class="tr-card-title">How was the knee the morning after?</p>
+          <p class="tr-card-title" id="tr-nextday-prompt">How was the morning after?</p>
           <p class="tr-hint">This is what decides whether load goes up.</p>
           <div class="tr-inline">
             <input type="number" id="tr-nextday" min="0" max="10" step="1" placeholder="0-10" />
@@ -1013,7 +1013,7 @@
         <div class="tr-toggles">
           <button type="button" id="tr-plan-toggle" class="secondary">Today's plan</button>
           <button type="button" id="tr-assess-toggle" class="secondary">Baseline assessment</button>
-          <button type="button" id="tr-equip-toggle" class="secondary">Equipment</button>
+          <button type="button" id="tr-equip-toggle" class="secondary">Setup</button>
           <button type="button" id="tr-manual-toggle" class="secondary">Log off-plan</button>
         </div>
         <div id="tr-equip" class="tr-panel" style="display:none"></div>

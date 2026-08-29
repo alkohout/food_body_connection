@@ -3696,6 +3696,9 @@ function trRenderPlan() {
     : trPlan.theme;
   card.appendChild(trEl("p", heading, "tr-card-title"));
   card.appendChild(trEl("p", trPlan.kind_why, "tr-hint"));
+  if (trPlan.focus_label) {
+    card.appendChild(trEl("p", `Programme: ${trPlan.focus_label}`, "tr-hint"));
+  }
   card.appendChild(trEl("p", `Phase ${ph.phase} — ${ph.label}. ${ph.aim}`, "tr-body"));
   card.appendChild(trEl("p", `${ph.sessions_done} strength sessions logged · next phase: ${ph.to_advance}`, "tr-hint"));
   box.appendChild(card);
@@ -3743,6 +3746,8 @@ function trRenderPlan() {
   // Only ask for the score when the server says one is outstanding.
   const nd = getElement("tr-nextday-section");
   if (nd) nd.style.display = trPlan.knee.awaiting_next_day ? "" : "none";
+  const prompt = getElement("tr-nextday-prompt");
+  if (prompt && trPlan.soreness_prompt) prompt.textContent = trPlan.soreness_prompt;
 }
 
 let trKindOverride = null;
@@ -3763,6 +3768,39 @@ async function trLoadEquipment() {
   const data = await res.json();
 
   box.replaceChildren();
+
+  // Which programme comes first: it decides what the exercises even are.
+  const fRes = await fetch(`${API_URL}/training/focus`, { headers: trAuth() });
+  if (fRes.ok) {
+    const focus = await fRes.json();
+    const fCard = trEl("div", null, "tr-card");
+    fCard.appendChild(trEl("p", "Which programme?", "tr-card-title"));
+    focus.options.forEach((opt) => {
+      const row = trEl("label", null, "tr-equip-row");
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "tr-focus";
+      radio.checked = opt.selected;
+      radio.addEventListener("change", async () => {
+        const save = await fetch(`${API_URL}/training/focus`, {
+          method: "PUT",
+          headers: { ...trAuth(), "Content-Type": "application/json" },
+          body: JSON.stringify({ focus: opt.key }),
+        });
+        if (!save.ok) return;
+        await trLoadPlan();
+        await trLoadEquipment();
+      });
+      row.appendChild(radio);
+      const text = trEl("span");
+      text.appendChild(trEl("div", opt.label));
+      text.appendChild(trEl("div", opt.blurb, "tr-hint"));
+      row.appendChild(text);
+      fCard.appendChild(row);
+    });
+    box.appendChild(fCard);
+  }
+
   const card = trEl("div", null, "tr-card");
   card.appendChild(trEl("p", "What have you got?", "tr-card-title"));
   card.appendChild(trEl("p",
@@ -3975,7 +4013,8 @@ function trRenderRunner() {
   const doneCount = trRun.done[trRun.idx] || 0;
   // "3 sets each side" means six logged sets, so the target counts both.
   const needed = b.per_side ? b.sets * 2 : b.sets;
-  const groupLabel = { practice: "practice", knee: "knee maintenance", strength: "strength" }[b.group] || b.group;
+  const groupLabel = { practice: "practice", maintenance: "maintenance",
+                       assessment: "baseline test", strength: "strength" }[b.group] || b.group;
   head.textContent = `${trRun.idx + 1} of ${blocks.length} — ${groupLabel}`;
 
   // An exercise the engine swapped out from under you is worth saying out

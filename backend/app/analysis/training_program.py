@@ -21,99 +21,23 @@ import logging
 from collections import namedtuple
 from datetime import datetime, timedelta
 
+from app.data.programs import (
+    Block, DEFAULT_FOCUS, PRACTICE, PROGRAMS, TAI_CHI_FORM, TAI_CHI_FORMS,
+)
 from app.models.table_class import Exercise, SetLog, TrainingProfile, WorkoutSession
 
 logger = logging.getLogger(__name__)
 
-# scheme: iso (hold seconds) | reps (bodyweight reps) | load (double progression)
-Block = namedtuple("Block", "name scheme sets low high")
+def user_focus(db, user_id) -> str:
+    """Which programme this user follows. Unknown values fall back to default."""
+    p = db.query(TrainingProfile).filter(TrainingProfile.user_id == user_id).first()
+    focus = getattr(p, "focus", None) or DEFAULT_FOCUS
+    return focus if focus in PROGRAMS else DEFAULT_FOCUS
 
-PHASES = {
-    1: {
-        "label": "Settle",
-        "aim": "Calm the knees down and build tolerance without loaded squatting.",
-        "themes": {'A': 'Knee tolerance and core', 'B': 'Hips, posterior chain and shins', 'C': 'Knee control, core and arms'},
-        "days": {
-            "A": [
-                Block("Spanish Squat", "iso", 3, 20, 45),
-                Block("Terminal Knee Extension", "reps", 3, 10, 15),
-                Block("Standing Hip Abduction", "reps", 3, 10, 15),
-                Block("Standing Calf Raise", "reps", 3, 12, 20),
-                Block("Plank", "iso", 3, 20, 45),
-            ],
-            "B": [
-                Block("Single Leg Glute Bridge", "reps", 3, 8, 15),
-                Block("Lateral Band Walk", "reps", 3, 10, 15),
-                Block("Tibialis Raise", "reps", 3, 12, 20),
-                Block("Side Plank", "iso", 3, 20, 40),
-                Block("Push Up", "reps", 3, 5, 12),
-            ],
-            "C": [
-                Block("Wall Sit", "iso", 3, 20, 45),
-                Block("Terminal Knee Extension", "reps", 3, 10, 15),
-                Block("Standing Hip Abduction", "reps", 3, 10, 15),
-                Block("Sit Up", "reps", 3, 8, 15),
-                Block("Tricep Dip", "reps", 3, 5, 12),
-            ],
-        },
-    },
-    2: {
-        "label": "Load",
-        "aim": "Introduce eccentric control and light external load.",
-        "themes": {'A': 'Squat and push', 'B': 'Hinge and pull', 'C': 'Single-leg control and shoulders'},
-        "days": {
-            "A": [
-                Block("Spanish Squat", "iso", 2, 30, 45),
-                Block("Goblet Squat", "load", 3, 8, 12),
-                Block("Standing Hip Abduction", "reps", 3, 12, 15),
-                Block("Push Up", "reps", 3, 8, 15),
-                Block("Plank", "iso", 3, 30, 60),
-            ],
-            "B": [
-                Block("Romanian Deadlift", "load", 3, 8, 12),
-                Block("Single Leg Glute Bridge", "reps", 3, 10, 15),
-                Block("Dumbbell Row", "load", 3, 8, 12),
-                Block("Standing Calf Raise", "reps", 3, 12, 20),
-                Block("Side Plank", "iso", 3, 30, 45),
-            ],
-            "C": [
-                Block("Lateral Step Down", "reps", 3, 5, 10),
-                Block("Split Squat", "load", 3, 6, 10),
-                Block("Tibialis Raise", "reps", 3, 15, 20),
-                Block("Dumbbell Shoulder Press", "load", 3, 8, 12),
-                Block("Sit Up", "reps", 3, 10, 20),
-            ],
-        },
-    },
-    3: {
-        "label": "Build",
-        "aim": "Heavier and deeper, towards downhill and telemark demands.",
-        "themes": {'A': 'Squat and push', 'B': 'Hinge and pull', 'C': 'Single-leg control and shoulders'},
-        "days": {
-            "A": [
-                Block("Goblet Squat", "load", 4, 6, 10),
-                Block("Split Squat", "load", 3, 8, 12),
-                Block("Standing Hip Abduction", "reps", 3, 12, 20),
-                Block("Dumbbell Floor Press", "load", 3, 8, 12),
-                Block("Plank", "iso", 3, 45, 75),
-            ],
-            "B": [
-                Block("Romanian Deadlift", "load", 4, 6, 10),
-                Block("Dumbbell Row", "load", 3, 8, 12),
-                Block("Single Leg Glute Bridge", "reps", 3, 12, 20),
-                Block("Standing Calf Raise", "reps", 3, 12, 20),
-                Block("Side Plank", "iso", 3, 40, 60),
-            ],
-            "C": [
-                Block("Lateral Step Down", "reps", 3, 8, 12),
-                Block("Anterior Step Down", "reps", 3, 8, 12),
-                Block("Box Squat", "load", 3, 8, 12),
-                Block("Dumbbell Shoulder Press", "load", 3, 8, 12),
-                Block("Bicep Curl", "load", 2, 10, 15),
-            ],
-        },
-    },
-}
+
+def program(focus: str) -> dict:
+    return PROGRAMS.get(focus, PROGRAMS[DEFAULT_FOCUS])
+
 
 DAY_ORDER = ["A", "B", "C"]
 
@@ -122,30 +46,6 @@ DAY_ORDER = ["A", "B", "C"]
 # knees were loaded that day.
 TAI_CHI_FORM = "__TAI_CHI_FORM__"          # resolved to 42 or 37 at build time
 TAI_CHI_FORMS = ["Tai Chi Form 42", "Tai Chi Form 37"]
-
-# Knee work on the days between strength sessions. Tendon and quad tolerance
-# responds to frequent low-load exposure far better than to one hard session a
-# week, which is the single strongest argument against a body-part split here:
-# on a split, the knees would be trained once every seven days.
-KNEE_MINIMUM = [
-    Block("Terminal Knee Extension", "reps", 2, 10, 15),
-    Block("Spanish Squat", "iso", 2, 20, 45),
-]
-
-# The session runs in the order it is actually trained: tai chi opens, the
-# strength work sits in the middle, and the pattern and kicks close it out.
-PRACTICE_BEFORE = [
-    Block("Tai Chi Exercises", "check", 1, 0, 0),
-    Block(TAI_CHI_FORM, "check", 1, 0, 0),
-    Block("Tai Chi Sword", "check", 1, 0, 0),
-]
-
-PRACTICE_AFTER = [
-    Block("Stretches", "check", 1, 0, 0),
-    Block("Kung Fu Pattern", "check", 1, 0, 0),
-    Block("Side Kick", "reps", 2, 10, 20),
-]
-
 
 def next_tai_chi_form(db, user_id) -> str:
     """The form that is due, since the two alternate and are easy to lose track of.
@@ -172,26 +72,6 @@ def next_tai_chi_form(db, user_id) -> str:
         return TAI_CHI_FORMS[0]
     last = max(seen)[2]
     return TAI_CHI_FORMS[1] if last == TAI_CHI_FORMS[0] else TAI_CHI_FORMS[0]
-
-# The baseline session. Deliberately submaximal: a true 1RM is the highest-risk
-# thing that could be prescribed and the exact stimulus that flares this knee,
-# and a rep test gives the same programming information without it.
-ASSESSMENT = [
-    ("Spanish Squat", "Hold until form breaks or pain rises above 3/10. Stop at 60s.",
-     "Sets the starting hold."),
-    ("Wall Sit", "Same, at a depth that stays comfortable. Stop at 60s.",
-     "Confirms the pain-free knee angle."),
-    ("Terminal Knee Extension", "One set of up to 20 slow reps per leg, lightest band.",
-     "Checks the band is light enough."),
-    ("Lateral Step Down", "Lowest step you own. Reps until the knee dives inward.",
-     "Finds the step height to start from."),
-    ("Single Leg Glute Bridge", "Max controlled reps per side, stop 2 short of failure.",
-     "Baseline for hip strength, which controls knee tracking."),
-    ("Goblet Squat", "One dumbbell, a load you could do about 12 times. Stop 2 reps "
-                     "short. Record the load and reps.", "Estimates the working load."),
-    ("Push Up", "Max reps, stopping 2 short of failure.", "Baseline upper body."),
-    ("Plank", "Hold until form breaks. Stop at 90s.", "Baseline core."),
-]
 
 # ── Knee back-off ────────────────────────────────────────────────────────────
 # Pain during a set and pain the next morning are different measurements. The
@@ -436,7 +316,7 @@ def _stalled(db, user_id, exercise_id, scheme) -> bool:
     return bool(vals) and min(vals) < max(vals)
 
 
-def knee_state(db, user_id) -> dict:
+def knee_state(db, user_id, word="soreness") -> dict:
     """Whether to back off, hold, or progress, and why."""
     sessions = (
         db.query(WorkoutSession)
@@ -465,8 +345,9 @@ def knee_state(db, user_id) -> dict:
     if scored is not None and scored.next_day_knee >= NEXT_DAY_BACKOFF:
         return {
             "action": "back_off",
-            "reason": (f"Knee was {scored.next_day_knee}/10 the day after your last "
-                       f"scored session. Load comes down a step and volume is cut."),
+            "reason": (f"{word.capitalize()} was {scored.next_day_knee}/10 the day "
+                       f"after your last scored session. Load comes down a step "
+                       f"and volume is cut."),
             "awaiting_next_day": None,
         }
     if mean_pain is not None and mean_pain >= SET_PAIN_BACKOFF:
@@ -483,7 +364,7 @@ def knee_state(db, user_id) -> dict:
     # for it — only where there was actually a session worth scoring.
     awaiting = last.session_id if last is not None and last.next_day_knee is None else None
     return {"action": "progress",
-            "reason": "Knees quiet — progressing.",
+            "reason": f"No lingering {word} — progressing.",
             "awaiting_next_day": awaiting}
 
 
@@ -499,8 +380,9 @@ def _substantial(session, strength_names) -> bool:
     return len(covered) >= MIN_EXERCISES_FOR_CREDIT
 
 
-def current_phase(db, user_id) -> dict:
+def current_phase(db, user_id, focus=None) -> dict:
     """Which phase, and what still has to happen to leave it."""
+    phases = program(focus or user_focus(db, user_id))["phases"]
     all_strength = [
         s for s in db.query(WorkoutSession)
         .filter(WorkoutSession.user_id == user_id).all()
@@ -511,7 +393,8 @@ def current_phase(db, user_id) -> dict:
     # phase applied at the time.
     strength_names = {
         b.name.strip().lower()
-        for spec in PHASES.values()
+        for prog in PROGRAMS.values()
+        for spec in prog["phases"].values()
         for day in spec["days"].values()
         for b in day
     }
@@ -547,10 +430,10 @@ def current_phase(db, user_id) -> dict:
         if done < 6:
             need.append(plural(6 - done, "strength session"))
         if not enough_evidence:
-            need.append(plural(3 - len(scores), "next-day knee score"))
+            need.append(plural(3 - len(scores), "next-day score"))
         if scores and not quiet:
             need.append("next-day knee at 3/10 or below")
-        to_advance = " and ".join(need) or "next-day knee scores staying low"
+        to_advance = " and ".join(need) or "next-day scores staying low"
         if partial:
             to_advance += (f" ({partial} session{'' if partial == 1 else 's'} too "
                            f"short to count — {MIN_EXERCISES_FOR_CREDIT}+ exercises "
@@ -558,12 +441,12 @@ def current_phase(db, user_id) -> dict:
     elif phase == 2:
         remaining = max(0, 14 - done)
         to_advance = (f"{remaining} more strength session"
-                      f"{'' if remaining == 1 else 's'} with knees quiet")
+                      f"{'' if remaining == 1 else 's'} without lingering soreness")
     else:
         to_advance = "already at the top phase"
 
-    return {"phase": phase, "label": PHASES[phase]["label"],
-            "aim": PHASES[phase]["aim"], "sessions_done": done,
+    return {"phase": phase, "label": phases[phase]["label"],
+            "aim": phases[phase]["aim"], "sessions_done": done,
             "partial_sessions": partial,
             "to_advance": to_advance}
 
@@ -809,8 +692,10 @@ def choose_kind(db, user_id, tz_offset) -> dict:
 
 def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
     """The whole prescription for the next session."""
-    phase = current_phase(db, user_id)
-    knee = knee_state(db, user_id)
+    focus = user_focus(db, user_id)
+    prog = program(focus)
+    phase = current_phase(db, user_id, focus)
+    knee = knee_state(db, user_id, prog["soreness"])
     profile = db.query(TrainingProfile).filter(
         TrainingProfile.user_id == user_id).first()
     loads = achievable_loads(profile)
@@ -832,7 +717,10 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
     decision = {"kind": kind, "why": "Chosen explicitly."} if kind in ("strength", "practice") \
         else choose_kind(db, user_id, tz_offset)
 
-    due_form = next_tai_chi_form(db, user_id)
+    practice = PRACTICE.get(focus, PRACTICE[DEFAULT_FOCUS])
+    uses_form = any(b.name == TAI_CHI_FORM
+                    for b in practice["before"] + practice["after"])
+    due_form = next_tai_chi_form(db, user_id) if uses_form else None
 
     def resolve(block):
         """Templates name the form indirectly, because which one is due depends
@@ -842,18 +730,18 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
         return block
 
     if decision["kind"] == "strength":
-        middle = [(b, "strength") for b in PHASES[phase["phase"]]["days"][day]]
-        theme = PHASES[phase["phase"]]["themes"][day]
+        middle = [(b, "strength") for b in prog["phases"][phase["phase"]]["days"][day]]
+        theme = prog["phases"][phase["phase"]]["themes"][day]
     else:
         # Between strength days the knees still get their work; the muscle gets
         # its recovery day. It sits where the strength work would have been.
-        middle = [(b, "knee") for b in KNEE_MINIMUM]
-        theme = "Practice and knee maintenance"
+        middle = [(b, "maintenance") for b in prog["maintenance"]]
+        theme = "Practice and maintenance"
 
     blocks, missing = [], []
-    templates = [(resolve(b), "practice") for b in PRACTICE_BEFORE]
+    templates = [(resolve(b), "practice") for b in practice["before"]]
     templates += middle
-    templates += [(resolve(b), "practice") for b in PRACTICE_AFTER]
+    templates += [(resolve(b), "practice") for b in practice["after"]]
 
     dropped, used_ids = [], set()
     for block, group in templates:
@@ -939,8 +827,9 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
                      + " — better a gap than something that trains a different "
                        "thing.")
     if knee["awaiting_next_day"]:
-        notes.append("Score how your knee felt the morning after your last "
-                     "session — it is what decides whether load goes up.")
+        notes.append(f"Score the {prog['soreness']} you felt the morning after "
+                     f"your last session — it is what decides whether load "
+                     f"goes up.")
 
     return {
         "day": day,
@@ -951,6 +840,10 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
         "achievable_loads": loads,
         "tai_chi_form_due": due_form,
         "available_equipment": sorted(available) if available else None,
+        "focus": focus,
+        "focus_label": prog["label"],
+        "soreness_word": prog["soreness"],
+        "soreness_prompt": prog["soreness_prompt"],
         "kind": decision["kind"],
         "kind_why": decision["why"],
         "theme": theme,
