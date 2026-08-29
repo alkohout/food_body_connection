@@ -201,6 +201,7 @@ SET_PAIN_BACKOFF = 4      # >= this mean pain during the last session -> back of
 SET_PAIN_HOLD = 3         # >= this -> hold progression rather than back off
 RPE_CEILING = 8           # progress load only if the last sets were <= this
 RECENT_SCORES = 5         # how many recent next-day scores decide a phase
+MIN_EXERCISES_FOR_CREDIT = 3   # exercises needed for a session to count
 
 
 def achievable_loads(profile) -> list[float]:
@@ -246,17 +247,23 @@ def _next_load(current, loads, up=True):
 
 
 def _last_sets(db, user_id, exercise_id):
-    """Sets from the most recent session that included this exercise."""
+    """Sets from the most recent session that included this exercise, and when.
+
+    The date matters because a skipped exercise keeps its old baseline. Without
+    it the prescription would say "every set hit 10 — one more" about a session
+    three weeks ago as though it were the last one.
+    """
     rows = (
         db.query(SetLog, WorkoutSession)
         .join(WorkoutSession, SetLog.session_id == WorkoutSession.session_id)
         .filter(SetLog.user_id == user_id, SetLog.exercise_id == exercise_id)
         .all()
     )
-    if not rows:
-        return []
-    latest = max(s.date_time for _, s in rows if s.date_time)
-    return [st for st, s in rows if s.date_time == latest]
+    dated = [(st, s) for st, s in rows if s.date_time]
+    if not dated:
+        return [], None
+    latest = max(s.date_time for _, s in dated)
+    return [st for st, s in dated if s.date_time == latest], latest
 
 
 def knee_state(db, user_id) -> dict:
@@ -310,13 +317,36 @@ def knee_state(db, user_id) -> dict:
             "awaiting_next_day": awaiting}
 
 
+# A session counts towards leaving a phase only if it covered a fair part of
+# the day. Otherwise six sessions of one exercise each would unlock loaded
+# squatting without the tolerance for the phase before it ever being shown.
+def _substantial(session, strength_names) -> bool:
+    covered = {
+        st.exercise.exercise_name.strip().lower()
+        for st in session.sets
+        if st.exercise is not None
+    } & strength_names
+    return len(covered) >= MIN_EXERCISES_FOR_CREDIT
+
+
 def current_phase(db, user_id) -> dict:
     """Which phase, and what still has to happen to leave it."""
-    sessions = [
+    all_strength = [
         s for s in db.query(WorkoutSession)
         .filter(WorkoutSession.user_id == user_id).all()
         if s.session_type == "strength"
     ]
+
+    # Names from every phase, because a session was logged under whichever
+    # phase applied at the time.
+    strength_names = {
+        b.name.strip().lower()
+        for spec in PHASES.values()
+        for day in spec["days"].values()
+        for b in day
+    }
+    sessions = [s for s in all_strength if _substantial(s, strength_names)]
+    partial = len(all_strength) - len(sessions)
     done = len(sessions)
 
     # Recent scores only. Judging on the whole history would let one bad day
@@ -340,25 +370,35 @@ def current_phase(db, user_id) -> dict:
         phase = 1
 
     if phase == 1:
+        def plural(n, word):
+            return f"{n} more {word}" + ("" if n == 1 else "s")
+
         need = []
         if done < 6:
-            need.append(f"{6 - done} more strength sessions")
+            need.append(plural(6 - done, "strength session"))
         if not enough_evidence:
-            need.append(f"{3 - len(scores)} more next-day knee scores")
+            need.append(plural(3 - len(scores), "next-day knee score"))
         if scores and not quiet:
             need.append("next-day knee at 3/10 or below")
         to_advance = " and ".join(need) or "next-day knee scores staying low"
+        if partial:
+            to_advance += (f" ({partial} session{'' if partial == 1 else 's'} too "
+                           f"short to count — {MIN_EXERCISES_FOR_CREDIT}+ exercises "
+                           f"needed)")
     elif phase == 2:
-        to_advance = f"{max(0, 14 - done)} more strength sessions with knees quiet"
+        remaining = max(0, 14 - done)
+        to_advance = (f"{remaining} more strength session"
+                      f"{'' if remaining == 1 else 's'} with knees quiet")
     else:
         to_advance = "already at the top phase"
 
     return {"phase": phase, "label": PHASES[phase]["label"],
             "aim": PHASES[phase]["aim"], "sessions_done": done,
+            "partial_sessions": partial,
             "to_advance": to_advance}
 
 
-def _prescribe(block, ex, last_sets, action, loads):
+def _prescribe(block, ex, last_sets, action, loads, last_done=None):
     """Turn one template block plus history into a concrete instruction."""
     sets = block.sets
     detail, why = "", ""
@@ -481,6 +521,14 @@ def _prescribe(block, ex, last_sets, action, loads):
         if weight is not None:
             detail += f" @ {weight}kg"
 
+    # A skipped exercise keeps the baseline from whenever it was last done, so
+    # the reasoning should say when that was rather than implying "last time".
+    if last_done is not None and block.scheme != "check":
+        naive = last_done.replace(tzinfo=None) if last_done.tzinfo else last_done
+        days = (datetime.utcnow() - naive).days
+        if days >= 8:
+            why = f"{why} Last done {days} days ago."
+
     return {
         "exercise_id": ex.exercise_id,
         "exercise": ex.exercise_name,
@@ -595,8 +643,8 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
         if ex is None:
             missing.append(block.name)
             continue
-        item = _prescribe(block, ex, _last_sets(db, user_id, ex.exercise_id),
-                          knee["action"], loads)
+        prior, when = _last_sets(db, user_id, ex.exercise_id)
+        item = _prescribe(block, ex, prior, knee["action"], loads, last_done=when)
         item["group"] = group
         blocks.append(item)
 
