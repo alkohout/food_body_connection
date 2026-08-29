@@ -796,3 +796,7 @@ select:focus {
 .tr-timer { font-size: 3rem; font-weight: 700; text-align: center; margin: 0.5rem 0; }
 .tr-nav { display: flex; gap: 0.75rem; margin-top: 1rem; }
 .tr-nav button { flex: 1; }
+.tr-timer-controls { display: flex; gap: 0.75rem; align-items: stretch; margin: 0.5rem 0 1rem; }
+.tr-timer-controls .tr-big { flex: 2; }
+.tr-timer-controls .secondary { flex: 1; }
+.tr-big { font-size: 1.35rem; font-weight: 700; padding: 1rem 1.25rem; min-height: 3.5rem; }

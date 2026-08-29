@@ -3790,7 +3790,7 @@ function trRenderCounter(body, b) {
     body.appendChild(sRow);
   }
 
-  const log = trEl("button", "Log set");
+  const log = trEl("button", "Log set", "tr-big");
   log.type = "button";
   log.addEventListener("click", () => {
     const payload = { reps: Number(val.textContent) };
@@ -3811,6 +3811,8 @@ function trRenderTimer(body, b) {
   body.appendChild(display);
   body.appendChild(trEl("p", `Target ${target}s`, "logs-loading"));
 
+  const showStart = (label) => { startBtn.textContent = label; };
+
   const tick = () => {
     const secs = trTimer.elapsed + Math.floor((Date.now() - trTimer.startedAt) / 1000);
     display.textContent = `${secs}s`;
@@ -3820,11 +3822,15 @@ function trRenderTimer(body, b) {
       trTimerStop();
       trTimer.elapsed = secs;
       display.textContent = `${secs}s — done`;
-      startBtn.textContent = "Restart";
+      showStart("Restart");
     }
   };
 
-  const startBtn = trEl("button", "Start");
+  // Big targets: these are pressed mid-hold, with shaky hands, without
+  // looking properly.
+  const controls = trEl("div", null, "tr-timer-controls");
+
+  const startBtn = trEl("button", "Start", "tr-big");
   startBtn.type = "button";
   startBtn.addEventListener("click", () => {
     if (trTimer.handle) {
@@ -3832,28 +3838,39 @@ function trRenderTimer(body, b) {
       trTimer.elapsed += Math.floor((Date.now() - trTimer.startedAt) / 1000);
       clearInterval(trTimer.handle);
       trTimer.handle = null;
-      startBtn.textContent = "Resume";
+      showStart("Resume");
       display.textContent = `${trTimer.elapsed}s`;
       return;
     }
     if (startBtn.textContent === "Restart") trTimer.elapsed = 0;
     trTimer.startedAt = Date.now();
     trTimer.handle = setInterval(tick, 250);
-    startBtn.textContent = "Pause";
+    showStart("Pause");
   });
-  body.appendChild(startBtn);
 
-  const log = trEl("button", "Log hold");
+  const resetBtn = trEl("button", "Reset", "secondary");
+  resetBtn.type = "button";
+  resetBtn.addEventListener("click", () => {
+    trTimerStop();
+    display.textContent = "0s";
+    showStart("Start");
+  });
+
+  const log = trEl("button", "Log", "tr-big");
   log.type = "button";
   log.addEventListener("click", () => {
     let secs = trTimer.elapsed;
     if (trTimer.handle) secs += Math.floor((Date.now() - trTimer.startedAt) / 1000);
     trTimerStop();
     display.textContent = "0s";
-    startBtn.textContent = "Start";
+    showStart("Start");
+    // Falling back to the target lets a hold be logged without the timer,
+    // which is what happens when you forget to press start.
     trLogRunSet(b, { hold_seconds: secs || target });
   });
-  body.appendChild(log);
+
+  controls.append(startBtn, resetBtn, log);
+  body.appendChild(controls);
 }
 
 async function trLogRunSet(b, fields) {
