@@ -3329,6 +3329,7 @@ function trRenderSession() {
     btn.addEventListener("click", () => trStartSession());
     bar.appendChild(btn);
     if (logSection) logSection.style.display = "none";
+    trRunnerVisible(false);
     return;
   }
 
@@ -3337,13 +3338,12 @@ function trRenderSession() {
   const done = trEl("button", "Finish session");
   done.type = "button";
   done.className = "secondary";
-  done.addEventListener("click", () => {
-    trSession = null;
-    trRenderSession();
-    trLoadHistory();
-  });
+  done.addEventListener("click", trFinishSession);
   bar.appendChild(done);
-  if (logSection) logSection.style.display = "";
+  // The runner is the way through a session; the manual form stays available
+  // behind a toggle for corrections and anything off-plan.
+  if (logSection) logSection.style.display = "none";
+  trRunnerVisible(true);
   trRenderCurrentSets();
 }
 
@@ -3371,6 +3371,7 @@ async function trStartSession() {
   }
   trSession = await res.json();
   trRenderSession();
+  trStartRunner();
 }
 
 function trNum(id) {
@@ -3469,6 +3470,11 @@ function setupTraining() {
   if (ndBtn) ndBtn.addEventListener("click", trSaveNextDay);
   const asBtn = getElement("tr-assess-toggle");
   if (asBtn) asBtn.addEventListener("click", trToggleAssessment);
+  const manBtn = getElement("tr-manual-toggle");
+  if (manBtn) manBtn.addEventListener("click", () => {
+    const sec = getElement("tr-log-section");
+    if (sec) sec.style.display = sec.style.display === "none" ? "" : "none";
+  });
 
   // Loaded on first visit rather than at startup: most page loads never open
   // this tab, and it is two more requests against a small server.
@@ -3607,4 +3613,286 @@ async function trToggleAssessment() {
     ol.appendChild(li);
   });
   box.appendChild(ol);
+}
+
+// =========================================================
+// Training: guided session runner
+//
+// Walks the plan one exercise at a time, counting reps and timing holds, so
+// nothing has to be remembered or typed mid-set. Skipping is first-class: a
+// migraine or a sore knee should cut the session short without the log
+// pretending the work was done. A skipped exercise is simply not logged, so
+// the progression engine keeps using the last time it was actually performed.
+// =========================================================
+
+let trRun = null;
+let trTimer = { handle: null, startedAt: 0, elapsed: 0 };
+
+function trTimerStop() {
+  if (trTimer.handle) clearInterval(trTimer.handle);
+  trTimer = { handle: null, startedAt: 0, elapsed: 0 };
+}
+
+function trCurrentBlock() {
+  return trRun && trRun.plan.blocks[trRun.idx];
+}
+
+function trStartRunner() {
+  if (!trPlan || !trSession) return;
+  trRun = { plan: trPlan, idx: 0, done: {}, skipped: [], sides: {} };
+  trRenderRunner();
+}
+
+function trRunnerVisible(on) {
+  const r = getElement("tr-runner-section");
+  const m = getElement("tr-manual-wrap");
+  if (r) r.style.display = on ? "" : "none";
+  if (m) m.style.display = on ? "" : "none";
+}
+
+function trRenderRunner() {
+  const body = getElement("tr-run-body");
+  const head = getElement("tr-run-progress");
+  if (!body || !trRun) return;
+  trTimerStop();
+  body.replaceChildren();
+
+  const blocks = trRun.plan.blocks;
+  if (trRun.idx >= blocks.length) {
+    head.textContent = "Session complete";
+    body.appendChild(trEl("p", "Every exercise has been worked through."));
+    const fin = trEl("button", "Finish and save");
+    fin.type = "button";
+    fin.addEventListener("click", trFinishSession);
+    body.appendChild(fin);
+    return;
+  }
+
+  const b = blocks[trRun.idx];
+  const doneCount = trRun.done[trRun.idx] || 0;
+  // "3 sets each side" means six logged sets, so the target counts both.
+  const needed = b.per_side ? b.sets * 2 : b.sets;
+  head.textContent = `${trRun.idx + 1} of ${blocks.length} — ${b.group === "practice" ? "practice" : "strength"}`;
+
+  body.appendChild(trEl("h4", b.exercise));
+  body.appendChild(trEl("p", b.prescription));
+  if (b.why) body.appendChild(trEl("p", b.why, "logs-loading"));
+  if (b.form_cues) body.appendChild(trEl("p", b.form_cues, "tr-cues"));
+  if (b.video_url) {
+    const a = trEl("a", "Form guide →");
+    a.href = b.video_url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    body.appendChild(a);
+  }
+  body.appendChild(trEl("p", `Sets done: ${doneCount} of ${needed}`
+    + (b.per_side ? ` (${b.sets} each side)` : ""), "logs-loading"));
+
+  if (b.scheme === "check") trRenderCheck(body, b);
+  else if (b.scheme === "iso") trRenderTimer(body, b);
+  else trRenderCounter(body, b);
+
+  // Pain is asked for every exercise because it is what drives the back-off
+  // rule, but never required — a blank is honest, a zero would not be.
+  const painWrap = trEl("div", null, "form-row");
+  painWrap.appendChild(trEl("label", "Pain 0-10 (optional)"));
+  const painIn = document.createElement("input");
+  painIn.type = "number"; painIn.min = "0"; painIn.max = "10"; painIn.id = "tr-run-pain";
+  painWrap.appendChild(painIn);
+  body.appendChild(painWrap);
+
+  const nav = trEl("div", null, "tr-nav");
+  const next = trEl("button", doneCount ? "Next exercise" : "Next exercise");
+  next.type = "button";
+  next.className = "secondary";
+  next.addEventListener("click", () => { trRun.idx += 1; trRenderRunner(); });
+  const skip = trEl("button", "Skip this one");
+  skip.type = "button";
+  skip.className = "secondary";
+  skip.addEventListener("click", () => {
+    trRun.skipped.push(b.exercise);
+    trRun.idx += 1;
+    trRenderRunner();
+  });
+  nav.appendChild(next);
+  nav.appendChild(skip);
+  body.appendChild(nav);
+  body.appendChild(trEl("p", "", "logs-loading")).id = "tr-run-status";
+}
+
+function trRenderCheck(body, b) {
+  const btn = trEl("button", "Done");
+  btn.type = "button";
+  btn.addEventListener("click", () => trLogRunSet(b, {}));
+  body.appendChild(btn);
+}
+
+function trRenderCounter(body, b) {
+  const row = trEl("div", null, "tr-counter");
+  const dec = trEl("button", "−"); dec.type = "button";
+  const val = trEl("span", b.target_reps || 0);
+  val.id = "tr-run-reps";
+  const inc = trEl("button", "+"); inc.type = "button";
+  dec.addEventListener("click", () => {
+    val.textContent = Math.max(0, Number(val.textContent) - 1);
+  });
+  inc.addEventListener("click", () => {
+    val.textContent = Number(val.textContent) + 1;
+  });
+  row.append(dec, val, inc, trEl("span", " reps"));
+  body.appendChild(row);
+
+  let weightIn = null;
+  if (b.scheme === "load") {
+    const wRow = trEl("div", null, "form-row");
+    wRow.appendChild(trEl("label", "Weight (kg)"));
+    weightIn = document.createElement("input");
+    weightIn.type = "number"; weightIn.step = "0.25"; weightIn.min = "0";
+    if (b.target_weight !== null && b.target_weight !== undefined) {
+      weightIn.value = b.target_weight;
+    }
+    wRow.appendChild(weightIn);
+    body.appendChild(wRow);
+  }
+
+  let sideSel = null;
+  if (b.per_side) {
+    const sRow = trEl("div", null, "form-row");
+    sRow.appendChild(trEl("label", "Side"));
+    sideSel = document.createElement("select");
+    [["left", "Left"], ["right", "Right"]].forEach(([v, label]) => {
+      const o = trEl("option", label); o.value = v; sideSel.appendChild(o);
+    });
+    sRow.appendChild(sideSel);
+    body.appendChild(sRow);
+  }
+
+  const log = trEl("button", "Log set");
+  log.type = "button";
+  log.addEventListener("click", () => {
+    const payload = { reps: Number(val.textContent) };
+    if (weightIn && weightIn.value !== "") payload.weight_kg = Number(weightIn.value);
+    if (sideSel) {
+      payload.side = sideSel.value;
+      // Offer the other side next, since unilateral work alternates.
+      sideSel.value = sideSel.value === "left" ? "right" : "left";
+    }
+    trLogRunSet(b, payload);
+  });
+  body.appendChild(log);
+}
+
+function trRenderTimer(body, b) {
+  const target = b.target_seconds || 0;
+  const display = trEl("div", "0s", "tr-timer");
+  body.appendChild(display);
+  body.appendChild(trEl("p", `Target ${target}s`, "logs-loading"));
+
+  const tick = () => {
+    const secs = trTimer.elapsed + Math.floor((Date.now() - trTimer.startedAt) / 1000);
+    display.textContent = `${secs}s`;
+    // Stop at the target rather than running on: the prescription is the
+    // point, and holding to failure every time is how this knee gets angry.
+    if (target && secs >= target) {
+      trTimerStop();
+      trTimer.elapsed = secs;
+      display.textContent = `${secs}s — done`;
+      startBtn.textContent = "Restart";
+    }
+  };
+
+  const startBtn = trEl("button", "Start");
+  startBtn.type = "button";
+  startBtn.addEventListener("click", () => {
+    if (trTimer.handle) {
+      // Pause: form broke or it needed cutting short.
+      trTimer.elapsed += Math.floor((Date.now() - trTimer.startedAt) / 1000);
+      clearInterval(trTimer.handle);
+      trTimer.handle = null;
+      startBtn.textContent = "Resume";
+      display.textContent = `${trTimer.elapsed}s`;
+      return;
+    }
+    if (startBtn.textContent === "Restart") trTimer.elapsed = 0;
+    trTimer.startedAt = Date.now();
+    trTimer.handle = setInterval(tick, 250);
+    startBtn.textContent = "Pause";
+  });
+  body.appendChild(startBtn);
+
+  const log = trEl("button", "Log hold");
+  log.type = "button";
+  log.addEventListener("click", () => {
+    let secs = trTimer.elapsed;
+    if (trTimer.handle) secs += Math.floor((Date.now() - trTimer.startedAt) / 1000);
+    trTimerStop();
+    display.textContent = "0s";
+    startBtn.textContent = "Start";
+    trLogRunSet(b, { hold_seconds: secs || target });
+  });
+  body.appendChild(log);
+}
+
+async function trLogRunSet(b, fields) {
+  if (!trSession) return;
+  const painEl = getElement("tr-run-pain");
+  const pain = painEl && painEl.value !== "" ? Number(painEl.value) : null;
+  const idx = trRun.idx;
+  const payload = {
+    exercise_id: b.exercise_id,
+    set_number: (trRun.done[idx] || 0) + 1,
+    pain,
+    ...fields,
+  };
+  const res = await fetch(`${API_URL}/training/sessions/${trSession.session_id}/sets`, {
+    method: "POST",
+    headers: { ...trAuth(), "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const s = getElement("tr-run-status");
+    if (s) s.textContent = `Could not save that set (${res.status}).`;
+    return;
+  }
+  trSession = await res.json();
+  trRun.done[idx] = (trRun.done[idx] || 0) + 1;
+
+  // Move on once the prescribed sets are in, rather than making the user
+  // decide whether they are finished.
+  const needed = b.per_side ? b.sets * 2 : b.sets;
+  if (trRun.done[idx] >= needed) {
+    trRun.idx += 1;
+  }
+  trRenderRunner();
+}
+
+async function trFinishSession() {
+  if (!trSession) return;
+  // Classify by what was actually logged. A session where every strength
+  // exercise was skipped is not a strength session, and counting it as one
+  // would advance the phase on work that never happened.
+  const didStrength = trSession.sets.some((s) => {
+    const b = trRun && trRun.plan.blocks.find((x) => x.exercise_id === s.exercise_id);
+    return b && b.group === "strength";
+  });
+  const notes = trRun && trRun.skipped.length
+    ? `Skipped: ${trRun.skipped.join(", ")}`
+    : null;
+
+  await fetch(`${API_URL}/training/sessions/${trSession.session_id}`, {
+    method: "PATCH",
+    headers: { ...trAuth(), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      session_type: didStrength ? "strength" : "tai_chi",
+      ...(notes ? { notes } : {}),
+    }),
+  });
+
+  trTimerStop();
+  trRun = null;
+  trSession = null;
+  trRunnerVisible(false);
+  trRenderSession();
+  await trLoadPlan();
+  await trLoadHistory();
 }

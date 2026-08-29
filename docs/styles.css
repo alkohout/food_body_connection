@@ -790,3 +790,9 @@ select:focus {
 .tr-warn { color: #92400e; font-weight: 600; }
 #tr-plan ol, #tr-assess ol { padding-left: 1.25rem; }
 #tr-plan li, #tr-assess li { margin-bottom: 0.75rem; }
+.tr-counter { display: flex; align-items: center; gap: 0.75rem; margin: 0.75rem 0; }
+.tr-counter button { width: 3rem; font-size: 1.5rem; line-height: 1; }
+.tr-counter span { font-size: 1.75rem; min-width: 3rem; text-align: center; }
+.tr-timer { font-size: 3rem; font-weight: 700; text-align: center; margin: 0.5rem 0; }
+.tr-nav { display: flex; gap: 0.75rem; margin-top: 1rem; }
+.tr-nav button { flex: 1; }
