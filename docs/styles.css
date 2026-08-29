@@ -131,12 +131,16 @@ h1 {
   border: none;
   font-size: 0.85rem;
   cursor: pointer;
+  color: #4b5563;
   border-bottom: 3px solid transparent; /* For active indicator */
 }
 
 /* Active tab styling */
 .tab.active {
   font-weight: 600;
+  /* Matches the underline, so the selected tab reads as selected by more than
+     one signal — which also survives the underline being missed at a glance. */
+  color: #4f46e5;
   border-bottom-color: #4f46e5;
 }
 
@@ -151,6 +155,10 @@ button {
   font-weight: 600;
   border-radius: 6px;
   cursor: pointer;
+  /* Set explicitly, or the browser's own default for <button> shows through —
+     black on Windows, system blue on iOS, so the same button looked different
+     on a phone and a desktop. Rules with their own colour still win. */
+  color: #1f2937;
 }
 
 /* Primary action button */
