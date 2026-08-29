@@ -273,6 +273,54 @@ def _last_sets(db, user_id, exercise_id):
     return [st for st, s in dated if s.date_time == latest], latest
 
 
+# Easier versions of the same movement, hardest first. Only used once a stall
+# has already survived a deload, so this is the last resort rather than the
+# first response — and only where the swap is genuinely the same pattern made
+# easier, not simply a different exercise.
+#
+# Each entry carries its own scheme and range: a squat regressed to a wall sit
+# is timed rather than counted, and "8 to 12" of it would be meaningless.
+REGRESSIONS = {
+    "goblet squat": [("Box Squat", "load", 8, 12),
+                     ("Wide Leg Squat", "reps", 8, 15),
+                     ("Spanish Squat", "iso", 20, 45)],
+    "box squat": [("Wide Leg Squat", "reps", 8, 15),
+                  ("Spanish Squat", "iso", 20, 45)],
+    "wide leg squat": [("Spanish Squat", "iso", 20, 45),
+                       ("Wall Sit", "iso", 20, 45)],
+    "split squat": [("Lunge", "reps", 6, 12),
+                    ("Wide Leg Squat", "reps", 8, 15)],
+    "lunge": [("Wide Leg Squat", "reps", 8, 15)],
+    "single leg squat": [("Split Squat", "load", 6, 10),
+                         ("Wide Leg Squat", "reps", 8, 15)],
+    "anterior step down": [("Lateral Step Down", "reps", 5, 10),
+                           ("Spanish Squat", "iso", 20, 45)],
+    "lateral step down": [("Spanish Squat", "iso", 20, 45)],
+    "spanish squat": [("Wall Sit", "iso", 20, 45)],
+    "push up": [("Incline Push Up", "reps", 5, 12)],
+    "romanian deadlift": [("Single Leg Glute Bridge", "reps", 8, 15)],
+    "tricep dip": [("Incline Push Up", "reps", 5, 12)],
+}
+
+
+def _substitute(db, user_id, name, by_name):
+    """The easiest-first alternative the user actually owns and is not stuck on.
+
+    Returns (Block, Exercise) or None. Nothing is substituted for an exercise
+    with no ladder, or when the whole ladder is missing from their library —
+    silently swapping in something they have never seen would be worse than
+    saying nothing.
+    """
+    for sub_name, scheme, low, high in REGRESSIONS.get(name.strip().lower(), []):
+        ex = by_name.get(sub_name.strip().lower())
+        if ex is None:
+            continue
+        if _stalled(db, user_id, ex.exercise_id, scheme):
+            continue          # no point moving onto something already stuck
+        return Block(sub_name, scheme, 3, low, high), ex
+    return None
+
+
 def _stalled(db, user_id, exercise_id, scheme) -> bool:
     """Has this exercise been stuck at the same failed target for a while?
 
@@ -461,6 +509,9 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
     sets = block.sets
     detail, why = "", ""
     target, weight = None, None
+    # Set when a stall has nowhere left to go: the caller then looks for an
+    # easier version of the movement.
+    exhausted = False
 
     if action == "back_off":
         sets = max(2, block.sets - 1)
@@ -499,9 +550,8 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         elif stalled:
             target = max(SECONDS_FLOOR, int(top * STALL_FACTOR))
             if target >= top:
-                why = (f"Stuck at {top}s for {STALL_SESSIONS} sessions and already "
-                       f"as low as this hold goes — swap it for an easier "
-                       f"variation rather than grinding at it.")
+                exhausted = True
+                why = f"Stuck at {top}s for {STALL_SESSIONS} sessions."
             else:
                 why = (f"Stuck at {top}s for {STALL_SESSIONS} sessions without "
                        f"finishing it — dropping to {target}s to build back up.")
@@ -530,9 +580,8 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         elif stalled:
             target = max(REPS_FLOOR, int(top * STALL_FACTOR))
             if target >= top:
-                why = (f"Stuck at {top} for {STALL_SESSIONS} sessions and already "
-                       f"as low as this goes — swap it for an easier variation "
-                       f"rather than grinding at it.")
+                exhausted = True
+                why = f"Stuck at {top} for {STALL_SESSIONS} sessions."
             else:
                 why = (f"Stuck at {top} for {STALL_SESSIONS} sessions without "
                        f"finishing it — dropping to {target} to build back up.")
@@ -576,9 +625,8 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
             weight = _next_load(last_w, loads, up=False)
             target = block.low
             if weight == last_w:
-                why = (f"Stuck at {last_w}kg for {STALL_SESSIONS} sessions and "
-                       f"there is no lighter load to build — swap it for an "
-                       f"easier variation rather than grinding at it.")
+                exhausted = True
+                why = f"Stuck at {last_w}kg for {STALL_SESSIONS} sessions."
             else:
                 why = (f"Stuck at {last_w}kg for {STALL_SESSIONS} sessions without "
                        f"finishing it — back to {weight}kg to build up again.")
@@ -633,6 +681,7 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         "target_seconds": target if block.scheme == "iso" else None,
         "target_weight": weight if block.scheme == "load" else None,
         "per_side": bool(ex.is_unilateral),
+        "exhausted": exhausted,
     }
 
 
@@ -734,6 +783,35 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
             block, ex, prior, knee["action"], loads, last_done=when,
             stalled=_stalled(db, user_id, ex.exercise_id, block.scheme),
         )
+
+        if item.pop("exhausted", False):
+            swap = _substitute(db, user_id, block.name, by_name)
+            if swap is None:
+                # Nothing to move to, so say what is happening rather than
+                # repeating a target that has already failed three times.
+                item["why"] += (" No easier version of this is in your library — "
+                                "swap it for something you can complete.")
+            else:
+                sub_block, sub_ex = swap
+                sub_prior, sub_when = _last_sets(db, user_id, sub_ex.exercise_id)
+                item = _prescribe(
+                    sub_block, sub_ex, sub_prior, knee["action"], loads,
+                    last_done=sub_when,
+                    stalled=_stalled(db, user_id, sub_ex.exercise_id, sub_block.scheme),
+                )
+                item.pop("exhausted", None)
+                item["substituted_from"] = ex.exercise_name
+                # Flagged until it has actually been done, so the change is
+                # announced once rather than nagging forever.
+                fresh = sub_when is None or (when is not None and sub_when < when)
+                item["notice"] = (
+                    f"{ex.exercise_name} has stalled three sessions running, so it "
+                    f"has been swapped for {sub_ex.exercise_name} — the same "
+                    f"movement, made easier. It will build back up from here."
+                ) if fresh else None
+                item["why"] = (f"Replacing {ex.exercise_name}. " + item["why"]).strip()
+
+        item.pop("exhausted", None)
         item["group"] = group
         blocks.append(item)
 

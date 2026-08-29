@@ -3709,6 +3709,7 @@ function trRenderPlan() {
   trPlan.blocks.forEach((b) => {
     const li = document.createElement("li");
     li.appendChild(trEl("span", `${b.exercise} — ${b.prescription}`, "tr-plan-name"));
+    if (b.notice) li.appendChild(trEl("div", b.notice, "tr-warn"));
     if (b.why) li.appendChild(trEl("div", b.why, "tr-hint"));
     if (b.form_cues) li.appendChild(trEl("div", b.form_cues, "tr-hint"));
     if (b.video_url) {
@@ -3865,6 +3866,9 @@ function trRenderRunner() {
   const groupLabel = { practice: "practice", knee: "knee maintenance", strength: "strength" }[b.group] || b.group;
   head.textContent = `${trRun.idx + 1} of ${blocks.length} — ${groupLabel}`;
 
+  // An exercise the engine swapped out from under you is worth saying out
+  // loud, once, before you start it.
+  if (b.notice) body.appendChild(trEl("p", b.notice, "tr-warn"));
   body.appendChild(trEl("h4", b.exercise));
   body.appendChild(trEl("p", b.prescription));
   // Strength comes from working close to your limit, not from reaching it, so

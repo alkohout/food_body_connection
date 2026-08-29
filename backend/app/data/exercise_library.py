@@ -98,6 +98,9 @@ LIBRARY = [
     # ── Upper ──────────────────────────────────────────────────────────────
     ("Push Up", "strength", "upper", "bodyweight", False, False,
      "Body in one line, elbows about 45 degrees from the ribs.", None),
+    ("Incline Push Up", "strength", "upper", "bodyweight", False, False,
+     "Hands on a bench, step or worktop. The higher the hands, the easier it "
+     "is — the regression for a push up that will not move.", None),
     ("Tricep Dip", "strength", "upper", "bodyweight", False, False,
      "Off a chair, shoulders down away from the ears. Stop if the shoulder "
      "front pinches.", None),
