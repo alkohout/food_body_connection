@@ -24,7 +24,9 @@ from datetime import datetime, timedelta
 from app.data.programs import (
     Block, DEFAULT_FOCUS, PRACTICE, PROGRAMS, TAI_CHI_FORM, TAI_CHI_FORMS,
 )
-from app.models.table_class import Exercise, SetLog, TrainingProfile, WorkoutSession
+from app.models.table_class import (
+    Exercise, SetLog, Symptom, SymptomLog, TrainingProfile, WorkoutSession,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +112,10 @@ def next_tai_chi_form(db, user_id) -> str:
 NEXT_DAY_BACKOFF = 4      # >= this in the last scored session -> back off
 SET_PAIN_BACKOFF = 4      # >= this mean pain during the last session -> back off
 SET_PAIN_HOLD = 3         # >= this -> hold progression rather than back off
+# Symptom logs are on a 0-3 scale: none, mild, moderate, severe. Moderate or
+# worse holds training back; mild repeats rather than progresses.
+SYMPTOM_BACKOFF = 2
+SYMPTOM_WINDOW_DAYS = 2   # older than this and it is history, not today
 RPE_CEILING = 8           # progress load only if the last sets were <= this
 RECENT_SCORES = 5         # how many recent next-day scores decide a phase
 MIN_EXERCISES_FOR_CREDIT = 3   # exercises needed for a session to count
@@ -348,8 +354,58 @@ def _stalled(db, user_id, exercise_id, scheme) -> bool:
     return bool(vals) and min(vals) < max(vals)
 
 
-def knee_state(db, user_id, word="soreness") -> dict:
+def recent_symptom(db, user_id, keywords, tz_offset=0):
+    """The worst matching symptom logged in the last couple of days.
+
+    Symptom names are encrypted, so the match happens in Python rather than in
+    SQL. Only the recent window counts: a sore knee last week that has not
+    recurred is history, and holding training back on it forever would make
+    the log something people avoid using.
+    """
+    if not keywords:
+        return None
+    names = {
+        s.symptom_id: s.symptom_name
+        for s in db.query(Symptom).filter(Symptom.user_id == user_id).all()
+        if s.symptom_name and any(k in s.symptom_name.lower() for k in keywords)
+    }
+    if not names:
+        return None
+
+    cutoff = datetime.utcnow() - timedelta(days=SYMPTOM_WINDOW_DAYS)
+    worst = None
+    for log in (db.query(SymptomLog)
+                .filter(SymptomLog.user_id == user_id,
+                        SymptomLog.symptom_id.in_(names.keys()))
+                .all()):
+        if not log.date_time:
+            continue
+        naive = log.date_time.replace(tzinfo=None) if log.date_time.tzinfo else log.date_time
+        if naive < cutoff:
+            continue
+        if worst is None or (log.symptom_intensity or 0) > worst[1]:
+            worst = (names[log.symptom_id], log.symptom_intensity or 0, naive)
+    return worst
+
+
+def knee_state(db, user_id, word="soreness", keywords=None, tz_offset=0) -> dict:
     """Whether to back off, hold, or progress, and why."""
+    # A symptom logged elsewhere in the app outranks anything the training
+    # log knows: it is a report of how the body is today, and it applies even
+    # before the first session is logged.
+    flagged = recent_symptom(db, user_id, keywords or [], tz_offset)
+    if flagged and flagged[1] >= SYMPTOM_BACKOFF:
+        name, level, when = flagged
+        label = {2: "moderate", 3: "severe"}.get(level, str(level))
+        return {
+            "action": "back_off",
+            "reason": (f"You logged {name} as {label} on "
+                       f"{when.strftime('%-d %b')}. Load comes down a step and "
+                       f"volume is cut until it settles."),
+            "awaiting_next_day": None,
+            "from_symptom_log": True,
+        }
+
     sessions = (
         db.query(WorkoutSession)
         .filter(WorkoutSession.user_id == user_id)
@@ -358,6 +414,12 @@ def knee_state(db, user_id, word="soreness") -> dict:
         .all()
     )
     if not sessions:
+        if flagged:
+            name, level, when = flagged
+            return {"action": "hold",
+                    "reason": (f"You logged {name} as mild on "
+                               f"{when.strftime('%-d %b')} — starting gently."),
+                    "awaiting_next_day": None, "from_symptom_log": True}
         return {"action": "progress", "reason": "No sessions logged yet.",
                 "awaiting_next_day": None}
 
@@ -727,7 +789,8 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
     focus = user_focus(db, user_id)
     prog = program(focus)
     phase = current_phase(db, user_id, focus)
-    knee = knee_state(db, user_id, prog["soreness"])
+    knee = knee_state(db, user_id, prog["soreness"],
+                      prog.get("symptom_keywords"), tz_offset)
     profile = db.query(TrainingProfile).filter(
         TrainingProfile.user_id == user_id).first()
     loads = achievable_loads(profile)
@@ -802,9 +865,18 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
                 dropped.append(swapped_from)
             continue
 
+        # A back-off applies to what is actually sore. Cutting the volume of
+        # everything because one joint hurts loses training for no reason, and
+        # "volume cut while the knee settles" on a row reads as nonsense.
+        targets = prog.get("soreness_targets")
+        action = knee["action"]
+        if action in ("back_off", "hold") and targets is not None \
+                and (ex.target or "") not in targets:
+            action = "progress"
+
         prior, when, from_test = _last_sets(db, user_id, ex.exercise_id)
         item = _prescribe(
-            block, ex, prior, knee["action"], loads, last_done=when,
+            block, ex, prior, action, loads, last_done=when,
             stalled=_stalled(db, user_id, ex.exercise_id, block.scheme),
             from_assessment=from_test,
         )
@@ -820,7 +892,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
                 sub_block, sub_ex = swap
                 sub_prior, sub_when, sub_test = _last_sets(db, user_id, sub_ex.exercise_id)
                 item = _prescribe(
-                    sub_block, sub_ex, sub_prior, knee["action"], loads,
+                    sub_block, sub_ex, sub_prior, action, loads,
                     last_done=sub_when,
                     stalled=_stalled(db, user_id, sub_ex.exercise_id, sub_block.scheme),
                     from_assessment=sub_test,

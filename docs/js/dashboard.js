@@ -2188,6 +2188,46 @@ function buildLogCell(displayText, inputEl) {
 // Recent logs – render allergen logs
 // =========================================================
 
+// Editing a log was possible; removing one was not, so a mis-tap could only be
+// corrected by editing it into something else. Confirms first, because the row
+// goes for good and there is no undo.
+function buildDeleteCell(tr, label, doDelete) {
+  const td = document.createElement("td");
+  td.className = "log-delete";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "secondary";
+  btn.textContent = "Delete";
+  btn.title = `Delete this ${label} log`;
+  btn.addEventListener("click", async (e) => {
+    // The row saves on focusout; without this the click counts as editing it.
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm(`Delete this ${label} log? This cannot be undone.`)) return;
+    tr.classList.add("log-row--saving");
+    try {
+      await doDelete();
+      tr.remove();
+    } catch (err) {
+      tr.classList.remove("log-row--saving");
+      tr.classList.add("log-row--error");
+      setTimeout(() => tr.classList.remove("log-row--error"), 2000);
+      console.error(`Failed to delete ${label} log:`, err);
+    }
+  });
+  td.appendChild(btn);
+  return td;
+}
+
+async function deleteLogEntry(kind, id) {
+  const token = localStorage.getItem("access_token");
+  const res = await fetch(`${API_URL}/entries/${kind}/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
+}
+
 function renderAllergenLogs(logs, allergens, units) {
   const container = getElement("allergen-logs-list");
   if (!container) return;
@@ -2199,7 +2239,7 @@ function renderAllergenLogs(logs, allergens, units) {
 
   const table = document.createElement("table");
   table.className = "logs-table";
-  table.innerHTML = `<thead><tr><th>Allergen</th><th>Date &amp; time</th><th>Amount</th></tr></thead>`;
+  table.innerHTML = `<thead><tr><th>Allergen</th><th>Date &amp; time</th><th>Amount</th><th></th></tr></thead>`;
   const tbody = document.createElement("tbody");
   table.appendChild(tbody);
 
@@ -2265,6 +2305,8 @@ function renderAllergenLogs(logs, allergens, units) {
     tr.appendChild(allergenTd);
     tr.appendChild(dateTd);
     tr.appendChild(amountTd);
+    tr.appendChild(buildDeleteCell(tr, "allergen",
+      () => deleteLogEntry("allergens", log.allergen_log_id)));
     tbody.appendChild(tr);
 
     const allInputs = [allergenSel, dateInp, qtyInp, unitSel];
@@ -2353,7 +2395,7 @@ function renderSymptomLogs(logs, symptoms) {
 
   const table = document.createElement("table");
   table.className = "logs-table";
-  table.innerHTML = `<thead><tr><th>Symptom</th><th>Date &amp; time</th><th>Intensity</th></tr></thead>`;
+  table.innerHTML = `<thead><tr><th>Symptom</th><th>Date &amp; time</th><th>Intensity</th><th></th></tr></thead>`;
   const tbody = document.createElement("tbody");
   table.appendChild(tbody);
 
@@ -2381,6 +2423,8 @@ function renderSymptomLogs(logs, symptoms) {
     tr.appendChild(symptomTd);
     tr.appendChild(dateTd);
     tr.appendChild(intensityTd);
+    tr.appendChild(buildDeleteCell(tr, "symptom",
+      () => deleteLogEntry("symptoms", log.symptom_log_id)));
     tbody.appendChild(tr);
 
     function closeSymptomCells() {

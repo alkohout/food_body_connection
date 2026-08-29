@@ -286,6 +286,14 @@ PROGRAMS = {
         # meaningless number back.
         "soreness": "soreness",
         "soreness_prompt": "Any lingering soreness this morning?",
+        # Symptom-log names that should hold training back. Matched as
+        # substrings, case-insensitively, against what the user actually
+        # tracks — the point of one database is that logging a sore knee in
+        # the morning reaches the afternoon's session.
+        "symptom_keywords": ["joint pain", "muscle pain", "body ache"],
+        # Which body areas a back-off applies to. None means all of them:
+        # general soreness is usually everywhere.
+        "soreness_targets": None,
     },
     "knee": {
         "label": "Knee stability",
@@ -300,6 +308,10 @@ PROGRAMS = {
         "assessment": KNEE_ASSESSMENT,
         "soreness": "knee",
         "soreness_prompt": "How was the knee this morning?",
+        "symptom_keywords": ["knee"],
+        # A sore knee is a reason to ease off the legs, not the press-ups.
+        # Hips are included because they control how the knee tracks.
+        "soreness_targets": {"knee", "hip", "calf", "posterior"},
     },
 }
 

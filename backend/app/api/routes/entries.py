@@ -318,3 +318,48 @@ def update_symptom_log(
     db.refresh(log)
     return {"message": "Updated", "symptom_log_id": log.symptom_log_id}
 
+
+
+@router.delete("/allergens/{allergen_log_id}", status_code=204)
+def delete_allergen_log(
+    allergen_log_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Remove a logged entry. Editing was possible; removing a mistake was not.
+
+    Scoped to the authenticated user, and 404 rather than 403 for someone
+    else's row: whether it exists is not this user's business.
+    """
+    log = (
+        db.query(AllergenLog)
+        .filter(
+            AllergenLog.allergen_log_id == allergen_log_id,
+            AllergenLog.user_id == current_user.user_id,
+        )
+        .first()
+    )
+    if not log:
+        raise HTTPException(404, "Allergen log not found")
+    db.delete(log)
+    db.commit()
+
+
+@router.delete("/symptoms/{symptom_log_id}", status_code=204)
+def delete_symptom_log(
+    symptom_log_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    log = (
+        db.query(SymptomLog)
+        .filter(
+            SymptomLog.symptom_log_id == symptom_log_id,
+            SymptomLog.user_id == current_user.user_id,
+        )
+        .first()
+    )
+    if not log:
+        raise HTTPException(404, "Symptom log not found")
+    db.delete(log)
+    db.commit()

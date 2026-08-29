@@ -894,3 +894,9 @@ select:focus {
 .tr-equip-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.4rem 0; }
 .tr-equip-row input { width: auto; margin: 0; }
 .tr-equip-row span:first-of-type { flex: 1; font-size: 0.9rem; }
+
+/* Delete control on a log row */
+.log-delete { width: 1%; white-space: nowrap; text-align: right; }
+.log-delete button {
+  width: auto; margin: 0; padding: 0.15rem 0.6rem; font-size: 0.75rem;
+}
