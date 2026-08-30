@@ -1006,6 +1006,11 @@
     <!-- Documents tab -->
     <form id="training-form" class="form">
 
+      <!-- Declared before starting, because it changes what the session is. -->
+      <section class="med-section" id="tr-checkin-section" style="display:none">
+        <div id="tr-checkin" class="tr-card"></div>
+      </section>
+
       <!-- The session itself comes first: that is what the tab is for. -->
       <section class="med-section">
         <div id="tr-session-bar">

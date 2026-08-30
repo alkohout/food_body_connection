@@ -6,7 +6,7 @@ id is re-checked against that user before it is touched — an id in a URL is no
 proof of ownership.
 """
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -17,11 +17,13 @@ from app.analysis.training_program import (
     ALWAYS_AVAILABLE, available_equipment, build_session, program,
     user_focus, visible_programs,
 )
+from app.data.programs import SESSION_LIMITS
 from app.data.programs import DEFAULT_FOCUS, PROGRAMS
 from app.data.exercise_library import LIBRARY
 from app.database import get_db
 from app.models.table_class import (
-    Exercise, PracticeItem, SetLog, TrainingProfile, User, WorkoutSession,
+    Exercise, PracticeItem, SetLog, Symptom, SymptomLog, TrainingProfile,
+    User, WorkoutSession,
 )
 from app.schemas import (
     ExerciseCreate, ExerciseOut,
@@ -266,6 +268,64 @@ def delete_set(
         raise HTTPException(status_code=404, detail="Set not found.")
     db.delete(st)
     db.commit()
+
+
+@router.get("/checkin")
+def session_checkin(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Symptoms worth declaring before a session, and what is already logged.
+
+    Only the ones that change something: those that limit what a session may
+    contain, and those the programme backs off for. Offering the whole symptom
+    list would bury the two or three that matter.
+    """
+    focus = user_focus(db, current_user.user_id)
+    keywords = set(SESSION_LIMITS) | set(program(focus).get("symptom_keywords") or [])
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=18)
+    logged = {}
+    for log, sym in (
+        db.query(SymptomLog, Symptom)
+        .join(Symptom, SymptomLog.symptom_id == Symptom.symptom_id)
+        .filter(SymptomLog.user_id == current_user.user_id)
+        .all()
+    ):
+        if not log.date_time:
+            continue
+        when = log.date_time if log.date_time.tzinfo else log.date_time.replace(tzinfo=timezone.utc)
+        if when >= cutoff:
+            prev = logged.get(sym.symptom_id)
+            if prev is None or log.symptom_intensity > prev:
+                logged[sym.symptom_id] = log.symptom_intensity
+
+    # Which of these has ever been used. The knee family alone is fourteen
+    # entries, and offering all of them before every session would bury the
+    # two or three that are actually in play.
+    ever = {
+        r[0] for r in db.query(SymptomLog.symptom_id)
+        .filter(SymptomLog.user_id == current_user.user_id).distinct().all()
+    }
+
+    items = []
+    for s in db.query(Symptom).filter(Symptom.user_id == current_user.user_id).all():
+        low = (s.symptom_name or "").lower()
+        if not any(k in low for k in keywords):
+            continue
+        # Session-limiting symptoms are few and change the shape of the day, so
+        # they are always offered. The rest appear once they have been used.
+        if not any(k in low for k in SESSION_LIMITS) and s.symptom_id not in ever:
+            continue
+        items.append({
+            "symptom_id": s.symptom_id,
+            "name": s.symptom_name,
+            # None means nothing logged recently, which is the default answer.
+            "logged": logged.get(s.symptom_id),
+            "limits_session": any(k in low for k in SESSION_LIMITS),
+        })
+    items.sort(key=lambda i: (not i["limits_session"], i["name"]))
+    return {"items": items, "window_hours": 18}
 
 
 @router.get("/focus")

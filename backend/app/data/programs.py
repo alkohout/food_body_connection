@@ -334,3 +334,40 @@ PRACTICE = {
         "after": [Block("Stretches", "check", 1, 0, 0)],
     },
 }
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Days when the session should be a different shape, not just lighter
+# ──────────────────────────────────────────────────────────────────────────
+#
+# The back-off rule answers "how much", which is the right question for a sore
+# knee. A migraine is a different question: the problem is bending down and
+# exerting at all, so what is needed is a shorter list, not smaller numbers.
+#
+# Matched on the symptom name as a substring, and keyed by the intensity
+# logged. An intensity with no entry imposes no limit.
+SESSION_LIMITS = {
+    "migraine": {
+        1: {"max_exertion": 2, "allow_floor": True,
+            "note": "Mild migraine: the demanding work is out, the rest stands."},
+        2: {"max_exertion": 1, "allow_floor": False,
+            "note": "Migraine: gentle and upright only — nothing that needs "
+                    "bending down or real effort."},
+        3: {"max_exertion": 1, "allow_floor": False,
+            "note": "Migraine: gentle and upright only. Stop at any point; "
+                    "keeping the habit is the whole aim today."},
+    },
+    "headache": {
+        2: {"max_exertion": 2, "allow_floor": True,
+            "note": "Headache: the demanding work is out."},
+        3: {"max_exertion": 1, "allow_floor": False,
+            "note": "Bad headache: gentle and upright only."},
+    },
+    "vertigo": {
+        1: {"max_exertion": 2, "allow_floor": False,
+            "note": "Vertigo: nothing on the floor, and nothing that has you "
+                    "getting up and down."},
+        2: {"max_exertion": 1, "allow_floor": False, "note": "Vertigo: gentle and upright only."},
+        3: {"max_exertion": 1, "allow_floor": False, "note": "Vertigo: gentle and upright only."},
+    },
+}

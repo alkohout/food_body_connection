@@ -250,6 +250,15 @@ class Exercise(Base):
     # that gives way is no reason to skip it.
     needs_balance = Column(Boolean, nullable=False, default=False)
 
+    # How hard it is on a bad day: 1 gentle, 2 moderate, 3 demanding. Separate
+    # from load, which the progression handles — a migraine is not a reason to
+    # lift lighter, it is a reason not to exert at all.
+    exertion = Column(Integer, nullable=False, default=2)
+
+    # Needs getting down to the floor. Bending down is its own problem when
+    # your head hurts, regardless of how easy the exercise itself is.
+    floor_based = Column(Boolean, nullable=False, default=False)
+
     form_cues = Column(EncryptedString, nullable=True)
     video_url = Column(String(500), nullable=True)
     is_archived = Column(Boolean, nullable=False, default=False)

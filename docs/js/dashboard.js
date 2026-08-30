@@ -3391,6 +3391,10 @@ function trRenderSession() {
         ? `Day ${trPlan.day} — ${trPlan.theme}`
         : trPlan.theme;
       bar.appendChild(trEl("p", label, "tr-today"));
+      if (trPlan.limits) {
+        bar.appendChild(trEl("p",
+          `Reduced today — ${trPlan.limits.symptom.toLowerCase()} logged`, "tr-warn"));
+      }
     }
     if (logSection) logSection.style.display = "none";
     trRunnerVisible(false);
@@ -3717,6 +3721,7 @@ function setupTraining() {
           `${added} new exercise${added === 1 ? "" : "s"} added to your library.`);
       }
       trRenderSession();
+      await trLoadCheckin();
       await trLoadPlan();
       await trLoadHistory();
     } catch (err) {
@@ -3755,6 +3760,9 @@ function trRenderPlan() {
   card.appendChild(trEl("p", trPlan.kind_why, "tr-hint"));
   if (trPlan.focus_label) {
     card.appendChild(trEl("p", `Programme: ${trPlan.focus_label}`, "tr-hint"));
+  }
+  if (trPlan.limits) {
+    card.appendChild(trEl("p", trPlan.limits.note, "tr-warn"));
   }
   card.appendChild(trEl("p", `Phase ${ph.phase} — ${ph.label}. ${ph.aim}`, "tr-body"));
   card.appendChild(trEl("p", `${ph.sessions_done} strength sessions logged · next phase: ${ph.to_advance}`, "tr-hint"));
@@ -4028,6 +4036,74 @@ async function trRenderEquipmentPanel() {
 }
 
 
+const TR_LEVELS = [["", "No"], ["1", "Mild"], ["2", "Moderate"], ["3", "Severe"]];
+
+// Asked before the session rather than after, because the answer decides what
+// the session is: a migraine does not mean lighter sets, it means a shorter
+// list. Answering also writes the symptom log, so it is not entered twice.
+async function trLoadCheckin() {
+  const box = getElement("tr-checkin");
+  const sec = getElement("tr-checkin-section");
+  if (!box || !sec) return;
+
+  const res = await fetch(`${API_URL}/training/checkin`, { headers: trAuth() });
+  if (!res.ok) { sec.style.display = "none"; return; }
+  const data = await res.json();
+  if (!data.items.length) { sec.style.display = "none"; return; }
+
+  sec.style.display = "";
+  box.replaceChildren();
+  box.appendChild(trEl("p", "How are you today?", "tr-card-title"));
+  box.appendChild(trEl("p",
+    "Anything here changes today's session. Leave them all on No if you are fine.",
+    "tr-hint"));
+
+  data.items.forEach((item) => {
+    const row = trEl("div", null, "tr-equip-row");
+    const label = trEl("span");
+    label.appendChild(trEl("div", item.name));
+    if (item.limits_session) {
+      label.appendChild(trEl("div", "changes what the session contains", "tr-hint"));
+    }
+    row.appendChild(label);
+
+    const sel = document.createElement("select");
+    TR_LEVELS.forEach(([v, text]) => {
+      const o = trEl("option", text);
+      o.value = v;
+      o.selected = String(item.logged ?? "") === v;
+      sel.appendChild(o);
+    });
+    const status = trEl("span", "", "tr-hint");
+    sel.addEventListener("change", async () => {
+      if (!sel.value) {
+        // Nothing to un-log: an entry already written stays written. Removing
+        // it is a deliberate act, on the log itself.
+        status.textContent = "Already logged — remove it in Log Symptom.";
+        return;
+      }
+      status.textContent = "Saving…";
+      const r = await fetch(`${API_URL}/entries/symptoms`, {
+        method: "POST",
+        headers: { ...trAuth(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          symptom_id: item.symptom_id,
+          date_time: new Date().toISOString(),
+          intensity: Number(sel.value),
+        }),
+      });
+      status.textContent = r.ok ? "Logged." : `Failed (${r.status}).`;
+      if (r.ok) {
+        await trLoadPlan();
+        await trLoadCheckin();
+      }
+    });
+    row.appendChild(sel);
+    row.appendChild(status);
+    box.appendChild(row);
+  });
+}
+
 async function trLoadPlan() {
   const tz = new Date().getTimezoneOffset();
   const q = `tz_offset=${tz}` + (trKindOverride ? `&kind=${trKindOverride}` : "");
@@ -4198,6 +4274,10 @@ function trRenderRunner() {
   const doneCount = trRun.done[trRun.idx] || 0;
   // "3 sets each side" means six logged sets, so the target counts both.
   const needed = b.per_side ? b.sets * 2 : b.sets;
+  // Which side is up. Kept on the run rather than the <select>, because
+  // logging a set re-renders the whole body and a value set on the element
+  // is thrown away with it — which is why it always came back on "left".
+  const nextSide = trRun.sides[trRun.idx] || "left";
   const groupLabel = { practice: "practice", maintenance: "maintenance",
                        assessment: "baseline test", strength: "strength" }[b.group] || b.group;
   head.textContent = `${trRun.idx + 1} of ${blocks.length} — ${groupLabel}`;
@@ -4224,8 +4304,12 @@ function trRenderRunner() {
     a.rel = "noopener noreferrer";
     body.appendChild(a);
   }
-  body.appendChild(trEl("p", `Sets done: ${doneCount} of ${needed}`
-    + (b.per_side ? ` (${b.sets} each side)` : ""), "logs-loading"));
+  // Left and right together are one set, which is how it is counted when
+  // doing it. Half a set shows what is left rather than a fraction.
+  const setsDone = b.per_side ? Math.floor(doneCount / 2) : doneCount;
+  let progress = `Sets done: ${setsDone} of ${b.sets}`;
+  if (b.per_side && doneCount % 2 === 1) progress += ` · ${nextSide} side to finish this one`;
+  body.appendChild(trEl("p", progress, "logs-loading"));
 
   if (b.scheme === "check") trRenderCheck(body, b);
   else if (b.scheme === "iso") trRenderTimer(body, b);
@@ -4263,7 +4347,7 @@ function trRenderRunner() {
     });
     nav.appendChild(skip);
   } else {
-    const stop = trEl("button", `Move on — ${doneCount} of ${needed} done`, "secondary");
+    const stop = trEl("button", `Move on — ${setsDone} of ${b.sets} done`, "secondary");
     stop.type = "button";
     stop.addEventListener("click", () => { trRun.idx += 1; trRenderRunner(); });
     nav.appendChild(stop);
@@ -4315,6 +4399,8 @@ function trRenderCounter(body, b) {
     [["left", "Left"], ["right", "Right"]].forEach(([v, label]) => {
       const o = trEl("option", label); o.value = v; sideSel.appendChild(o);
     });
+    sideSel.value = nextSide;
+    sideSel.addEventListener("change", () => { trRun.sides[trRun.idx] = sideSel.value; });
     // When the sides have different targets, the counter follows the side
     // being worked. Otherwise the sore side gets the good side's number,
     // which is the whole thing the split was meant to avoid.
@@ -4339,8 +4425,9 @@ function trRenderCounter(body, b) {
     if (weightIn && weightIn.value !== "") payload.weight_kg = Number(weightIn.value);
     if (sideSel) {
       payload.side = sideSel.value;
-      // Offer the other side next, since unilateral work alternates.
-      sideSel.value = sideSel.value === "left" ? "right" : "left";
+      // The other side is next, and it has to be recorded on the run to
+      // survive the re-render that logging triggers.
+      trRun.sides[trRun.idx] = sideSel.value === "left" ? "right" : "left";
     }
     trLogRunSet(b, payload);
   });
@@ -4373,6 +4460,8 @@ function trRenderTimer(body, b) {
     [["left", "Left"], ["right", "Right"]].forEach(([v, label]) => {
       const o = trEl("option", label); o.value = v; sideSel.appendChild(o);
     });
+    sideSel.value = nextSide;
+    sideSel.addEventListener("change", () => { trRun.sides[trRun.idx] = sideSel.value; });
     if (b.side_targets) {
       const applySide = () => {
         const spec = b.side_targets[sideSel.value];
@@ -4448,8 +4537,7 @@ function trRenderTimer(body, b) {
     const fields = { hold_seconds: secs || target };
     if (sideSel) {
       fields.side = sideSel.value;
-      sideSel.value = sideSel.value === "left" ? "right" : "left";
-      sideSel.dispatchEvent(new Event("change"));
+      trRun.sides[trRun.idx] = sideSel.value === "left" ? "right" : "left";
     }
     trLogRunSet(b, fields);
   });

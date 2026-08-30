@@ -22,13 +22,50 @@ import re
 from collections import namedtuple
 from datetime import datetime, timedelta
 
-from app.data.programs import Block, DEFAULT_FOCUS, PRACTICE, PROGRAMS
+from app.data.programs import (
+    Block, DEFAULT_FOCUS, PRACTICE, PROGRAMS, SESSION_LIMITS,
+)
 from app.models.table_class import (
     Exercise, PracticeItem, SetLog, Symptom, SymptomLog, TrainingProfile,
     WorkoutSession,
 )
 
 logger = logging.getLogger(__name__)
+
+def session_limits(db, user_id, tz_offset=0) -> dict | None:
+    """What today's symptoms rule out, as opposed to how much they rule down.
+
+    Returns the strictest limit any recent symptom imposes, or None. Strictest
+    rather than most recent: two things logged the same morning should not let
+    the milder one decide what the session may contain.
+    """
+    cutoff = datetime.utcnow() - timedelta(days=1)
+    strictest = None
+    rows = (
+        db.query(SymptomLog, Symptom)
+        .join(Symptom, SymptomLog.symptom_id == Symptom.symptom_id)
+        .filter(SymptomLog.user_id == user_id)
+        .all()
+    )
+    for log, sym in rows:
+        if not log.date_time or not sym.symptom_name:
+            continue
+        naive = log.date_time.replace(tzinfo=None) if log.date_time.tzinfo else log.date_time
+        if naive < cutoff:
+            continue
+        low = sym.symptom_name.lower()
+        for token, levels in SESSION_LIMITS.items():
+            if token not in low:
+                continue
+            rule = levels.get(log.symptom_intensity or 0)
+            if rule is None:
+                continue
+            entry = {**rule, "symptom": sym.symptom_name, "level": log.symptom_intensity}
+            if strictest is None or (entry["max_exertion"], entry["allow_floor"]) < \
+                    (strictest["max_exertion"], strictest["allow_floor"]):
+                strictest = entry
+    return strictest
+
 
 def user_focus(db, user_id) -> str:
     """Which programme this user follows. Unknown values fall back to default."""
@@ -288,6 +325,15 @@ def available_equipment(profile) -> set | None:
     if not isinstance(owned, list):
         return None
     return {str(x) for x in owned} | ALWAYS_AVAILABLE
+
+
+def _within_limits(ex, limits) -> bool:
+    """Whether an exercise is allowed by today's limits at all."""
+    if not limits:
+        return True
+    if (ex.exertion or 2) > limits["max_exertion"]:
+        return False
+    return not (ex.floor_based and not limits["allow_floor"])
 
 
 def _equipment_swap(name, equipment, by_name, available):
@@ -924,7 +970,9 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
     templates += middle
     templates += [(b, "practice") for b in practice["after"]]
 
-    dropped, used_ids = [], set()
+    limits = session_limits(db, user_id, tz_offset)
+    by_id = {e.exercise_id: e for e in by_name.values()}
+    dropped, limited, used_ids = [], [], set()
     for block, group in templates:
         ex = by_name.get(block.name.strip().lower())
         if ex is None:
@@ -1031,6 +1079,17 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
                 ) if fresh else None
                 item["why"] = (f"Replacing {ex.exercise_name}. " + item["why"]).strip()
 
+        # After the swaps, not before them. A limit rules an exercise out
+        # rather than trimming it — on a migraine day the problem is bending
+        # down and exerting, and a lighter set still involves both. Checking
+        # the templated exercise instead let a substitute through: terminal
+        # knee extension is upright and gentle, but with no bands it becomes
+        # the quad set, which is done on the floor.
+        final_ex = by_id.get(item["exercise_id"], ex)
+        if not _within_limits(final_ex, limits):
+            limited.append(final_ex.exercise_name)
+            continue
+
         item.pop("exhausted", None)
         used_ids.add(item["exercise_id"])
         item["group"] = group
@@ -1047,6 +1106,11 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
     if missing:
         notes.append("Not in your library yet: " + ", ".join(missing)
                      + ". Load the starter library to add them.")
+    if limits:
+        note = limits["note"]
+        if limited:
+            note += (" Out today: " + ", ".join(sorted(set(limited))) + ".")
+        notes.insert(0, note)
     if knee.get("instability") and dropped:
         notes.append("Single-leg work is out while the knee is giving way: "
                      + ", ".join(sorted(set(dropped)))
@@ -1071,6 +1135,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
         "achievable_loads": loads,
         "tai_chi_form_due": due_form,
         "available_equipment": sorted(available) if available else None,
+        "limits": limits,
         "focus": focus,
         "focus_label": prog["label"],
         "soreness_word": prog["soreness"],
