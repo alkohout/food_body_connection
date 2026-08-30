@@ -66,7 +66,11 @@ def session_limits(db, user_id, tz_offset=0) -> dict | None:
                 "level": log.symptom_intensity,
                 "level_word": {1: "mild", 2: "moderate", 3: "severe"}.get(
                     log.symptom_intensity, str(log.symptom_intensity)),
-                "logged_at": naive.isoformat(timespec="minutes"),
+                # Marked as UTC. Without the Z, new Date() in the browser
+                # reads it as local time, so a log made at 09:07 NZST — stored
+                # as 21:07 UTC the day before — was shown as 21:07, half a day
+                # and a date out.
+                "logged_at": naive.isoformat(timespec="minutes") + "Z",
                 # A name for the shape of the day, so the session can be
                 # described in one word before it is read in full.
                 "mode": "gentle" if rule["max_exertion"] <= 1 else "reduced",

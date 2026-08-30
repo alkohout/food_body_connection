@@ -347,27 +347,31 @@ PRACTICE = {
 # Matched on the symptom name as a substring, and keyed by the intensity
 # logged. An intensity with no entry imposes no limit.
 SESSION_LIMITS = {
-    "migraine": {
+    # Headache carries the migraine thresholds rather than milder ones: for
+    # this user a headache is a migraine, and migraine itself was never logged
+    # once in 73 headache entries. Two symptoms for one experience meant the
+    # one being used was the one being treated as the lesser.
+    "headache": {
         1: {"max_exertion": 2, "allow_floor": True,
-            "note": "Mild migraine: the demanding work is out, the rest stands."},
+            "note": "Mild headache: the demanding work is out, the rest stands."},
         2: {"max_exertion": 1, "allow_floor": False,
-            "note": "Migraine: gentle and upright only — nothing that needs "
+            "note": "Headache: gentle and upright only — nothing that needs "
                     "bending down or real effort."},
         3: {"max_exertion": 1, "allow_floor": False,
-            "note": "Migraine: gentle and upright only. Stop at any point; "
+            "note": "Bad headache: gentle and upright only. Stop at any point; "
                     "keeping the habit is the whole aim today."},
     },
-    "headache": {
-        2: {"max_exertion": 2, "allow_floor": True,
-            "note": "Headache: the demanding work is out."},
-        3: {"max_exertion": 1, "allow_floor": False,
-            "note": "Bad headache: gentle and upright only."},
-    },
-    "vertigo": {
-        1: {"max_exertion": 2, "allow_floor": False,
-            "note": "Vertigo: nothing on the floor, and nothing that has you "
-                    "getting up and down."},
-        2: {"max_exertion": 1, "allow_floor": False, "note": "Vertigo: gentle and upright only."},
-        3: {"max_exertion": 1, "allow_floor": False, "note": "Vertigo: gentle and upright only."},
+    # Fatigue limits effort but not position — lying down is easier when tired,
+    # not harder, so the floor stays available where a headache would rule it
+    # out.
+    "fatigue": {
+        1: {"max_exertion": 2, "allow_floor": True,
+            "note": "A bit flat: the demanding work is out."},
+        2: {"max_exertion": 1, "allow_floor": True,
+            "note": "Tired: gentle work only. Lying down is fine — it is effort "
+                    "that is the problem today, not position."},
+        3: {"max_exertion": 1, "allow_floor": True,
+            "note": "Very tired: gentle work only, and stopping early is a "
+                    "reasonable outcome."},
     },
 }
