@@ -60,7 +60,17 @@ def session_limits(db, user_id, tz_offset=0) -> dict | None:
             rule = levels.get(log.symptom_intensity or 0)
             if rule is None:
                 continue
-            entry = {**rule, "symptom": sym.symptom_name, "level": log.symptom_intensity}
+            entry = {
+                **rule,
+                "symptom": sym.symptom_name,
+                "level": log.symptom_intensity,
+                "level_word": {1: "mild", 2: "moderate", 3: "severe"}.get(
+                    log.symptom_intensity, str(log.symptom_intensity)),
+                "logged_at": naive.isoformat(timespec="minutes"),
+                # A name for the shape of the day, so the session can be
+                # described in one word before it is read in full.
+                "mode": "gentle" if rule["max_exertion"] <= 1 else "reduced",
+            }
             if strictest is None or (entry["max_exertion"], entry["allow_floor"]) < \
                     (strictest["max_exertion"], strictest["allow_floor"]):
                 strictest = entry
@@ -1136,6 +1146,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
         "tai_chi_form_due": due_form,
         "available_equipment": sorted(available) if available else None,
         "limits": limits,
+        "mode": (limits or {}).get("mode", "full"),
         "focus": focus,
         "focus_label": prog["label"],
         "soreness_word": prog["soreness"],

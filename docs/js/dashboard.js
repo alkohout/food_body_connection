@@ -3392,8 +3392,10 @@ function trRenderSession() {
         : trPlan.theme;
       bar.appendChild(trEl("p", label, "tr-today"));
       if (trPlan.limits) {
+        const l = trPlan.limits;
         bar.appendChild(trEl("p",
-          `Reduced today — ${trPlan.limits.symptom.toLowerCase()} logged`, "tr-warn"));
+          `${l.mode === "gentle" ? "Gentle" : "Reduced"} session — `
+          + `${l.symptom.toLowerCase()} logged as ${l.level_word}`, "tr-warn"));
       }
     }
     if (logSection) logSection.style.display = "none";
@@ -3721,8 +3723,8 @@ function setupTraining() {
           `${added} new exercise${added === 1 ? "" : "s"} added to your library.`);
       }
       trRenderSession();
-      await trLoadCheckin();
       await trLoadPlan();
+      await trLoadCheckin();
       await trLoadHistory();
     } catch (err) {
       console.error("training load failed:", err);
@@ -4053,10 +4055,32 @@ async function trLoadCheckin() {
 
   sec.style.display = "";
   box.replaceChildren();
-  box.appendChild(trEl("p", "How are you today?", "tr-card-title"));
-  box.appendChild(trEl("p",
-    "Anything here changes today's session. Leave them all on No if you are fine.",
-    "tr-hint"));
+
+  // Lead with what has already been logged rather than asking a question the
+  // app can mostly answer itself. The point is to confirm, not to re-enter.
+  const found = data.items.filter((i) => i.logged);
+  if (found.length && trPlan && trPlan.limits) {
+    const l = trPlan.limits;
+    const when = new Date(l.logged_at);
+    const mode = l.mode === "gentle" ? "Gentle" : "Reduced";
+    box.appendChild(trEl("p", `${mode} session today`, "tr-card-title"));
+    box.appendChild(trEl("p",
+      `You logged ${l.symptom} as ${l.level_word} at `
+      + `${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}, `
+      + `so today's session has been adjusted. Change it below if that is no `
+      + `longer right.`, "tr-warn"));
+    box.appendChild(trEl("p", l.note, "tr-body"));
+  } else if (found.length) {
+    box.appendChild(trEl("p", "Logged today", "tr-card-title"));
+    box.appendChild(trEl("p",
+      found.map((i) => i.name).join(", ")
+      + " — noted, and the load has been eased where it applies.", "tr-hint"));
+  } else {
+    box.appendChild(trEl("p", "How are you today?", "tr-card-title"));
+    box.appendChild(trEl("p",
+      "Nothing logged in the last 18 hours, so this is a full session. "
+      + "Say so below if that is wrong.", "tr-hint"));
+  }
 
   data.items.forEach((item) => {
     const row = trEl("div", null, "tr-equip-row");
@@ -4094,8 +4118,8 @@ async function trLoadCheckin() {
       });
       status.textContent = r.ok ? "Logged." : `Failed (${r.status}).`;
       if (r.ok) {
-        await trLoadPlan();
-        await trLoadCheckin();
+        await trLoadPlan();      // limits are recomputed here
+        await trLoadCheckin();   // which this then reports
       }
     });
     row.appendChild(sel);
