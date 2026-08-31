@@ -375,3 +375,18 @@ SESSION_LIMITS = {
                     "reasonable outcome."},
     },
 }
+
+
+# The three shapes a session can take. A logged symptom suggests one of these;
+# it does not impose it. Someone who has taken something and feels fine knows
+# more about today than their morning log does, and an app that refuses them a
+# session on the strength of it is wrong — and teaches them not to log.
+MODES = {
+    "full":    {"max_exertion": 3, "allow_floor": True,
+                "label": "Full session", "note": "Full session."},
+    "reduced": {"max_exertion": 2, "allow_floor": True,
+                "label": "Reduced", "note": "Reduced: the demanding work is out."},
+    "gentle":  {"max_exertion": 1, "allow_floor": False,
+                "label": "Gentle", "note": "Gentle: upright, no real effort."},
+}
+MODE_ORDER = ["full", "reduced", "gentle"]

@@ -23,7 +23,8 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 
 from app.data.programs import (
-    Block, DEFAULT_FOCUS, PRACTICE, PROGRAMS, SESSION_LIMITS,
+    Block, DEFAULT_FOCUS, MODE_ORDER, MODES, PRACTICE, PROGRAMS,
+    SESSION_LIMITS,
 )
 from app.models.table_class import (
     Exercise, PracticeItem, SetLog, Symptom, SymptomLog, TrainingProfile,
@@ -919,7 +920,8 @@ def choose_kind(db, user_id, tz_offset) -> dict:
     }
 
 
-def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
+def build_session(db, user_id, day=None, tz_offset=0, kind=None,
+                  mode=None) -> dict:
     """The whole prescription for the next session."""
     focus = user_focus(db, user_id)
     prog = program(focus)
@@ -984,7 +986,29 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
     templates += middle
     templates += [(b, "practice") for b in practice["after"]]
 
-    limits = session_limits(db, user_id, tz_offset)
+    # What the log suggests, which is not the same as what is happening. The
+    # suggestion is the default; a mode passed in is the user overruling it,
+    # and they know whether the triptan worked.
+    suggested = session_limits(db, user_id, tz_offset)
+    suggested_mode = (suggested or {}).get("mode", "full")
+
+    if mode in MODES and mode != suggested_mode:
+        chosen = dict(MODES[mode])
+        if suggested:
+            chosen["note"] = (
+                f"{MODES[mode]['note']} You chose this over the suggested "
+                f"{MODES[suggested_mode]['label'].lower()} after logging "
+                f"{suggested['symptom'].lower()} as {suggested['level_word']}."
+            )
+            chosen["symptom"] = suggested["symptom"]
+            chosen["level_word"] = suggested["level_word"]
+            chosen["logged_at"] = suggested["logged_at"]
+        chosen["mode"] = mode
+        chosen["overridden"] = True
+        limits = None if mode == "full" else chosen
+    else:
+        limits = suggested
+
     by_id = {e.exercise_id: e for e in by_name.values()}
     dropped, limited, used_ids = [], [], set()
     for block, group in templates:
@@ -1151,6 +1175,13 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None) -> dict:
         "available_equipment": sorted(available) if available else None,
         "limits": limits,
         "mode": (limits or {}).get("mode", "full"),
+        "suggested_mode": suggested_mode,
+        # Shown whichever mode is running, so the reason is never lost.
+        "suggested_because": (
+            {k: suggested[k] for k in ("symptom", "level_word", "logged_at", "note")}
+            if suggested else None
+        ),
+        "modes": [{"key": m, "label": MODES[m]["label"]} for m in MODE_ORDER],
         "focus": focus,
         "focus_label": prog["label"],
         "soreness_word": prog["soreness"],

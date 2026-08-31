@@ -3391,11 +3391,12 @@ function trRenderSession() {
         ? `Day ${trPlan.day} — ${trPlan.theme}`
         : trPlan.theme;
       bar.appendChild(trEl("p", label, "tr-today"));
-      if (trPlan.limits) {
-        const l = trPlan.limits;
+      if (trPlan.suggested_because) {
+        const chosen = (trPlan.modes.find((m) => m.key === trPlan.mode) || {}).label;
+        const overridden = trPlan.mode !== trPlan.suggested_mode;
         bar.appendChild(trEl("p",
-          `${l.mode === "gentle" ? "Gentle" : "Reduced"} session — `
-          + `${l.symptom.toLowerCase()} logged as ${l.level_word}`, "tr-warn"));
+          `${chosen}${overridden ? " (your choice)" : ""} — `
+          + `${trPlan.suggested_because.symptom.toLowerCase()} logged`, "tr-warn"));
       }
     }
     if (logSection) logSection.style.display = "none";
@@ -3818,6 +3819,7 @@ function trRenderPlan() {
 }
 
 let trKindOverride = null;
+let trModeOverride = null;
 
 // Kit arrives in instalments, so what is available is a list rather than a
 // home/away flag. It lives on the profile, not in this browser: it describes
@@ -4059,17 +4061,41 @@ async function trLoadCheckin() {
   // Lead with what has already been logged rather than asking a question the
   // app can mostly answer itself. The point is to confirm, not to re-enter.
   const found = data.items.filter((i) => i.logged);
-  if (found.length && trPlan && trPlan.limits) {
-    const l = trPlan.limits;
-    const when = new Date(l.logged_at);
-    const mode = l.mode === "gentle" ? "Gentle" : "Reduced";
-    box.appendChild(trEl("p", `${mode} session today`, "tr-card-title"));
+  const because = trPlan && trPlan.suggested_because;
+  if (because) {
+    // Report the finding, then offer the choice. The log says what happened
+    // this morning; it does not know whether a triptan has since worked.
+    const when = new Date(because.logged_at);
+    box.appendChild(trEl("p", "Picked up from your log", "tr-card-title"));
     box.appendChild(trEl("p",
-      `You logged ${l.symptom} as ${l.level_word} at `
-      + `${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}, `
-      + `so today's session has been adjusted. Change it below if that is no `
-      + `longer right.`, "tr-warn"));
-    box.appendChild(trEl("p", l.note, "tr-body"));
+      `${because.symptom} logged as ${because.level_word} at `
+      + `${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. `
+      + `Suggested: ${(trPlan.modes.find((m) => m.key === trPlan.suggested_mode) || {}).label}.`,
+      "tr-warn"));
+
+    const row = trEl("div", null, "tr-modes");
+    (trPlan.modes || []).forEach((m) => {
+      const btn = trEl("button", m.label, m.key === trPlan.mode ? "primary" : "secondary");
+      btn.type = "button";
+      btn.addEventListener("click", async () => {
+        // Null when picking the suggestion back, so it goes on following the
+        // log rather than being pinned to a stale choice.
+        trModeOverride = m.key === trPlan.suggested_mode ? null : m.key;
+        await trLoadPlan();
+        await trLoadCheckin();
+      });
+      row.appendChild(btn);
+    });
+    box.appendChild(row);
+    if (trPlan.limits && trPlan.limits.overridden) {
+      box.appendChild(trEl("p", trPlan.limits.note, "tr-body"));
+    } else if (trPlan.mode === "full") {
+      box.appendChild(trEl("p",
+        "Training in full despite the log. Stop if it turns out to be optimistic.",
+        "tr-body"));
+    } else {
+      box.appendChild(trEl("p", because.note, "tr-body"));
+    }
   } else if (found.length) {
     box.appendChild(trEl("p", "Logged today", "tr-card-title"));
     box.appendChild(trEl("p",
@@ -4130,7 +4156,9 @@ async function trLoadCheckin() {
 
 async function trLoadPlan() {
   const tz = new Date().getTimezoneOffset();
-  const q = `tz_offset=${tz}` + (trKindOverride ? `&kind=${trKindOverride}` : "");
+  const q = `tz_offset=${tz}`
+    + (trKindOverride ? `&kind=${trKindOverride}` : "")
+    + (trModeOverride ? `&mode=${trModeOverride}` : "");
   const res = await fetch(`${API_URL}/training/today?${q}`, { headers: trAuth() });
   trPlan = res.ok ? await res.json() : null;
   trRenderPlan();
@@ -4632,6 +4660,7 @@ async function trFinishSession() {
 
   trTimerStop();
   trKindOverride = null;
+  trModeOverride = null;
   trRunKind = "plan";
   trRun = null;
   trSession = null;
