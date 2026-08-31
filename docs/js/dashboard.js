@@ -4040,6 +4040,14 @@ async function trRenderEquipmentPanel() {
 }
 
 
+// Which side is up for the exercise on screen. Module scope because all three
+// renderers need it and each is its own function — reading it from a const in
+// trRenderRunner threw a ReferenceError, and per-side exercises rendered no
+// controls at all.
+function trNextSide() {
+  return (trRun && trRun.sides[trRun.idx]) || "left";
+}
+
 const TR_LEVELS = [["", "No"], ["1", "Mild"], ["2", "Moderate"], ["3", "Severe"]];
 
 // Asked before the session rather than after, because the answer decides what
@@ -4329,7 +4337,7 @@ function trRenderRunner() {
   // Which side is up. Kept on the run rather than the <select>, because
   // logging a set re-renders the whole body and a value set on the element
   // is thrown away with it — which is why it always came back on "left".
-  const nextSide = trRun.sides[trRun.idx] || "left";
+  const nextSide = trNextSide();
   const groupLabel = { practice: "practice", maintenance: "maintenance",
                        assessment: "baseline test", strength: "strength" }[b.group] || b.group;
   head.textContent = `${trRun.idx + 1} of ${blocks.length} — ${groupLabel}`;
@@ -4451,7 +4459,7 @@ function trRenderCounter(body, b) {
     [["left", "Left"], ["right", "Right"]].forEach(([v, label]) => {
       const o = trEl("option", label); o.value = v; sideSel.appendChild(o);
     });
-    sideSel.value = nextSide;
+    sideSel.value = trNextSide();
     sideSel.addEventListener("change", () => { trRun.sides[trRun.idx] = sideSel.value; });
     // When the sides have different targets, the counter follows the side
     // being worked. Otherwise the sore side gets the good side's number,
@@ -4512,7 +4520,7 @@ function trRenderTimer(body, b) {
     [["left", "Left"], ["right", "Right"]].forEach(([v, label]) => {
       const o = trEl("option", label); o.value = v; sideSel.appendChild(o);
     });
-    sideSel.value = nextSide;
+    sideSel.value = trNextSide();
     sideSel.addEventListener("change", () => { trRun.sides[trRun.idx] = sideSel.value; });
     if (b.side_targets) {
       const applySide = () => {
