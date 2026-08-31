@@ -198,7 +198,7 @@ def achievable_loads(profile) -> list[float]:
     consumed in pairs — which is what makes the usable steps 2.5kg rather than
     1.25kg. Prescribing a load the user cannot assemble is worse than useless.
     """
-    bar = (profile.dumbbell_bar_kg if profile and profile.dumbbell_bar_kg else 0.0)
+    bar = profile.dumbbell_bar_kg if profile and profile.dumbbell_bar_kg is not None else 0.0
 
     plates = {3.0: 8, 2.5: 4, 1.25: 4}          # the kit as ordered
     if profile and profile.equipment_json:
@@ -1138,7 +1138,10 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         blocks.append(item)
 
     notes = []
-    if not profile or not profile.dumbbell_bar_kg:
+    # `is None`, not falsiness: a plastic bar that genuinely weighs nothing is
+    # recorded as 0.0, and asking someone to go and weigh what they just told
+    # you is how a prompt gets ignored.
+    if profile is None or profile.dumbbell_bar_kg is None:
         notes.append("Weigh a bare dumbbell bar and save it in your profile — "
                      "every load below assumes the bar is included.")
     if missing:
