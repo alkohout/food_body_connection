@@ -187,6 +187,9 @@ ASSESSMENT_FACTOR = 0.75
 # A stalled target has to be allowed below the prescribed range, or the range's
 # own floor blocks the reduction and the loop survives the fix. These are the
 # absolute floors; at them, the exercise itself is the problem.
+# Plates assumed when a user has not recorded their own.
+DEFAULT_PLATES = {3.0: 8, 2.5: 4, 1.25: 4}
+
 REPS_FLOOR = 5
 SECONDS_FLOOR = 10
 
@@ -200,7 +203,11 @@ def achievable_loads(profile) -> list[float]:
     """
     bar = profile.dumbbell_bar_kg if profile and profile.dumbbell_bar_kg is not None else 0.0
 
-    plates = {3.0: 8, 2.5: 4, 1.25: 4}          # the kit as ordered
+    # A common starter set, used only when nothing has been recorded. It was
+    # one particular person's kit, which was fine while there was one user and
+    # wrong the moment there were more: someone else's dumbbells would have
+    # been assumed to be these.
+    plates = dict(DEFAULT_PLATES)
     if profile and profile.equipment_json:
         try:
             data = json.loads(profile.equipment_json)
