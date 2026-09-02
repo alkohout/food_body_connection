@@ -4438,6 +4438,23 @@ function trRenderCounter(body, b) {
   row.append(dec, val, inc, trEl("span", " reps"));
   body.appendChild(row);
 
+  // The band is the load on these, so it is recorded like one — and offered
+  // as the bands actually owned rather than a number to type.
+  let bandSel = null;
+  if (b.target_band !== null && b.target_band !== undefined) {
+    const bRow = trEl("div", null, "form-row tr-field");
+    bRow.appendChild(trEl("label", "Band (kg)"));
+    bandSel = document.createElement("select");
+    (trPlan && trPlan.bands ? trPlan.bands : [b.target_band]).forEach((kg) => {
+      const o = trEl("option", `${kg} kg`);
+      o.value = kg;
+      o.selected = Number(kg) === Number(b.target_band);
+      bandSel.appendChild(o);
+    });
+    bRow.appendChild(bandSel);
+    body.appendChild(bRow);
+  }
+
   let weightIn = null;
   if (b.scheme === "load") {
     const wRow = trEl("div", null, "form-row");
@@ -4485,6 +4502,7 @@ function trRenderCounter(body, b) {
   log.addEventListener("click", () => {
     const payload = { reps: Number(val.textContent) };
     if (weightIn && weightIn.value !== "") payload.weight_kg = Number(weightIn.value);
+    if (bandSel) payload.band_kg = Number(bandSel.value);
     if (sideSel) {
       payload.side = sideSel.value;
       // The other side is next, and it has to be recorded on the run to

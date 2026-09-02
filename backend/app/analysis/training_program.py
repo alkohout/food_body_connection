@@ -227,6 +227,23 @@ def achievable_loads(profile) -> list[float]:
     return sorted(round(bar + t, 2) for t in totals)
 
 
+def achievable_bands(profile) -> list[float]:
+    """Band resistances owned, lightest first.
+
+    Band exercises had only reps to progress on, so topping out a rep range
+    left the engine with nowhere to go but the stall-and-deload path — when
+    the actual answer is the same reps against the next band.
+    """
+    if profile and profile.equipment_json:
+        try:
+            data = json.loads(profile.equipment_json)
+            if isinstance(data.get("bands"), list) and data["bands"]:
+                return sorted({float(b) for b in data["bands"]})
+        except (ValueError, TypeError, AttributeError):
+            logger.warning("equipment_json unreadable; no band sizes")
+    return []
+
+
 def _next_load(current, loads, up=True):
     """The next buildable load above or below the current one."""
     if not loads:
@@ -689,7 +706,7 @@ def current_phase(db, user_id, focus=None) -> dict:
 
 
 def _prescribe(block, ex, last_sets, action, loads, last_done=None,
-               stalled=False, from_assessment=False):
+               stalled=False, from_assessment=False, bands=None):
     """Turn one template block plus history into a concrete instruction."""
     sets = block.sets
     detail, why = "", ""
@@ -758,6 +775,14 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
     elif block.scheme == "reps":
         counts = [(s.reps or 0) for s in last_sets]
         top, weakest = (max(counts), min(counts)) if counts else (0, 0)
+        # A banded exercise progresses on the band once the reps are maxed.
+        banded = bool(bands) and ex.equipment == "band"
+        used_bands = [s.band_kg for s in last_sets if s.band_kg is not None]
+        last_band = max(used_bands) if used_bands else (bands[0] if banded else None)
+        rpes_r = [s.rpe for s in last_sets if s.rpe is not None]
+        easy_enough = all(r <= RPE_CEILING for r in rpes_r) if rpes_r else True
+        if banded and weight is None:
+            weight = last_band
         if action == "back_off":
             target = max(block.low, int(top * 0.8) or block.low)
             why = "Volume cut while the knee settles."
@@ -783,6 +808,19 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         elif weakest < top:
             target = max(block.low, min(top, block.high))
             why = f"Last set dropped to {weakest} — repeat {target} before adding."
+        elif banded and top >= block.high and easy_enough:
+            # The band is this exercise's load. Topping out the reps is the
+            # signal to move up one and start the range again, exactly as
+            # adding a plate would.
+            weight = _next_load(last_band, bands, up=True)
+            if weight is not None and last_band is not None and weight > last_band:
+                target = block.low
+                why = (f"Every set hit {block.high} on the {last_band}kg band, "
+                       f"so it goes up to {weight}kg and reps reset to {block.low}.")
+            else:
+                target = block.high
+                why = (f"Every set at {block.high} on your heaviest band — hold "
+                       f"there and slow the tempo.")
         elif top >= block.high:
             target = block.high
             why = f"Every set at {block.high} — hold there and slow the tempo."
@@ -881,6 +919,7 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         "target_reps": target if block.scheme in ("reps", "load") else None,
         "target_seconds": target if block.scheme == "iso" else None,
         "target_weight": weight if block.scheme == "load" else None,
+        "target_band": weight if block.scheme == "reps" and ex.equipment == "band" else None,
         "per_side": bool(ex.is_unilateral),
         "exhausted": exhausted,
     }
@@ -938,6 +977,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
     profile = db.query(TrainingProfile).filter(
         TrainingProfile.user_id == user_id).first()
     loads = achievable_loads(profile)
+    bands = achievable_bands(profile)
     available = available_equipment(profile)
 
     # Rotate A/B/C by how many strength sessions have been done, so the next
@@ -1070,7 +1110,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         item = _prescribe(
             block, ex, prior, action, loads, last_done=when,
             stalled=_stalled(db, user_id, ex.exercise_id, block.scheme),
-            from_assessment=from_test,
+            from_assessment=from_test, bands=bands,
         )
 
         # For a unilateral exercise with one sore side, work out what the good
@@ -1079,7 +1119,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
             healthy = _prescribe(
                 block, ex, prior, "progress", loads, last_done=when,
                 stalled=_stalled(db, user_id, ex.exercise_id, block.scheme),
-                from_assessment=from_test,
+                from_assessment=from_test, bands=bands,
             )
             other = "left" if affected == "right" else "right"
             # "each side" is what the bilateral wording says; once the two
@@ -1110,7 +1150,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
                     sub_block, sub_ex, sub_prior, action, loads,
                     last_done=sub_when,
                     stalled=_stalled(db, user_id, sub_ex.exercise_id, sub_block.scheme),
-                    from_assessment=sub_test,
+                    from_assessment=sub_test, bands=bands,
                 )
                 item.pop("exhausted", None)
                 item["substituted_from"] = ex.exercise_name
@@ -1181,6 +1221,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         "blocks": blocks,
         "notes": notes,
         "achievable_loads": loads,
+        "bands": bands,
         "tai_chi_form_due": due_form,
         "available_equipment": sorted(available) if available else None,
         "limits": limits,
