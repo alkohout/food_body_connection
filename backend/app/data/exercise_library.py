@@ -25,9 +25,10 @@ LIBRARY = [
     # ── Knee: isometric first. Best tolerated when squatting hurts, and often
     # eases pain within the set, so these are the entry point. ──────────────
     ("Spanish Squat", "strength", "knee", "band", False, True,
-     "Band behind the knees, anchored low. Shins and torso stay vertical, sit "
-     "back against the band. Hold 20-45s. Should not be sharp — a working ache "
-     "is fine.",
+     "Band behind the knees, anchored low, and use a stiff one — it holds your "
+     "lean, so too light and the position collapses. Shins and torso stay "
+     "vertical, sit back against the band. Hold 20-45s. A working ache is "
+     "fine, sharp is not.",
      f"{_P}/spanish-squat-isometrics/"),
     ("Wall Sit", "strength", "knee", "bodyweight", False, True,
      "Back flat to the wall, knees no deeper than 90 degrees. Start shallower "

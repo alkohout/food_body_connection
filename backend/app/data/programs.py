@@ -320,6 +320,13 @@ PROGRAMS = {
 
 DEFAULT_FOCUS = "general"
 
+# Exercises where the band holds you up rather than fighting you. In a Spanish
+# squat it is anchored behind and pulls the knees back so you can lean into it
+# with vertical shins; a band too light will not hold the lean and the position
+# collapses. So heavier is easier there, and progressing to a stiffer band —
+# which is right for a pull-apart or a hip abduction — would be backwards.
+ASSIST_BANDS = {"spanish squat", "single leg squat"}
+
 # What bookends a session when the user has not built their own routine. A
 # starting point only: practice is personal — tai chi, yoga, a warm-up walk —
 # and lives in the practice_item table, not in a programme. Appending one

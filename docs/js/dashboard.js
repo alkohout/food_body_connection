@@ -4423,6 +4423,25 @@ function trRenderCheck(body, b) {
   body.appendChild(btn);
 }
 
+// Held exercises use a band as well — a Spanish squat leans on one — so the
+// control belongs to both renderers rather than only the one that counts reps.
+function trBandSelect(host, b) {
+  if (b.target_band === null || b.target_band === undefined) return null;
+  const row = trEl("div", null, "form-row tr-field");
+  row.appendChild(trEl("label", "Band (kg)"));
+  const sel = document.createElement("select");
+  ((trPlan && trPlan.bands) || [b.target_band]).forEach((kg) => {
+    const o = trEl("option", `${kg} kg`);
+    o.value = kg;
+    o.selected = Number(kg) === Number(b.target_band);
+    sel.appendChild(o);
+  });
+  row.appendChild(sel);
+  host.appendChild(row);
+  return sel;
+}
+
+
 function trRenderCounter(body, b) {
   const row = trEl("div", null, "tr-counter");
   const dec = trEl("button", "−"); dec.type = "button";
@@ -4438,22 +4457,7 @@ function trRenderCounter(body, b) {
   row.append(dec, val, inc, trEl("span", " reps"));
   body.appendChild(row);
 
-  // The band is the load on these, so it is recorded like one — and offered
-  // as the bands actually owned rather than a number to type.
-  let bandSel = null;
-  if (b.target_band !== null && b.target_band !== undefined) {
-    const bRow = trEl("div", null, "form-row tr-field");
-    bRow.appendChild(trEl("label", "Band (kg)"));
-    bandSel = document.createElement("select");
-    (trPlan && trPlan.bands ? trPlan.bands : [b.target_band]).forEach((kg) => {
-      const o = trEl("option", `${kg} kg`);
-      o.value = kg;
-      o.selected = Number(kg) === Number(b.target_band);
-      bandSel.appendChild(o);
-    });
-    bRow.appendChild(bandSel);
-    body.appendChild(bRow);
-  }
+  const bandSel = trBandSelect(body, b);
 
   let weightIn = null;
   if (b.scheme === "load") {
@@ -4574,6 +4578,8 @@ function trRenderTimer(body, b) {
     }
   };
 
+  const bandSel = trBandSelect(body, b);
+
   // Big targets: these are pressed mid-hold, with shaky hands, without
   // looking properly.
   const controls = trEl("div", null, "tr-timer-controls");
@@ -4615,6 +4621,7 @@ function trRenderTimer(body, b) {
     // Falling back to the target lets a hold be logged without the timer,
     // which is what happens when you forget to press start.
     const fields = { hold_seconds: secs || target };
+    if (bandSel) fields.band_kg = Number(bandSel.value);
     if (sideSel) {
       fields.side = sideSel.value;
       trRun.sides[trRun.idx] = sideSel.value === "left" ? "right" : "left";

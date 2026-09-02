@@ -23,8 +23,8 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 
 from app.data.programs import (
-    Block, DEFAULT_FOCUS, MODE_ORDER, MODES, PRACTICE, PROGRAMS,
-    SESSION_LIMITS,
+    ASSIST_BANDS, Block, DEFAULT_FOCUS, MODE_ORDER, MODES, PRACTICE,
+    PROGRAMS, SESSION_LIMITS,
 )
 from app.models.table_class import (
     Exercise, PracticeItem, SetLog, Symptom, SymptomLog, TrainingProfile,
@@ -705,6 +705,24 @@ def current_phase(db, user_id, focus=None) -> dict:
             "to_advance": to_advance}
 
 
+def _band_for(ex, block, weight, bands, last_sets):
+    """Which band to offer, for any exercise that uses one.
+
+    Held exercises use a band too and had no way to record it, so a Spanish
+    squat never said which one held it up. Where the band assists, the default
+    is the stiffest owned rather than the lightest — a band that cannot hold
+    the lean is not a starting point, it is a failed set-up.
+    """
+    if ex.equipment != "band" or not bands:
+        return None
+    used = [s.band_kg for s in last_sets if s.band_kg is not None]
+    if used:
+        return max(used)
+    if (ex.exercise_name or "").strip().lower() in ASSIST_BANDS:
+        return bands[-1]
+    return weight if weight is not None else bands[0]
+
+
 def _prescribe(block, ex, last_sets, action, loads, last_done=None,
                stalled=False, from_assessment=False, bands=None):
     """Turn one template block plus history into a concrete instruction."""
@@ -776,7 +794,10 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         counts = [(s.reps or 0) for s in last_sets]
         top, weakest = (max(counts), min(counts)) if counts else (0, 0)
         # A banded exercise progresses on the band once the reps are maxed.
-        banded = bool(bands) and ex.equipment == "band"
+        # Only where the band resists. Where it holds you up, a stiffer one is
+        # easier, so stepping up would be a regression dressed as progress.
+        assists = (ex.exercise_name or "").strip().lower() in ASSIST_BANDS
+        banded = bool(bands) and ex.equipment == "band" and not assists
         used_bands = [s.band_kg for s in last_sets if s.band_kg is not None]
         last_band = max(used_bands) if used_bands else (bands[0] if banded else None)
         rpes_r = [s.rpe for s in last_sets if s.rpe is not None]
@@ -919,7 +940,7 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         "target_reps": target if block.scheme in ("reps", "load") else None,
         "target_seconds": target if block.scheme == "iso" else None,
         "target_weight": weight if block.scheme == "load" else None,
-        "target_band": weight if block.scheme == "reps" and ex.equipment == "band" else None,
+        "target_band": _band_for(ex, block, weight, bands, last_sets),
         "per_side": bool(ex.is_unilateral),
         "exhausted": exhausted,
     }
