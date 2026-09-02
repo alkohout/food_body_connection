@@ -4478,7 +4478,9 @@ function trRenderCounter(body, b) {
     body.appendChild(sRow);
   }
 
-  const log = trEl("button", "Log set", "primary tr-big tr-block");
+  // "Log set" is wrong for per-side work: a set is both sides, so pressing
+  // this after the left one logs a side, not a set.
+  const log = trEl("button", b.per_side ? "Log" : "Log set", "primary tr-big tr-block");
   log.type = "button";
   log.addEventListener("click", () => {
     const payload = { reps: Number(val.textContent) };
