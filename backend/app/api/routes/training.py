@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.api.routes.auth import get_current_user
 from app.analysis.training_program import (
     ALWAYS_AVAILABLE, available_equipment, build_session, program,
-    user_focus, visible_programs,
+    strength_spacing, user_focus, visible_programs,
 )
 from app.data.programs import SESSION_LIMITS
 from app.data.programs import DEFAULT_FOCUS, PROGRAMS
@@ -372,6 +372,54 @@ def set_focus(
     p.focus = focus
     db.commit()
     return {"focus": focus, "label": PROGRAMS[focus]["label"]}
+
+
+@router.get("/spacing")
+def get_spacing(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    profile = db.query(TrainingProfile).filter(
+        TrainingProfile.user_id == current_user.user_id).first()
+    return {
+        "current": strength_spacing(profile),
+        "options": [
+            {"key": "alternate", "label": "A day between strength sessions",
+             "blurb": "The safer default. Practice and a knee minimum fill the "
+                      "day in between."},
+            {"key": "daily", "label": "Strength every day",
+             "blurb": "The emphasis rotates, so each area still gets a couple "
+                      "of days off. Reasonable at moderate volume — the "
+                      "next-day scores are what will tell you."},
+        ],
+    }
+
+
+@router.put("/spacing")
+def set_spacing(
+    payload: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    choice = str(payload.get("spacing") or "")
+    if choice not in ("alternate", "daily"):
+        raise HTTPException(status_code=400,
+                            detail="Choose 'alternate' or 'daily'.")
+    p = db.query(TrainingProfile).filter(
+        TrainingProfile.user_id == current_user.user_id).first()
+    if p is None:
+        p = TrainingProfile(user_id=current_user.user_id)
+        db.add(p)
+    try:
+        data = json.loads(p.equipment_json) if p.equipment_json else {}
+        if not isinstance(data, dict):
+            data = {}
+    except (ValueError, TypeError):
+        data = {}
+    data["strength_spacing"] = choice          # merged: plates and bands stay
+    p.equipment_json = json.dumps(data)
+    db.commit()
+    return {"spacing": choice}
 
 
 @router.get("/equipment")

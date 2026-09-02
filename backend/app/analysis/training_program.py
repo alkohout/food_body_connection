@@ -953,6 +953,23 @@ def _local_date(dt, tz_offset):
     return (naive - timedelta(minutes=tz_offset)).date()
 
 
+def strength_spacing(profile) -> str:
+    """"alternate" (a day between strength sessions) or "daily".
+
+    Alternating is the default because it is the safer assumption, not because
+    daily is wrong: with a rotation that moves the emphasis each day, training
+    every day gives each area a couple of days off and is perfectly ordinary.
+    """
+    if profile and profile.equipment_json:
+        try:
+            data = json.loads(profile.equipment_json)
+            if data.get("strength_spacing") in ("alternate", "daily"):
+                return data["strength_spacing"]
+        except (ValueError, TypeError, AttributeError):
+            pass
+    return "alternate"
+
+
 def choose_kind(db, user_id, tz_offset) -> dict:
     """Strength today, or practice and the knee minimum?
 
@@ -963,6 +980,13 @@ def choose_kind(db, user_id, tz_offset) -> dict:
     two or three times a week rather than once, as it would be on a split.
     """
     today = (datetime.utcnow() - timedelta(minutes=tz_offset)).date()
+
+    profile = db.query(TrainingProfile).filter(
+        TrainingProfile.user_id == user_id).first()
+    if strength_spacing(profile) == "daily":
+        return {"kind": "strength",
+                "why": "Training every day, with the emphasis rotating so each "
+                       "area still gets a couple of days between sessions."}
 
     last = None
     for s in db.query(WorkoutSession).filter(WorkoutSession.user_id == user_id).all():

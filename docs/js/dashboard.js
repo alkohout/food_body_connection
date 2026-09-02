@@ -3998,6 +3998,38 @@ async function trRenderEquipmentPanel() {
 
   await trRenderPractice(box);
 
+  // How often strength happens, which is a preference rather than a rule.
+  const sRes = await fetch(`${API_URL}/training/spacing`, { headers: trAuth() });
+  if (sRes.ok) {
+    const sp = await sRes.json();
+    const sCard = trEl("div", null, "tr-card");
+    sCard.appendChild(trEl("p", "How often do you want strength work?", "tr-card-title"));
+    sp.options.forEach((opt) => {
+      const row = trEl("label", null, "tr-equip-row");
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "tr-spacing";
+      radio.checked = opt.key === sp.current;
+      radio.addEventListener("change", async () => {
+        const save = await fetch(`${API_URL}/training/spacing`, {
+          method: "PUT",
+          headers: { ...trAuth(), "Content-Type": "application/json" },
+          body: JSON.stringify({ spacing: opt.key }),
+        });
+        if (!save.ok) return;
+        await trLoadPlan();
+        await trRenderEquipmentPanel();
+      });
+      row.appendChild(radio);
+      const text = trEl("span");
+      text.appendChild(trEl("div", opt.label));
+      text.appendChild(trEl("div", opt.blurb, "tr-hint"));
+      row.appendChild(text);
+      sCard.appendChild(row);
+    });
+    box.appendChild(sCard);
+  }
+
   const card = trEl("div", null, "tr-card");
   card.appendChild(trEl("p", "What have you got?", "tr-card-title"));
   card.appendChild(trEl("p",
