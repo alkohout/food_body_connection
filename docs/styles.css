@@ -963,3 +963,5 @@ textarea {
 }
 .tr-modes { display: flex; gap: 0.4rem; margin: 0.6rem 0; }
 .tr-modes button { flex: 1; width: auto; margin: 0; padding: 0.4rem 0.6rem; font-size: 0.85rem; }
+
+.tr-modes span.tr-hint { flex: 1; align-self: center; }

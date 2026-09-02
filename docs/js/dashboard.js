@@ -4095,6 +4095,30 @@ async function trLoadCheckin() {
       row.appendChild(btn);
     });
     box.appendChild(row);
+
+    // Two things shorten a session and only one of them was here. "Full
+    // session" lifts the symptom limit; it does not turn a recovery day into
+    // a training one, and pressing it and still getting a short list reads as
+    // the button not working.
+    const dayRow = trEl("div", null, "tr-modes");
+    const isStrength = trPlan.kind === "strength";
+    dayRow.appendChild(trEl("span",
+      isStrength ? "Strength day" : "Practice day — strength was yesterday",
+      "tr-hint"));
+    const swapDay = trEl("button",
+      isStrength ? "Make it practice only" : "Make it a strength day", "secondary");
+    swapDay.type = "button";
+    swapDay.addEventListener("click", async () => {
+      trKindOverride = isStrength ? "practice" : "strength";
+      await trLoadPlan();
+      await trLoadCheckin();
+    });
+    dayRow.appendChild(swapDay);
+    box.appendChild(dayRow);
+    box.appendChild(trEl("p",
+      `${trPlan.blocks.length} exercises in today's session as it stands.`,
+      "tr-hint"));
+
     if (trPlan.limits && trPlan.limits.overridden) {
       box.appendChild(trEl("p", trPlan.limits.note, "tr-body"));
     } else if (trPlan.mode === "full") {
