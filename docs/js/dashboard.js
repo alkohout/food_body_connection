@@ -4105,11 +4105,13 @@ async function trLoadCheckin() {
   if (because) {
     // Report the finding, then offer the choice. The log says what happened
     // this morning; it does not know whether a triptan has since worked.
-    const when = new Date(because.logged_at);
+    // Formatted by the server from the offset the request already carries,
+    // rather than parsed here — browsers differ on ISO strings and this one
+    // was showing UTC.
     box.appendChild(trEl("p", "Picked up from your log", "tr-card-title"));
     box.appendChild(trEl("p",
-      `${because.symptom} logged as ${because.level_word} at `
-      + `${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. `
+      `${because.symptom} logged as ${because.level_word} on `
+      + `${because.logged_at_local}. `
       + `Suggested: ${(trPlan.modes.find((m) => m.key === trPlan.suggested_mode) || {}).label}.`,
       "tr-warn"));
 

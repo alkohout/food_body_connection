@@ -67,11 +67,15 @@ def session_limits(db, user_id, tz_offset=0) -> dict | None:
                 "level": log.symptom_intensity,
                 "level_word": {1: "mild", 2: "moderate", 3: "severe"}.get(
                     log.symptom_intensity, str(log.symptom_intensity)),
-                # Marked as UTC. Without the Z, new Date() in the browser
-                # reads it as local time, so a log made at 09:07 NZST — stored
-                # as 21:07 UTC the day before — was shown as 21:07, half a day
-                # and a date out.
-                "logged_at": naive.isoformat(timespec="minutes") + "Z",
+                # Two forms. The UTC instant for anything that needs to
+                # compute, and a preformatted local string for display: the
+                # request already carries the offset, so the server can do the
+                # conversion rather than depending on how a given browser
+                # parses an ISO string. Safari in particular is strict about
+                # ones without seconds.
+                "logged_at": naive.isoformat(timespec="seconds") + "Z",
+                "logged_at_local": (naive - timedelta(minutes=tz_offset))
+                    .strftime("%-d %b, %-I:%M %p").replace("AM", "am").replace("PM", "pm"),
                 # A name for the shape of the day, so the session can be
                 # described in one word before it is read in full.
                 "mode": "gentle" if rule["max_exertion"] <= 1 else "reduced",
@@ -1274,7 +1278,8 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         "suggested_mode": suggested_mode,
         # Shown whichever mode is running, so the reason is never lost.
         "suggested_because": (
-            {k: suggested[k] for k in ("symptom", "level_word", "logged_at", "note")}
+            {k: suggested[k] for k in
+             ("symptom", "level_word", "logged_at", "logged_at_local", "note")}
             if suggested else None
         ),
         "modes": [{"key": m, "label": MODES[m]["label"]} for m in MODE_ORDER],
