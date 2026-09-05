@@ -2536,6 +2536,19 @@ async function loadSymptomLogs() {
 // Init
 // =========================================================
 
+// init() wires the whole dashboard inside a single try, so the first step to
+// throw skipped every step after it. Training is set up near the top and the
+// analysis panels near the bottom, which is how the plots could vanish while
+// everything else carried on working — with nothing on screen to say why.
+function step(name, fn) {
+  try {
+    fn();
+  } catch (err) {
+    console.error(`Setup step "${name}" failed:`, err);
+  }
+}
+
+
 async function init() {
   console.log("init() started");
   const token = localStorage.getItem("access_token");
@@ -2568,11 +2581,11 @@ async function init() {
     }
 
     // Set up UI components
-    setupLogout();
-    setupTraining();
-    setupSymptomManager();
-    setupDefaults();
-    setupTabs();
+    step("logout", setupLogout);
+    step("training", setupTraining);
+    step("symptom manager", setupSymptomManager);
+    step("defaults", setupDefaults);
+    step("tabs", setupTabs);
 
     try {
       const [units, allergens, recentAllergens, symptoms, recentSymptoms, medications] = await Promise.all([
@@ -2667,7 +2680,7 @@ async function init() {
     );
 
     // Set up forms
-    setupForms();
+    step("forms", setupForms);
 
     // ✅ Position slider labels
     positionRangeLabels("symptom-intensity", "intensity-labels");
@@ -2679,13 +2692,13 @@ async function init() {
 
     // Set up analysis
     //setupAnalysis();
-    setupAnalysisDropdown();
-    setupDeeperAnalysis();
-    setupTimeSeries();
+    step("analysis dropdown", setupAnalysisDropdown);
+    step("deeper analysis", setupDeeperAnalysis);
+    step("time series", setupTimeSeries);
     setupMedicationsTab();
 
     // Initialize captions
-    initializeCaptions();
+    step("captions", initializeCaptions);
 
     const aiBtn = getElement("ai-summary-btn");
     if (aiBtn) aiBtn.addEventListener("click", fetchAISummary);
