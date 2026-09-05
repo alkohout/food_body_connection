@@ -1549,7 +1549,10 @@ function restoreButton(button, fallbackText = "Load") {
 }
 
 function renderAnalysisStats(stats) {
-  const totalAllergens = Number(stats["Total exposures logged"] || 0);
+  // Keys from the API, not labels: the backend still calls these allergens
+  // and renaming them here silently broke the lookup. The visible wording
+  // comes from the markup, which does say exposures.
+  const totalAllergens = Number(stats["Total allergens logged"] || 0);
   const totalSymptoms = Number(stats["Total symptoms logged"] || 0);
 
   const totalAllergensEl = getElement("stat-total-allergens");
@@ -1566,7 +1569,7 @@ function renderAnalysisStats(stats) {
 
   const avgAllergensPerDayEl = getElement("stat-avg-allergens-per-day");
   if (avgAllergensPerDayEl) {
-    avgAllergensPerDayEl.textContent = stats["Average exposures logged per day"] || 0;
+    avgAllergensPerDayEl.textContent = stats["Average allergens logged per day"] || 0;
   }
 
   const avgSymptomsPerDayEl = getElement("stat-avg-symptoms-per-day");
@@ -1592,10 +1595,10 @@ function renderAnalysisStats(stats) {
     extraStatsContainer.innerHTML = "";
 
     const standardKeys = [
-      "Total exposures logged",
+      "Total allergens logged",
       "Total symptoms logged",
       "Total days tracked",
-      "Average exposures logged per day",
+      "Average allergens logged per day",
       "Average symptoms logged per day"
     ];
 
