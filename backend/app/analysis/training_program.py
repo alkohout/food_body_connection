@@ -22,6 +22,7 @@ import re
 from collections import namedtuple
 from datetime import datetime, timedelta
 
+from app.data.stretches import LADDER_NOTE, routine_for
 from app.data.programs import (
     ASSIST_BANDS, Block, DEFAULT_FOCUS, MODE_ORDER, MODES, PRACTICE,
     PROGRAMS, SESSION_LIMITS,
@@ -1078,9 +1079,13 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         theme = "Practice and maintenance"
 
     blocks, missing = [], []
-    templates = [(b, "practice") for b in practice["before"]]
-    templates += middle
-    templates += [(b, "practice") for b in practice["after"]]
+    # The slot travels with the block. Practice bookends a session at both
+    # ends and the group alone cannot tell them apart, which matters once
+    # something attached to a practice item depends on whether the session has
+    # happened yet.
+    templates = [(b, "practice", "before") for b in practice["before"]]
+    templates += [(b, g, None) for b, g in middle]
+    templates += [(b, "practice", "after") for b in practice["after"]]
 
     # What the log suggests, which is not the same as what is happening. The
     # suggestion is the default; a mode passed in is the user overruling it,
@@ -1107,7 +1112,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
 
     by_id = {e.exercise_id: e for e in by_name.values()}
     dropped, limited, used_ids = [], [], set()
-    for block, group in templates:
+    for block, group, slot in templates:
         ex = by_name.get(block.name.strip().lower())
         if ex is None:
             missing.append(block.name)
@@ -1227,11 +1232,66 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         item.pop("exhausted", None)
         used_ids.add(item["exercise_id"])
         item["group"] = group
+        item["slot"] = slot
         if swapped_from and item["exercise"] != swapped_from:
             item["equipment_substitute"] = swapped_from
             item["why"] = (f"Standing in for {swapped_from}, which needs kit you "
                            f"have not marked as available. {item['why']}")
         blocks.append(item)
+
+    # ── The stretch routine ────────────────────────────────────────────────
+    # A second pass, because a stretch has to know what the whole session
+    # trained and the "before" slot is built before any of it exists. Done
+    # inline it could only ever match the exercises that happened to come
+    # earlier in the list.
+    by_target = {}
+    for item in blocks:
+        if item.get("group") == "practice":
+            continue
+        ex = by_id.get(item["exercise_id"])
+        if ex is None or not ex.target:
+            continue
+        by_target.setdefault(ex.target, []).append(item["exercise"])
+
+    # Whether to pin the kick ladder on. Derived from what is in the session
+    # rather than from a setting, so it follows the person who actually kicks
+    # without asking everybody else to turn it off.
+    # From the templates, not from what survived. Whether someone is chasing
+    # kick height is a fact about their training, and reading it off the
+    # blocks meant a day that limited the kung fu out also decided they were
+    # no longer a kicker — so the ladder disappeared on exactly the days the
+    # exertion gate below was there to judge.
+    kicks = any(
+        any(w in block.name.lower() for w in ("side kick", "kung fu"))
+        for block, _, _ in templates
+    )
+    for item in blocks:
+        ex = by_id.get(item["exercise_id"])
+        if ex is None or ex.category != "mobility":
+            continue
+        slot = item.get("slot") or "after"
+        item["routine"] = routine_for(
+            slot, by_target,
+            # The ladder is goal work — unassisted holds at end range, which
+            # is moderate effort however calm it looks. On a gentle day the
+            # stretches should only be restorative, so it comes out. Stated
+            # rather than left to fall out of the martial practice being
+            # limited out, which is what happened to be true today and would
+            # stop being true the moment someone else took this up.
+            kicks=kicks and (limits or {}).get("max_exertion", 3) >= 2,
+            allow_floor=(limits or {}).get("allow_floor", True),
+            # Only when the sore joint is one these stretches would load. A
+            # sore shoulder is no reason to drop the quad stretch.
+            sore_knee=(knee["action"] in ("back_off", "hold")
+                       and "knee" in (prog.get("soreness_targets") or ("knee",))),
+            # Every completed session, not just the strength ones. Keyed on
+            # strength sessions, a stretch of practice days would hand out the
+            # same ladder every time, so whichever kick came up first would be
+            # the only one ever trained.
+            rotation=db.query(WorkoutSession).filter(
+                WorkoutSession.user_id == user_id).count(),
+        )
+        item["routine_note"] = LADDER_NOTE if kicks and slot == "after" else None
 
     notes = []
     # `is None`, not falsiness: a plastic bar that genuinely weighs nothing is

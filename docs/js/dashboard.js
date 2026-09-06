@@ -3813,6 +3813,13 @@ function trRenderPlan() {
   trPlan.blocks.forEach((b) => {
     const li = document.createElement("li");
     li.appendChild(trEl("span", `${b.exercise} — ${b.prescription}`, "tr-plan-name"));
+    // Named in the plan rather than only in the runner, so "Stretches" is not
+    // still a single opaque line at the point you are deciding whether you
+    // have time for the session.
+    if (b.routine && b.routine.length) {
+      li.appendChild(trEl("div",
+        b.routine.map((s) => s.name).join(" · "), "tr-hint"));
+    }
     if (b.notice) li.appendChild(trEl("div", b.notice, "tr-warn"));
     if (b.why) li.appendChild(trEl("div", b.why, "tr-hint"));
     if (b.form_cues) li.appendChild(trEl("div", b.form_cues, "tr-hint"));
@@ -4438,6 +4445,7 @@ function trRenderRunner() {
     a.rel = "noopener noreferrer";
     body.appendChild(a);
   }
+  if (b.routine && b.routine.length) trRenderRoutine(body, b);
   // Left and right together are one set, which is how it is counted when
   // doing it. Half a set shows what is left rather than a fraction.
   const setsDone = b.per_side ? Math.floor(doneCount / 2) : doneCount;
@@ -4489,6 +4497,52 @@ function trRenderRunner() {
   body.appendChild(nav);
   body.appendChild(trEl("p", "", "logs-loading")).id = "tr-run-status";
 }
+
+// The named stretches behind a mobility item. The ticks are a place to keep
+// your finger while you work down the list, not data — nothing is sent, and
+// they are gone next session. Logging each hold separately would mean a row
+// per stretch in the set table, which buys a lot of storage and no insight:
+// what matters about a stretch routine is whether it happened.
+function trRenderRoutine(body, b) {
+  if (!trRun.routineDone) trRun.routineDone = {};
+  const ticked = trRun.routineDone;
+  const list = trEl("ol", null, "tr-routine");
+
+  b.routine.forEach((s, i) => {
+    const key = `${trRun.idx}:${i}`;
+    const li = trEl("li", null, "tr-routine-step");
+    if (ticked[key]) li.classList.add("tr-routine-done");
+
+    const head = trEl("div", null, "tr-routine-head");
+    const tick = trEl("span", ticked[key] ? "\u2713" : "", "tr-routine-tick");
+    const dur = s.seconds
+      ? `${s.seconds}s${s.per_side ? " each side" : ""}`
+      : (s.per_side ? "each side" : "");
+    head.append(tick, trEl("span", s.name, "tr-routine-name"));
+    if (dur) head.appendChild(trEl("span", dur, "tr-routine-dur"));
+    li.appendChild(head);
+
+    if (s.why) li.appendChild(trEl("p", s.why, "tr-routine-why"));
+    if (s.cues) li.appendChild(trEl("p", s.cues, "tr-cues"));
+    if (s.video_url) {
+      const a = trEl("a", "Form guide \u2192");
+      a.href = s.video_url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      li.appendChild(a);
+    }
+    head.addEventListener("click", () => {
+      ticked[key] = !ticked[key];
+      li.classList.toggle("tr-routine-done", ticked[key]);
+      tick.textContent = ticked[key] ? "\u2713" : "";
+    });
+    list.appendChild(li);
+  });
+
+  body.appendChild(list);
+  if (b.routine_note) body.appendChild(trEl("p", b.routine_note, "tr-hint"));
+}
+
 
 function trRenderCheck(body, b) {
   const btn = trEl("button", "Done", "primary tr-big tr-block");
