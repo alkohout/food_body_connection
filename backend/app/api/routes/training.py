@@ -20,6 +20,7 @@ from app.analysis.training_program import (
 from app.data.programs import SESSION_LIMITS
 from app.data.programs import DEFAULT_FOCUS, PROGRAMS
 from app.data.exercise_library import LIBRARY
+from app.data.stretches import effort_rows
 from app.database import get_db
 from app.models.table_class import (
     Exercise, PracticeItem, SetLog, Symptom, SymptomLog, TrainingProfile,
@@ -87,13 +88,19 @@ def seed_exercises(
         for e in db.query(Exercise).filter(Exercise.user_id == current_user.user_id).all()
     }
     added = 0
+    # Left to the column defaults these come out at exertion 2 and not
+    # floor-based, which for a stretch done lying down is the difference
+    # between it being ruled out on a headache day and being prescribed.
+    effort = effort_rows()
     for name, category, target, equipment, uni, iso, cues, url in LIBRARY:
         if name.strip().lower() in have:
             continue
+        exertion, floor = effort.get(name, (2, False))
         db.add(Exercise(
             user_id=current_user.user_id, exercise_name=name, category=category,
             target=target, equipment=equipment, is_unilateral=uni,
             is_isometric=iso, form_cues=cues, video_url=url,
+            exertion=exertion, floor_based=floor,
         ))
         added += 1
     db.commit()
@@ -692,6 +699,16 @@ def add_practice(
     return {"items": [_practice_out(i) for i in _user_practice(db, current_user.user_id)]}
 
 
+def _renumber(db, user_id, slot, moved, last):
+    """Put `moved` at one end of `slot` and close the gap it left behind."""
+    others = [i for i in _user_practice(db, user_id)
+              if i.slot == slot and i.practice_item_id != moved.practice_item_id]
+    ordered = others + [moved] if last else [moved] + others
+    for n, i in enumerate(ordered):
+        i.position = n
+    db.commit()
+
+
 @router.patch("/practice/{item_id}")
 def move_practice(
     item_id: int,
@@ -699,7 +716,14 @@ def move_practice(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Reorder within a slot. Order matters: a warm-up before, a wind-down after."""
+    """Reorder, crossing the before/after boundary at the ends.
+
+    Order matters, and where the prescribed work sits in it matters most: skill
+    and kicking want to be warm but not yet tired, which is a position in the
+    session rather than a slot. Confined to one slot, the buttons could not
+    express that — moving something from the end of a session to the start
+    meant deleting it and adding it back, which loses how it was set up.
+    """
     items = _user_practice(db, current_user.user_id)
     item = next((i for i in items if i.practice_item_id == item_id), None)
     if item is None:
@@ -708,6 +732,7 @@ def move_practice(
     same = [i for i in items if i.slot == item.slot]
     idx = same.index(item)
     swap = idx - 1 if direction == "up" else idx + 1
+
     if 0 <= swap < len(same):
         # Renumber the whole slot rather than swapping two values, so positions
         # stay contiguous however the rows were created.
@@ -715,6 +740,13 @@ def move_practice(
         for n, i in enumerate(same):
             i.position = n
         db.commit()
+    elif direction == "up" and item.slot == "after":
+        # Off the top of the wind-down is the end of the warm-up, not a wall.
+        item.slot = "before"
+        _renumber(db, current_user.user_id, "before", item, last=True)
+    elif direction == "down" and item.slot == "before":
+        item.slot = "after"
+        _renumber(db, current_user.user_id, "after", item, last=False)
     return {"items": [_practice_out(i) for i in _user_practice(db, current_user.user_id)]}
 
 

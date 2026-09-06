@@ -22,7 +22,9 @@ import re
 from collections import namedtuple
 from datetime import datetime, timedelta
 
-from app.data.stretches import LADDER_NOTE, routine_for
+from app.data.stretches import (
+    LADDER_NAMES, LADDER_NOTE, routine_for, scheme_for_seconds,
+)
 from app.data.programs import (
     ASSIST_BANDS, Block, DEFAULT_FOCUS, MODE_ORDER, MODES, PRACTICE,
     PROGRAMS, SESSION_LIMITS,
@@ -1265,12 +1267,14 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         any(w in block.name.lower() for w in ("side kick", "kung fu"))
         for block, _, _ in templates
     )
+    expanded = []
     for item in blocks:
         ex = by_id.get(item["exercise_id"])
         if ex is None or ex.category != "mobility":
+            expanded.append(item)
             continue
         slot = item.get("slot") or "after"
-        item["routine"] = routine_for(
+        routine = routine_for(
             slot, by_target,
             # The ladder is goal work — unassisted holds at end range, which
             # is moderate effort however calm it looks. On a gentle day the
@@ -1291,7 +1295,48 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
             rotation=db.query(WorkoutSession).filter(
                 WorkoutSession.user_id == user_id).count(),
         )
-        item["routine_note"] = LADDER_NOTE if kicks and slot == "after" else None
+
+        # One step per stretch, shaped like any other exercise, so the runner
+        # counts a hold down and logs it the way it does a wall sit. A single
+        # item with a list inside it needed its own controls and could not be
+        # timed, which is the one thing a hold actually wants.
+        steps = []
+        for s in routine:
+            sx = by_name.get(s["name"].strip().lower())
+            if sx is None:
+                continue
+            scheme = scheme_for_seconds(s["seconds"])
+            if scheme == "iso":
+                detail = f"{s['seconds']}s hold"
+                if s["per_side"]:
+                    detail += " each side"
+            else:
+                detail = "Work through it" + (" each side" if s["per_side"] else "")
+            steps.append({
+                "exercise_id": sx.exercise_id, "exercise": sx.exercise_name,
+                "target": sx.target, "equipment": sx.equipment,
+                "scheme": scheme, "prescription": detail, "why": s["why"],
+                "form_cues": s["cues"], "video_url": s["video_url"] or sx.video_url,
+                "sets": 1,
+                "target_reps": None,
+                "target_seconds": s["seconds"] or None,
+                "target_weight": None, "target_band": None,
+                "per_side": s["per_side"],
+                "group": "mobility", "slot": slot,
+            })
+
+        if steps:
+            if slot == "after" and any(s["name"] in LADDER_NAMES for s in routine):
+                steps[-1]["routine_note"] = LADDER_NOTE
+            expanded.extend(steps)
+        else:
+            # Nothing in the library to point at yet, so the routine stays a
+            # list inside the one item. Better a named list that cannot be
+            # timed than dropping the stretches out of the session entirely.
+            item["routine"] = routine
+            item["routine_note"] = LADDER_NOTE if kicks and slot == "after" else None
+            expanded.append(item)
+    blocks = expanded
 
     notes = []
     # `is None`, not falsiness: a plastic bar that genuinely weighs nothing is

@@ -218,6 +218,13 @@ LADDER_NOTE = ("Range you cannot hold on your own is range you cannot kick to, "
 BEFORE_LIMIT = 4
 AFTER_LIMIT = 5
 
+# What a kicker needs swung before kicking, whatever else the day trained.
+# Ranked on how many of the day's targets they match, the sideways swing loses
+# to drills that touch two — which puts the one piece of preparation specific
+# to a side kick behind general leg work, on the session where the kicking
+# comes next.
+KICK_PREP = ("Leg Swings, Front and Back", "Leg Swings, Across and Out")
+
 # Two ways into the same tissue, where the second exists only so the first has
 # a stand-in on a day it is ruled out. Prescribing both is asking for the same
 # stretch twice from two directions, which reads as padding and is what makes
@@ -299,8 +306,13 @@ def routine_for(slot, by_target, *, kicks=False, allow_floor=True,
     day_targets = set(by_target)
     if slot == "before":
         chosen = _eligible(BEFORE, day_targets, allow_floor, sore_knee)
-        return [_step(s, _why(hit, by_target, slot))
-                for s, hit in chosen[:BEFORE_LIMIT]]
+        if kicks:
+            chosen.sort(key=lambda pair: pair[0].name not in KICK_PREP)
+        limit = BEFORE_LIMIT + (1 if kicks else 0)
+        return [_step(s, ("Loosens the hips for the kicking that follows."
+                          if kicks and s.name in KICK_PREP
+                          else _why(hit, by_target, slot)))
+                for s, hit in chosen[:limit]]
 
     chosen = _eligible(AFTER, day_targets, allow_floor, sore_knee)
     steps = [_step(s, _why(hit, by_target, slot))
@@ -319,3 +331,58 @@ def routine_for(slot, by_target, *, kicks=False, allow_floor=True,
     for i, s in enumerate(keep):
         steps.append(_step(s, f"Working towards {goal}." if i == 0 else None))
     return steps
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# The same stretches as library rows
+# ──────────────────────────────────────────────────────────────────────────
+#
+# A stretch has to be an exercise row before it can be logged, timed or shown
+# by the session runner, because everything the runner does hangs off an
+# exercise_id. Generated from the lists above rather than written out again,
+# so a stretch cannot end up in the catalogue with one set of cues and in the
+# library with another.
+
+ALL = BEFORE + AFTER + AXE_LADDER + SIDE_LADDER
+LADDER_NAMES = {s.name for s in AXE_LADDER + SIDE_LADDER}
+
+
+def scheme_for(s):
+    """A hold gets the countdown, a drill gets a tick.
+
+    Nothing here is prescribed in reps: the counts that matter — three
+    contract-relax rounds, ten swings — are part of the drill and live in the
+    cues, and pulling them out into a rep target would have the runner ask for
+    each swing to be logged.
+    """
+    return "iso" if s.seconds else "check"
+
+
+def library_rows():
+    """Catalogue rows in exercise-library format, deduplicated by name."""
+    rows, seen = [], set()
+    for s in ALL:
+        if s.name in seen:
+            continue
+        seen.add(s.name)
+        rows.append((
+            s.name, "mobility", (s.targets[0] if s.targets else "hip"),
+            "bodyweight", s.per_side, bool(s.seconds), s.cues, s.url,
+        ))
+    return rows
+
+
+def effort_rows():
+    """(exertion, floor_based) per stretch, for the columns the seed defaults.
+
+    The ladder sits a notch above the rest: an unassisted hold at end range is
+    real work however calm it looks from outside, and on a day that has ruled
+    out effort it should go the same way the strength work did.
+    """
+    return {s.name: (2 if s.name in LADDER_NAMES else 1, s.floor)
+            for s in ALL}
+
+
+def scheme_for_seconds(seconds):
+    """The scheme a step runs under, from its hold length alone."""
+    return "iso" if seconds else "check"

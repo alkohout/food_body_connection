@@ -15,6 +15,8 @@ lifter gets hurt — so links are added only once confirmed.
 Columns: name, category, target, equipment, unilateral, isometric, cues, url
 """
 
+from app.data.stretches import library_rows
+
 # category:  strength | mobility | martial | conditioning
 # target:    knee | hip | core | upper | posterior | calf | whole
 # equipment: bodyweight | dumbbell | barbell | band | tube | none
@@ -175,4 +177,14 @@ LIBRARY = [
     ("Kung Fu Pattern", "martial", "whole", "none", False, False, None, None),
     ("Side Kick", "martial", "hip", "none", True, False, None, None),
     ("Stretches", "mobility", "whole", "none", False, False, None, None),
+    # A second mobility slot so a warm-up and a wind-down can both exist. One
+    # exercise cannot fill both: a practice item is matched by exercise, and
+    # the same one appearing twice in a session is dropped as a duplicate.
+    ("Mobility Warm-Up", "mobility", "whole", "none", False, False, None, None),
 ]
+
+# The stretch catalogue joins the library rather than sitting beside it: a
+# stretch has to be an exercise row before the runner can time it or log it,
+# and generating the rows keeps one set of cues rather than two that drift.
+LIBRARY += library_rows()
+

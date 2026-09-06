@@ -4420,7 +4420,8 @@ function trRenderRunner() {
   // is thrown away with it — which is why it always came back on "left".
   const nextSide = trNextSide();
   const groupLabel = { practice: "practice", maintenance: "maintenance",
-                       assessment: "baseline test", strength: "strength" }[b.group] || b.group;
+                       assessment: "baseline test", strength: "strength",
+                       mobility: "stretch" }[b.group] || b.group;
   head.textContent = `${trRun.idx + 1} of ${blocks.length} — ${groupLabel}`;
 
   // An exercise the engine swapped out from under you is worth saying out
@@ -4430,12 +4431,20 @@ function trRenderRunner() {
   body.appendChild(trEl("p", b.prescription));
   // Strength comes from working close to your limit, not from reaching it, so
   // the target is a stopping point rather than a challenge.
-  const effort = {
+  // Not for a stretch. "Stop when form breaks, not at collapse" is the right
+  // thing to say about a plank and the wrong thing about a hamstring hold,
+  // where the whole instruction is to stop well short of anything breaking.
+  const effort = b.group === "mobility" ? null : {
     load: "Stop about 2 reps short of failure — that is the point of the number.",
     reps: "Stop about 2 reps short of failure, or when form goes.",
     iso: "Stop when form breaks, not at collapse.",
   }[b.scheme];
   if (effort) body.appendChild(trEl("p", effort, "tr-hint"));
+  if (b.group === "mobility" && b.scheme === "iso") {
+    body.appendChild(trEl("p",
+      "Ease to the first real resistance and let it settle there — a stretch "
+      + "that hurts is being fought, and it will not lengthen.", "tr-hint"));
+  }
   if (b.why) body.appendChild(trEl("p", b.why, "logs-loading"));
   if (b.form_cues) body.appendChild(trEl("p", b.form_cues, "tr-cues"));
   if (b.video_url) {
@@ -4446,6 +4455,8 @@ function trRenderRunner() {
     body.appendChild(a);
   }
   if (b.routine && b.routine.length) trRenderRoutine(body, b);
+  // Also on an expanded step, which carries the note without carrying a list.
+  else if (b.routine_note) body.appendChild(trEl("p", b.routine_note, "tr-hint"));
   // Left and right together are one set, which is how it is counted when
   // doing it. Half a set shows what is left rather than a fraction.
   const setsDone = b.per_side ? Math.floor(doneCount / 2) : doneCount;
