@@ -19,8 +19,7 @@ from app.analysis.training_program import (
 )
 from app.data.programs import SESSION_LIMITS
 from app.data.programs import DEFAULT_FOCUS, PROGRAMS
-from app.data.exercise_library import LIBRARY
-from app.data.stretches import effort_rows
+from app.data.exercise_library import EFFORT, LIBRARY
 from app.database import get_db
 from app.models.table_class import (
     Exercise, PracticeItem, SetLog, Symptom, SymptomLog, TrainingProfile,
@@ -91,7 +90,7 @@ def seed_exercises(
     # Left to the column defaults these come out at exertion 2 and not
     # floor-based, which for a stretch done lying down is the difference
     # between it being ruled out on a headache day and being prescribed.
-    effort = effort_rows()
+    effort = EFFORT
     for name, category, target, equipment, uni, iso, cues, url in LIBRARY:
         if name.strip().lower() in have:
             continue

@@ -347,6 +347,14 @@ TRAVEL_SUBSTITUTES = {
     "dumbbell floor press": ("Push Up", "reps", 8, 15),
     "band pull apart": ("Prone Y Raise", "reps", 8, 15),
     "standing calf raise": ("Standing Calf Raise", "reps", 12, 20),
+    "tube seated row": ("Dumbbell Row", "load", 8, 12),
+    "tube face pull": ("Band Pull Apart", "reps", 12, 20),
+    # Not the same exercise, and the only honest one available: the tube loads
+    # the lift, this one only asks you to hold the top of it. Better a weaker
+    # version of the right movement than a strong version of a different one.
+    "tube hip flexion": ("Active Straight-Leg Raise Hold", "iso", 8, 15),
+    # Tube lat pulldown is deliberately absent. Nothing here pulls vertically
+    # without a bar overhead, and that is the reason it earned a place.
 }
 
 # Needs nothing, so it is never something to own: "bodyweight" is a floor and

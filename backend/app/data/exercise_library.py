@@ -15,7 +15,7 @@ lifter gets hurt — so links are added only once confirmed.
 Columns: name, category, target, equipment, unilateral, isometric, cues, url
 """
 
-from app.data.stretches import library_rows
+from app.data.stretches import effort_rows, library_rows
 
 # category:  strength | mobility | martial | conditioning
 # target:    knee | hip | core | upper | posterior | calf | whole
@@ -176,6 +176,33 @@ LIBRARY = [
     ("Tai Chi Sword", "martial", "whole", "none", False, False, None, None),
     ("Kung Fu Pattern", "martial", "whole", "none", False, False, None, None),
     ("Side Kick", "martial", "hip", "none", True, False, None, None),
+    # ── Tube puller: six fixed tubes, a foot pedal and a door anchor. ──────
+    # Resistance does not adjust, so these progress on reps and range rather
+    # than load, and the rep ceilings are set high enough that they do not run
+    # out of room in a fortnight. Chosen for what the dumbbells cannot do: a
+    # vertical pull was missing from every phase, and nothing loaded the lift
+    # of a kick at all.
+    ("Tube Seated Row", "strength", "upper", "tube", False, False,
+     "Sit with the pedal bar under your feet, knees softly bent, sitting tall. "
+     "Pull the handles to the lower ribs with the elbows close, and finish by "
+     "drawing the shoulder blades together. Do not lean back to complete the "
+     "pull — that is the back taking over from the arms.", None),
+    ("Tube Lat Pulldown", "strength", "upper", "tube", False, False,
+     "Anchor at the top of a door. Stand or half-kneel facing it with the arms "
+     "overhead, and pull the handles down and slightly out to shoulder height, "
+     "leading with the elbows. Keep the ribs down — leaning back turns it into "
+     "a row and takes the lats out of it.", None),
+    ("Tube Face Pull", "strength", "upper", "tube", False, False,
+     "Anchor at head height. Pull the handles towards your forehead with the "
+     "elbows high and wide, finishing with the knuckles level with your ears. "
+     "Light and slow: this is shoulder maintenance, not a strength lift.", None),
+    ("Tube Hip Flexion", "strength", "hip", "tube", True, False,
+     "Anchor at floor level behind you, loop a handle around the middle of "
+     "your foot and hold a wall. Raise the straight leg forward and up as far "
+     "as it will go against the tube, then lower it slowly. This is the axe "
+     "kick's lift with resistance on it — the height you can raise under "
+     "tension is the height you can kick to.", None),
+
     ("Stretches", "mobility", "whole", "none", False, False, None, None),
     # A second mobility slot so a warm-up and a wind-down can both exist. One
     # exercise cannot fill both: a practice item is matched by exercise, and
@@ -187,4 +214,16 @@ LIBRARY = [
 # stretch has to be an exercise row before the runner can time it or log it,
 # and generating the rows keeps one set of cues rather than two that drift.
 LIBRARY += library_rows()
+
+# exertion and floor_based for anything the column defaults get wrong. The
+# defaults — moderate effort, not floor-based — are right for most of the
+# catalogue and wrong for a stretch done lying down or a row done sitting on
+# the floor, and both of those decide whether it survives a headache day.
+EFFORT = dict(effort_rows())
+EFFORT.update({
+    "Tube Seated Row": (2, True),
+    "Tube Lat Pulldown": (2, False),
+    "Tube Face Pull": (1, False),
+    "Tube Hip Flexion": (2, False),
+})
 
