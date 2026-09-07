@@ -186,6 +186,7 @@ RPE_CEILING = 8           # progress load only if the last sets were <= this
 RECENT_SCORES = 5         # how many recent next-day scores decide a phase
 MIN_EXERCISES_FOR_CREDIT = 3   # exercises needed for a session to count
 STALL_SESSIONS = 3        # identical failed attempts before backing the target off
+GRADUATE_SESSIONS = 3     # sessions finished at the ceiling before stepping up
 STALL_FACTOR = 0.75       # how far back a stalled target drops
 # A single max effort is not a working set. Three sets at the number you could
 # just about reach once is the exact mistake that leaving reps in reserve
@@ -294,6 +295,20 @@ def _last_sets(db, user_id, exercise_id):
 #
 # Each entry carries its own scheme and range: a squat regressed to a wall sit
 # is timed rather than counted, and "8 to 12" of it would be meaningless.
+# The way up when there is no weight to add. A tube puller has six tubes and
+# that is that, so an exercise finished at the top of its range is finished
+# full stop — the only progression left is a harder version of the movement,
+# and one limb at a time roughly doubles the load without touching the kit.
+#
+# One-way on purpose. Stalling on the harder version is handled the way any
+# stall is, by dropping the target; sending it back down to the two-armed
+# version would re-meet the graduation test on the very next session and
+# oscillate between the two forever.
+PROGRESSIONS = {
+    "tube seated row": ("Tube Single Arm Row", "reps", 6, 12),
+    "tube lat pulldown": ("Tube Single Arm Lat Pulldown", "reps", 6, 12),
+}
+
 REGRESSIONS = {
     "goblet squat": [("Box Squat", "load", 8, 12),
                      ("Wide Leg Squat", "reps", 8, 15),
@@ -348,6 +363,7 @@ TRAVEL_SUBSTITUTES = {
     "band pull apart": ("Prone Y Raise", "reps", 8, 15),
     "standing calf raise": ("Standing Calf Raise", "reps", 12, 20),
     "tube seated row": ("Dumbbell Row", "load", 8, 12),
+    "tube single arm row": ("Dumbbell Row", "load", 8, 12),
     "tube face pull": ("Band Pull Apart", "reps", 12, 20),
     # Not the same exercise, and the only honest one available: the tube loads
     # the lift, this one only asks you to hold the top of it. Better a weaker
@@ -420,6 +436,42 @@ def _substitute(db, user_id, name, by_name):
             continue          # no point moving onto something already stuck
         return Block(sub_name, scheme, 3, low, high), ex
     return None
+
+
+def _topped_out(db, user_id, exercise_id, scheme, high) -> bool:
+    """Has this been finished at the top of its range often enough to move on?
+
+    The mirror of _stalled, and the case its docstring sets aside: someone
+    sitting at the top of a rep range and succeeding. For a loadable exercise
+    that is not interesting, because the answer is more weight. For a fixed
+    resistance there is no more weight, so it is the whole signal.
+
+    Every set has to reach the ceiling, not just the best one. A top set at the
+    ceiling with the rest trailing is someone who can hit the number once,
+    which is the opposite of ready for a harder version.
+    """
+    field = {"iso": "hold_seconds", "reps": "reps", "load": "reps"}.get(scheme)
+    if field is None or not high:
+        return False
+
+    rows = (
+        db.query(SetLog, WorkoutSession)
+        .join(WorkoutSession, SetLog.session_id == WorkoutSession.session_id)
+        .filter(SetLog.user_id == user_id, SetLog.exercise_id == exercise_id)
+        .all()
+    )
+    by_session = {}
+    for st, s in rows:
+        if s.date_time:
+            by_session.setdefault(s.date_time, []).append(st)
+    if len(by_session) < GRADUATE_SESSIONS:
+        return False
+
+    for when in sorted(by_session, reverse=True)[:GRADUATE_SESSIONS]:
+        vals = [getattr(x, field) or 0 for x in by_session[when]]
+        if not vals or min(vals) < high:
+            return False
+    return True
 
 
 def _stalled(db, user_id, exercise_id, scheme) -> bool:
@@ -1171,6 +1223,21 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         affected = knee.get("affected_side") if sore_area else None
 
         prior, when, from_test = _last_sets(db, user_id, ex.exercise_id)
+
+        # Stepping up happens before the prescription rather than after it, so
+        # everything downstream — the sore-side split, the limits check, the
+        # duplicate guard — sees the exercise actually being done. Patched on
+        # afterwards it would prescribe one exercise and describe another.
+        graduated = None
+        step_up = PROGRESSIONS.get(block.name.strip().lower())
+        if step_up and _topped_out(db, user_id, ex.exercise_id, block.scheme, block.high):
+            up_ex = by_name.get(step_up[0].strip().lower())
+            if up_ex is not None and (available is None or up_ex.equipment in available):
+                graduated = ex.exercise_name
+                block = Block(step_up[0], step_up[1], block.sets, step_up[2], step_up[3])
+                ex = up_ex
+                prior, when, from_test = _last_sets(db, user_id, ex.exercise_id)
+
         item = _prescribe(
             block, ex, prior, action, loads, last_done=when,
             stalled=_stalled(db, user_id, ex.exercise_id, block.scheme),
@@ -1199,6 +1266,19 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
             item["prescription"] = (f"{other}: {strip(healthy['prescription'])} · "
                                     f"{affected}: {strip(item['prescription'])}")
             item["why"] = (f"Only the {affected} side eases off. {item['why']}")
+
+        if graduated:
+            item["progressed_from"] = graduated
+            # Said once, until the new version has actually been done. The
+            # same rule the equipment swap uses: a change worth announcing is
+            # not worth repeating every session forever.
+            item["notice"] = (
+                f"{graduated} has been finishing every set at the top of its "
+                f"range for {GRADUATE_SESSIONS} sessions, and the tubes do not "
+                f"go heavier — so it steps up to {ex.exercise_name}. One arm at "
+                f"a time is roughly double the load, which is why the reps "
+                f"start lower."
+            ) if when is None else None
 
         if item.pop("exhausted", False):
             swap = _substitute(db, user_id, block.name, by_name)

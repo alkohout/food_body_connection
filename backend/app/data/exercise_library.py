@@ -203,6 +203,20 @@ LIBRARY = [
      "kick's lift with resistance on it — the height you can raise under "
      "tension is the height you can kick to.", None),
 
+    # One arm at a time is the only way up when the resistance will not
+    # change: the same six tubes through one limb is roughly twice the load,
+    # which is why the rep ranges start lower rather than carrying over.
+    ("Tube Single Arm Row", "strength", "upper", "tube", True, False,
+     "The same seated position, one handle. Pull to the hip with the elbow "
+     "close, and keep the free shoulder square — letting the torso rotate to "
+     "finish the pull is the body borrowing range it has not earned. Reps "
+     "start lower because one arm now takes what two were sharing.", None),
+    ("Tube Single Arm Lat Pulldown", "strength", "upper", "tube", True, False,
+     "Anchored high, one handle, standing or half-kneeling. Pull down and "
+     "slightly back towards the shoulder, leading with the elbow, ribs down. "
+     "Let the arm travel right overhead at the top — the extra range is half "
+     "the reason for going one at a time.", None),
+
     ("Stretches", "mobility", "whole", "none", False, False, None, None),
     # A second mobility slot so a warm-up and a wind-down can both exist. One
     # exercise cannot fill both: a practice item is matched by exercise, and
@@ -225,5 +239,7 @@ EFFORT.update({
     "Tube Lat Pulldown": (2, False),
     "Tube Face Pull": (1, False),
     "Tube Hip Flexion": (2, False),
+    "Tube Single Arm Row": (2, True),
+    "Tube Single Arm Lat Pulldown": (2, False),
 })
 
