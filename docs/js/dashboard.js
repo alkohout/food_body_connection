@@ -47,6 +47,51 @@ function isTokenExpired(token) {
   }
 }
 
+// A token lasts an hour. That is ample for browsing and not ample for a
+// training session, and the only expiry check happens at page load — so a
+// session that runs long simply starts failing: every save returns 401, the
+// runner declines to advance on a failed save, and you are left tapping Log at
+// an exercise that will never save. Sliding the expiry while someone is
+// actively working keeps the hour short without the session paying for it.
+const TOKEN_REFRESH_MARGIN_S = 15 * 60;
+let tokenRefreshInFlight = null;
+
+function tokenSecondsLeft(token) {
+  try {
+    if (!token) return 0;
+    return JSON.parse(atob(token.split(".")[1])).exp - Date.now() / 1000;
+  } catch (err) {
+    return 0;
+  }
+}
+
+// Returns whether the caller has a usable token. Refreshing an already-dead
+// one is not possible by design, so a false here means re-login, not retry.
+async function ensureFreshToken() {
+  const token = localStorage.getItem("access_token");
+  const left = tokenSecondsLeft(token);
+  if (left <= 0) return false;
+  if (left > TOKEN_REFRESH_MARGIN_S) return true;
+  // Saves can land together; one refresh serves all of them.
+  if (!tokenRefreshInFlight) {
+    tokenRefreshInFlight = fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && data.access_token) {
+          localStorage.setItem("access_token", data.access_token);
+          return true;
+        }
+        return false;
+      })
+      .catch(() => false)
+      .finally(() => { tokenRefreshInFlight = null; });
+  }
+  return tokenRefreshInFlight;
+}
+
 // =========================================================
 // Elements (re-query inside functions for safety)
 // =========================================================
@@ -3448,6 +3493,9 @@ function trRenderCurrentSets() {
 }
 
 async function trStartSession() {
+  // The session is about to run for an hour or more, so it starts on a fresh
+  // token rather than whatever is left of the one from this morning's login.
+  await ensureFreshToken();
   const res = await fetch(`${API_URL}/training/sessions`, {
     method: "POST",
     headers: { ...trAuth(), "Content-Type": "application/json" },
@@ -4556,9 +4604,37 @@ function trRenderRoutine(body, b) {
 
 
 function trRenderCheck(body, b) {
+  // Only the timer renderer ever offered a side, so a per-side drill that is
+  // merely ticked off — a leg swing, a contract-relax round — asked for two
+  // taps and recorded neither of them as left or right. Nothing downstream
+  // could tell which leg had been worked, on exactly the drills where that is
+  // the whole question.
+  let sideSel = null;
+  if (b.per_side) {
+    const row = trEl("div", null, "form-row");
+    row.appendChild(trEl("label", "Side"));
+    sideSel = document.createElement("select");
+    [["left", "Left"], ["right", "Right"]].forEach(([v, label]) => {
+      const o = trEl("option", label);
+      o.value = v;
+      sideSel.appendChild(o);
+    });
+    sideSel.value = trNextSide();
+    sideSel.addEventListener("change", () => { trRun.sides[trRun.idx] = sideSel.value; });
+    row.appendChild(sideSel);
+    body.appendChild(row);
+  }
+
   const btn = trEl("button", "Done", "primary tr-big tr-block");
   btn.type = "button";
-  btn.addEventListener("click", () => trLogRunSet(b, {}));
+  btn.addEventListener("click", () => {
+    const fields = {};
+    if (sideSel) {
+      fields.side = sideSel.value;
+      trRun.sides[trRun.idx] = sideSel.value === "left" ? "right" : "left";
+    }
+    trLogRunSet(b, fields);
+  });
   body.appendChild(btn);
 }
 
@@ -4774,6 +4850,7 @@ function trRenderTimer(body, b) {
 
 async function trLogRunSet(b, fields) {
   if (!trSession) return;
+  await ensureFreshToken();
   const painEl = getElement("tr-run-pain");
   const pain = painEl && painEl.value !== "" ? Number(painEl.value) : null;
   const idx = trRun.idx;
@@ -4790,7 +4867,15 @@ async function trLogRunSet(b, fields) {
   });
   if (!res.ok) {
     const s = getElement("tr-run-status");
-    if (s) s.textContent = `Could not save that set (${res.status}).`;
+    // 401 is worth naming. A bare status code next to a Log button that has
+    // stopped working reads as the app being broken, and the fix — sign in
+    // again — is not something a number suggests.
+    if (s) {
+      s.textContent = res.status === 401
+        ? "Your login has expired, so that set was not saved. Sign in again "
+          + "and press Log — everything logged before this is safe."
+        : `Could not save that set (${res.status}).`;
+    }
     return;
   }
   trSession = await res.json();
@@ -4807,6 +4892,7 @@ async function trLogRunSet(b, fields) {
 
 async function trFinishSession() {
   if (!trSession) return;
+  await ensureFreshToken();
   // Classify by what was actually logged. A session where every strength
   // exercise was skipped is not a strength session, and counting it as one
   // would advance the phase on work that never happened.

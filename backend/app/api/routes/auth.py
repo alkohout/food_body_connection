@@ -200,6 +200,27 @@ def get_current_user(
 
     return user
 
+@router.post("/refresh")
+def refresh_token(current_user: User = Depends(get_current_user)):
+    """Issue a fresh token to someone whose current one is still valid.
+
+    A token lasts an hour, which is fine for browsing and not fine for a
+    training session: a session that runs long dies part-way through, and
+    because the only expiry check happens at page load nothing notices. Every
+    save from that point returns 401, the runner declines to advance, and the
+    person is left tapping Log at an exercise that will never save.
+
+    Sliding the expiry while someone is active is the fix that keeps the hour
+    short. This deliberately does not accept an expired token — that would make
+    the hour meaningless — so the client has to ask before it lapses rather
+    than after.
+    """
+    return {
+        "access_token": create_access_token(data={"sub": str(current_user.user_id)}),
+        "token_type": "bearer",
+    }
+
+
 @router.get("/me", response_model=UserOut)
 def read_users_me(current_user: User = Depends(get_current_user)):
     """
