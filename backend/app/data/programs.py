@@ -158,7 +158,7 @@ KNEE_PHASES = {
                 Block("Terminal Knee Extension", "reps", 3, 10, 15),
                 Block("Standing Hip Abduction", "reps", 3, 10, 15),
                 Block("Push Up", "reps", 3, 5, 12),
-                Block("Tube Hip Flexion", "reps", 3, 8, 15),
+                Block("Band Hip Flexion", "reps", 3, 8, 15),
                 Block("Plank", "iso", 3, 20, 45),
             ],
             "B": [

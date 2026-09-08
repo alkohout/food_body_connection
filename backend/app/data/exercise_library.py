@@ -196,12 +196,18 @@ LIBRARY = [
      "Anchor at head height. Pull the handles towards your forehead with the "
      "elbows high and wide, finishing with the knuckles level with your ears. "
      "Light and slow: this is shoulder maintenance, not a strength lift.", None),
-    ("Tube Hip Flexion", "strength", "hip", "tube", True, False,
-     "Anchor at floor level behind you, loop a handle around the middle of "
-     "your foot and hold a wall. Raise the straight leg forward and up as far "
-     "as it will go against the tube, then lower it slowly. This is the axe "
-     "kick's lift with resistance on it — the height you can raise under "
-     "tension is the height you can kick to.", None),
+
+    # A band rather than the puller. The movement wants its anchor on the
+    # floor behind you, and the puller's tubes are too short to reach one —
+    # the pedal is its anchor, which is no use when the working limb is a leg.
+    # A loop band ties to a table leg at any height.
+    ("Band Hip Flexion", "strength", "hip", "band", True, False,
+     "Loop the band around something solid at floor level behind you — a table "
+     "leg does — and around the middle of your foot, then hold a wall. Raise "
+     "the straight leg forward and up as far as it will go against the band, "
+     "and lower it slowly. This is the axe kick's lift with resistance on it: "
+     "the height you can raise under tension is the height you can kick to.",
+     None),
 
     # One arm at a time is the only way up when the resistance will not
     # change: the same six tubes through one limb is roughly twice the load,
@@ -238,7 +244,7 @@ EFFORT.update({
     "Tube Seated Row": (2, True),
     "Tube Lat Pulldown": (2, False),
     "Tube Face Pull": (1, False),
-    "Tube Hip Flexion": (2, False),
+    "Band Hip Flexion": (2, False),
     "Tube Single Arm Row": (2, True),
     "Tube Single Arm Lat Pulldown": (2, False),
 })

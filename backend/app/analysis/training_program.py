@@ -368,7 +368,7 @@ TRAVEL_SUBSTITUTES = {
     # Not the same exercise, and the only honest one available: the tube loads
     # the lift, this one only asks you to hold the top of it. Better a weaker
     # version of the right movement than a strong version of a different one.
-    "tube hip flexion": ("Active Straight-Leg Raise Hold", "iso", 8, 15),
+    "band hip flexion": ("Active Straight-Leg Raise Hold", "iso", 8, 15),
     # Tube lat pulldown is deliberately absent. Nothing here pulls vertically
     # without a bar overhead, and that is the reason it earned a place.
 }
