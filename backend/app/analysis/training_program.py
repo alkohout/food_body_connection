@@ -683,7 +683,18 @@ def knee_state(db, user_id, word="soreness", keywords=None, tz_offset=0) -> dict
 
     # Not a reason to back off, but the score is the input to the rule, so ask
     # for it — only where there was actually a session worth scoring.
-    awaiting = last.session_id if last is not None and last.next_day_knee is None else None
+    #
+    # "Worth scoring" is a different question from "carries pain data", and
+    # conflating the two deadlocked the programme. Pain is an optional field,
+    # so someone who never fills it in has no pain-bearing session; the ask
+    # never appears, because the box that carries it is hidden until this is
+    # set; no next-day score is ever recorded; and leaving a phase requires
+    # those scores. The result is a programme that progresses on the silent
+    # assumption that nothing hurts and cannot advance a phase however well it
+    # goes. Any session with sets in it is worth a morning-after score.
+    worked = next((s for s in sessions if s.sets), None)
+    awaiting = (worked.session_id
+                if worked is not None and worked.next_day_knee is None else None)
     return {"action": "progress",
             "reason": f"No lingering {word} — progressing.",
             "awaiting_next_day": awaiting}
