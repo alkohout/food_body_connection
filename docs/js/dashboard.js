@@ -4231,7 +4231,44 @@ async function trRenderEquipmentPanel() {
 // renderers need it and each is its own function — reading it from a const in
 // trRenderRunner threw a ReferenceError, and per-side exercises rendered no
 // controls at all.
-function trNextSide() {
+// How many logs an exercise still wants. With one side eased off the two
+// sides carry different set counts — two on the sore leg, three on the good
+// one — so the total is their sum. Doubling b.sets took the sore side's
+// number for both, finished the exercise a set early, and the set it dropped
+// was always the good leg's.
+function trNeeded(b) {
+  if (b && b.side_targets) {
+    return Object.keys(b.side_targets)
+      .reduce((n, k) => n + (b.side_targets[k].sets || 0), 0);
+  }
+  return b.per_side ? b.sets * 2 : b.sets;
+}
+
+function trSideCounts(b) {
+  const done = { left: 0, right: 0 };
+  if (trSession && trSession.sets && b) {
+    trSession.sets.forEach((s) => {
+      if (s.exercise_id === b.exercise_id && (s.side === "left" || s.side === "right")) {
+        done[s.side] += 1;
+      }
+    });
+  }
+  return done;
+}
+
+// Straight alternation is right when both sides want the same number, and
+// wrong on the last set when they do not — it would offer the sore leg a
+// third set it was not asked for.
+function trNextSide(b) {
+  if (b && b.side_targets) {
+    const done = trSideCounts(b);
+    const want = {
+      left: (b.side_targets.left || {}).sets || 0,
+      right: (b.side_targets.right || {}).sets || 0,
+    };
+    if (done.left >= want.left && done.right < want.right) return "right";
+    if (done.right >= want.right && done.left < want.left) return "left";
+  }
   return (trRun && trRun.sides[trRun.idx]) || "left";
 }
 
@@ -4541,11 +4578,11 @@ function trRenderRunner() {
   const b = blocks[trRun.idx];
   const doneCount = trRun.done[trRun.idx] || 0;
   // "3 sets each side" means six logged sets, so the target counts both.
-  const needed = b.per_side ? b.sets * 2 : b.sets;
+  const needed = trNeeded(b);
   // Which side is up. Kept on the run rather than the <select>, because
   // logging a set re-renders the whole body and a value set on the element
   // is thrown away with it — which is why it always came back on "left".
-  const nextSide = trNextSide();
+  const nextSide = trNextSide(b);
   const groupLabel = { practice: "practice", maintenance: "maintenance",
                        assessment: "baseline test", strength: "strength",
                        mobility: "stretch" }[b.group] || b.group;
@@ -4586,9 +4623,16 @@ function trRenderRunner() {
   else if (b.routine_note) body.appendChild(trEl("p", b.routine_note, "tr-hint"));
   // Left and right together are one set, which is how it is counted when
   // doing it. Half a set shows what is left rather than a fraction.
-  const setsDone = b.per_side ? Math.floor(doneCount / 2) : doneCount;
-  let progress = `Sets done: ${setsDone} of ${b.sets}`;
-  if (b.per_side && doneCount % 2 === 1) progress += ` · ${nextSide} side to finish this one`;
+  // Pairs only make sense when both sides want the same number of them.
+  const setsDone = b.side_targets ? doneCount
+    : (b.per_side ? Math.floor(doneCount / 2) : doneCount);
+  const setsWanted = b.side_targets ? needed : b.sets;
+  let progress = `Sets done: ${setsDone} of ${setsWanted}`;
+  if (b.per_side && !b.side_targets && doneCount % 2 === 1) {
+    progress += ` · ${nextSide} side to finish this one`;
+  } else if (b.side_targets && doneCount < needed) {
+    progress += ` · ${nextSide} next`;
+  }
   body.appendChild(trEl("p", progress, "logs-loading"));
 
   if (b.scheme === "check") trRenderCheck(body, b);
@@ -4627,7 +4671,7 @@ function trRenderRunner() {
     });
     nav.appendChild(skip);
   } else {
-    const stop = trEl("button", `Move on — ${setsDone} of ${b.sets} done`, "secondary");
+    const stop = trEl("button", `Move on — ${setsDone} of ${setsWanted} done`, "secondary");
     stop.type = "button";
     stop.addEventListener("click", () => { trRun.idx += 1; trRenderRunner(); });
     nav.appendChild(stop);
@@ -4698,7 +4742,7 @@ function trRenderCheck(body, b) {
       o.value = v;
       sideSel.appendChild(o);
     });
-    sideSel.value = trNextSide();
+    sideSel.value = trNextSide(b);
     sideSel.addEventListener("change", () => { trRun.sides[trRun.idx] = sideSel.value; });
     row.appendChild(sideSel);
     body.appendChild(row);
@@ -4774,7 +4818,7 @@ function trRenderCounter(body, b) {
     [["left", "Left"], ["right", "Right"]].forEach(([v, label]) => {
       const o = trEl("option", label); o.value = v; sideSel.appendChild(o);
     });
-    sideSel.value = trNextSide();
+    sideSel.value = trNextSide(b);
     sideSel.addEventListener("change", () => { trRun.sides[trRun.idx] = sideSel.value; });
     // When the sides have different targets, the counter follows the side
     // being worked. Otherwise the sore side gets the good side's number,
@@ -4838,7 +4882,7 @@ function trRenderTimer(body, b) {
     [["left", "Left"], ["right", "Right"]].forEach(([v, label]) => {
       const o = trEl("option", label); o.value = v; sideSel.appendChild(o);
     });
-    sideSel.value = trNextSide();
+    sideSel.value = trNextSide(b);
     sideSel.addEventListener("change", () => { trRun.sides[trRun.idx] = sideSel.value; });
     if (b.side_targets) {
       const applySide = () => {
@@ -4962,7 +5006,7 @@ async function trLogRunSet(b, fields) {
 
   // Move on once the prescribed sets are in, rather than making the user
   // decide whether they are finished.
-  const needed = b.per_side ? b.sets * 2 : b.sets;
+  const needed = trNeeded(b);
   if (trRun.done[idx] >= needed) {
     trRun.idx += 1;
   }

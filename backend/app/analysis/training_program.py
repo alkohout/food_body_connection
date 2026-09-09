@@ -801,6 +801,19 @@ def _band_for(ex, block, weight, bands, last_sets):
     return weight if weight is not None else bands[0]
 
 
+def _repeat_floor(low, achieved):
+    """The lowest a target may be set once there is a performance to go on.
+
+    block.low is where someone with no history starts. Applied as a hard
+    minimum it overrides the branches whose whole job is to repeat or ease
+    off: three sets of 3, 3 and 2 against a range of 5-12 came back as
+    "repeat 5 before adding", which is not a repeat, is more than was managed,
+    and is a harder target handed out for a worse session. Below the range,
+    what was actually done is the honest floor.
+    """
+    return low if not achieved else min(low, achieved)
+
+
 def _prescribe(block, ex, last_sets, action, loads, last_done=None,
                stalled=False, from_assessment=False, bands=None):
     """Turn one template block plus history into a concrete instruction."""
@@ -837,18 +850,18 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         holds = [(s.hold_seconds or 0) for s in last_sets]
         top, weakest = (max(holds), min(holds)) if holds else (0, 0)
         if action == "back_off":
-            target = max(block.low, int(top * 0.8) or block.low)
+            target = max(_repeat_floor(block.low, top), int(top * 0.8) or block.low)
             why = "Held back while the knee settles."
         elif action == "hold" or not top:
-            target = max(block.low, top or block.low)
+            target = max(_repeat_floor(block.low, top), top or block.low)
             why = "Repeat last time's hold." if top else "Starting point."
         elif from_assessment:
-            target = max(block.low, min(int(top * ASSESSMENT_FACTOR), block.high))
+            target = max(_repeat_floor(block.low, top), min(int(top * ASSESSMENT_FACTOR), block.high))
             why = (f"From your assessment: one max effort of {top}s. Working "
                    f"sets start at {target}s, about three quarters of it, "
                    f"because three sets at your limit is not a working level.")
         elif not complete:
-            target = max(block.low, min(top, block.high))
+            target = max(_repeat_floor(block.low, top), min(top, block.high))
             why = f"{short} — repeat it before going longer."
         elif stalled:
             target = max(SECONDS_FLOOR, int(top * STALL_FACTOR))
@@ -861,7 +874,7 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         elif weakest < top:
             # Worked at `top` and one set fell short of it, so the prescription
             # was not completed. Repeat it rather than asking for more.
-            target = max(block.low, min(top, block.high))
+            target = max(_repeat_floor(block.low, top), min(top, block.high))
             why = f"Last set dropped to {weakest}s — repeat {target}s before going longer."
         else:
             target = min(block.high, top + 5)
@@ -883,18 +896,18 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         if banded and weight is None:
             weight = last_band
         if action == "back_off":
-            target = max(block.low, int(top * 0.8) or block.low)
+            target = max(_repeat_floor(block.low, top), int(top * 0.8) or block.low)
             why = "Volume cut while the knee settles."
         elif action == "hold" or not top:
-            target = max(block.low, min(top or block.low, block.high))
+            target = max(_repeat_floor(block.low, top), min(top or block.low, block.high))
             why = "Repeat last time." if top else "Starting point."
         elif from_assessment:
-            target = max(block.low, min(int(top * ASSESSMENT_FACTOR), block.high))
+            target = max(_repeat_floor(block.low, top), min(int(top * ASSESSMENT_FACTOR), block.high))
             why = (f"From your assessment: one max effort of {top}. Working "
                    f"sets start at {target}, about three quarters of it, "
                    f"because three sets at your limit is not a working level.")
         elif not complete:
-            target = max(block.low, min(top, block.high))
+            target = max(_repeat_floor(block.low, top), min(top, block.high))
             why = f"{short} — repeat it before adding reps."
         elif stalled:
             target = max(REPS_FLOOR, int(top * STALL_FACTOR))
@@ -905,7 +918,7 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
                 why = (f"Stuck at {top} for {STALL_SESSIONS} sessions without "
                        f"finishing it — dropping to {target} to build back up.")
         elif weakest < top:
-            target = max(block.low, min(top, block.high))
+            target = max(_repeat_floor(block.low, top), min(top, block.high))
             why = f"Last set dropped to {weakest} — repeat {target} before adding."
         elif banded and top >= block.high and easy_enough:
             # The band is this exercise's load. Topping out the reps is the
@@ -948,7 +961,7 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
             target = block.low
             why = "First time — start light and see how it feels tomorrow."
         elif action == "hold":
-            weight, target = last_w, max(block.low, last_reps)
+            weight, target = last_w, max(_repeat_floor(block.low, top_reps), last_reps)
             why = "Same load again."
         elif from_assessment:
             # The assessed load was already chosen as a submaximal set, so the
@@ -957,7 +970,7 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
             why = (f"From your assessment: {top_reps} reps at {last_w}kg. Starting "
                    f"at {target} reps across {sets} sets at that load.")
         elif not complete:
-            weight, target = last_w, max(block.low, top_reps)
+            weight, target = last_w, max(_repeat_floor(block.low, top_reps), top_reps)
             why = f"{short} — repeat it before adding load."
         elif stalled:
             weight = _next_load(last_w, loads, up=False)
@@ -969,7 +982,7 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
                 why = (f"Stuck at {last_w}kg for {STALL_SESSIONS} sessions without "
                        f"finishing it — back to {weight}kg to build up again.")
         elif last_reps < top_reps:
-            weight, target = last_w, max(block.low, top_reps)
+            weight, target = last_w, max(_repeat_floor(block.low, top_reps), top_reps)
             why = f"Last set dropped to {last_reps} — repeat {target} at {last_w}kg."
         elif last_reps >= block.high and easy:
             weight = _next_load(last_w, loads, up=True)
@@ -1369,7 +1382,14 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
     expanded = []
     for item in blocks:
         ex = by_id.get(item["exercise_id"])
-        if ex is None or ex.category != "mobility":
+        # A practice item only. "Stretches" is a placeholder standing for a
+        # routine; a mobility exercise that lands in a strength slot is just
+        # that exercise. Keyed on the category alone, a session with no bands
+        # substituted Band Hip Flexion for the Active Straight-Leg Raise Hold —
+        # a stretch — and the strength slot then expanded into a second copy of
+        # the entire stretch routine.
+        if (ex is None or ex.category != "mobility"
+                or item.get("group") != "practice"):
             expanded.append(item)
             continue
         slot = item.get("slot") or "after"
