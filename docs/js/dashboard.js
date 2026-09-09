@@ -3492,7 +3492,20 @@ function trRenderCurrentSets() {
   box.appendChild(ul);
 }
 
+// Asked once per page load. Skipping is a decision, and re-asking after it
+// would make the button that skips do nothing.
+let trNextDayAsked = false;
+
+// The morning-after score is the input to the back-off rule, so it belongs
+// before the session rather than beside it. Left on the plan page it was a
+// box you could train straight past — and it is not a survey: 4 or more takes
+// the load down a step, so answering it after the fact means it describes a
+// session it could not change.
 async function trStartSession() {
+  if (!trNextDayAsked && trPlan && trPlan.knee && trPlan.knee.awaiting_next_day) {
+    trAskNextDay();
+    return;
+  }
   // The session is about to run for an hour or more, so it starts on a fresh
   // token rather than whatever is left of the one from this morning's login.
   await ensureFreshToken();
@@ -3509,6 +3522,77 @@ async function trStartSession() {
   trRenderSession();
   trStartRunner();
 }
+
+function trAskNextDay() {
+  trRunnerVisible(true);
+  const head = getElement("tr-run-progress");
+  const body = getElement("tr-run-body");
+  if (!body) { trNextDayAsked = true; trStartSession(); return; }
+  body.replaceChildren();
+  if (head) head.textContent = "Before you start";
+
+  body.appendChild(trEl("h4", (trPlan && trPlan.soreness_prompt)
+    || "How was the morning after? 0 is pain free, 10 is the worst it has been."));
+  body.appendChild(trEl("p",
+    "This decides today's session: 4 or more and the load comes down a step. "
+    + "0 is a real answer, and it is the one that moves you to the next phase.",
+    "tr-hint"));
+
+  const row = trEl("div", null, "form-row tr-field");
+  row.appendChild(trEl("label", "0 none, 10 worst"));
+  const input = document.createElement("input");
+  input.type = "number";
+  input.min = "0"; input.max = "10"; input.step = "1";
+  input.id = "tr-gate-nextday";
+  row.appendChild(input);
+  body.appendChild(row);
+
+  const status = trEl("p", "", "tr-hint");
+  const nav = trEl("div", null, "tr-nav");
+
+  const save = trEl("button", "Save and start", "primary tr-big");
+  save.type = "button";
+  save.addEventListener("click", async () => {
+    const val = trNum("tr-gate-nextday");
+    if (val === null || val < 0 || val > 10) {
+      status.textContent = "Enter a number from 0 to 10.";
+      return;
+    }
+    status.textContent = "Saving\u2026";
+    if (!(await trSaveNextDayValue(val))) {
+      status.textContent = "Could not save that — try again.";
+      return;
+    }
+    trNextDayAsked = true;
+    // Reloaded before starting, because the score may have just changed what
+    // today's session is.
+    await trLoadPlan();
+    trStartSession();
+  });
+
+  // Not a gate that traps you. Someone who cannot remember should train
+  // rather than be blocked, and a forced answer is a guessed one.
+  const skip = trEl("button", "Skip", "secondary");
+  skip.type = "button";
+  skip.addEventListener("click", () => { trNextDayAsked = true; trStartSession(); });
+
+  nav.append(save, skip);
+  body.appendChild(nav);
+  body.appendChild(status);
+}
+
+
+async function trSaveNextDayValue(val) {
+  if (!trPlan || !trPlan.knee || !trPlan.knee.awaiting_next_day) return false;
+  await ensureFreshToken();
+  const res = await fetch(`${API_URL}/training/sessions/${trPlan.knee.awaiting_next_day}`, {
+    method: "PATCH",
+    headers: { ...trAuth(), "Content-Type": "application/json" },
+    body: JSON.stringify({ next_day_knee: val }),
+  });
+  return res.ok;
+}
+
 
 function trNum(id) {
   const el = getElement(id);
@@ -4304,18 +4388,13 @@ async function trLoadPlan() {
 async function trSaveNextDay() {
   if (!trPlan || !trPlan.knee.awaiting_next_day) return;
   const val = trNum("tr-nextday");
-  if (val === null) {
+  if (val === null || val < 0 || val > 10) {
     trSetStatus("tr-nextday-status", "Enter a number from 0 to 10.");
     return;
   }
   trSetStatus("tr-nextday-status", "Saving…");
-  const res = await fetch(`${API_URL}/training/sessions/${trPlan.knee.awaiting_next_day}`, {
-    method: "PATCH",
-    headers: { ...trAuth(), "Content-Type": "application/json" },
-    body: JSON.stringify({ next_day_knee: val }),
-  });
-  if (!res.ok) {
-    trSetStatus("tr-nextday-status", `Could not save (${res.status}).`);
+  if (!(await trSaveNextDayValue(val))) {
+    trSetStatus("tr-nextday-status", "Could not save that — try again.");
     return;
   }
   trSetStatus("tr-nextday-status", "Saved — today's plan updated.");
