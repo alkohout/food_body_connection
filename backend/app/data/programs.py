@@ -288,7 +288,7 @@ PROGRAMS = {
         # asking someone without knee trouble to rate their knee would get a
         # meaningless number back.
         "soreness": "soreness",
-        "soreness_prompt": "Any lingering soreness this morning?",
+        "soreness_prompt": "Any lingering soreness this morning? 0 is none, 10 is the worst it has been.",
         # Symptom-log names that should hold training back. Matched as
         # substrings, case-insensitively, against what the user actually
         # tracks — the point of one database is that logging a sore knee in
@@ -310,7 +310,7 @@ PROGRAMS = {
         "maintenance": KNEE_MAINTENANCE,
         "assessment": KNEE_ASSESSMENT,
         "soreness": "knee",
-        "soreness_prompt": "How was the knee this morning?",
+        "soreness_prompt": "How was the knee this morning? 0 is pain free, 10 is the worst it has been.",
         "symptom_keywords": ["knee"],
         # A sore knee is a reason to ease off the legs, not the press-ups.
         # Hips are included because they control how the knee tracks.

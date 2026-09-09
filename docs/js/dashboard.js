@@ -4519,7 +4519,7 @@ function trRenderRunner() {
   // Pain is asked for every exercise because it is what drives the back-off
   // rule, but never required — a blank is honest, a zero would not be.
   const painWrap = trEl("div", null, "form-row tr-field");
-  painWrap.appendChild(trEl("label", "Pain 0-10 (optional)"));
+  painWrap.appendChild(trEl("label", "Pain (optional) — 0 none, 10 worst"));
   const painIn = document.createElement("input");
   painIn.type = "number"; painIn.min = "0"; painIn.max = "10"; painIn.id = "tr-run-pain";
   painWrap.appendChild(painIn);

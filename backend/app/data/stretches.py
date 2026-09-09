@@ -172,36 +172,37 @@ AFTER = [
 # out caps a side kick the same way.
 
 AXE_LADDER = [
-    Stretch("Hamstring Contract-Relax", "after", (), 0, True, True, False,
+    Stretch("Hamstring Contract-Relax", "after", (), 6, True, True, False,
             "Belt round the foot, leg up to the first resistance. Press the "
-            "leg down into the belt at about a third of your strength for 6 "
-            "seconds, breathe out, relax, then take up the slack that appears. "
-            "Three rounds a leg. Never press into pain.", None),
+            "leg down into the belt at about a third of your strength for the "
+            "six seconds on the clock, breathing out. Then relax and take up "
+            "the slack that appears before the next round. Never press into "
+            "pain.", None),
     Stretch("Active Straight-Leg Raise Hold", "after", (), 8, True, True, False,
             "Belt off, other leg flat. Lift the leg as high as it will go on "
-            "its own and hold 8 seconds, 3 times a leg. It will be well below "
+            "its own and hold for the count. It will be well below "
             "where the belt took you — that gap is the whole problem, and "
             "closing it is what raises the kick.", None),
     Stretch("Standing Front Kick Hold", "after", (), 6, True, False, False,
             "Hold a wall. Lift the straight leg in front as high as you can "
-            "control and hold it there for 6 seconds, 3 a side. Chest tall. "
+            "control and hold it there for the count. Chest tall. "
             "This is an axe kick with the speed taken out.", None),
 ]
 
 SIDE_LADDER = [
-    Stretch("Adductor Contract-Relax", "after", (), 0, True, False, False,
+    Stretch("Adductor Contract-Relax", "after", (), 6, True, False, False,
             "In the standing adductor rock-back, press the straight leg's foot "
-            "down into the floor at about a third of your strength for 6 "
-            "seconds, relax, then rock back a little further. Three rounds a "
-            "leg.", None),
+            "down into the floor at about a third of your strength for the six "
+            "seconds on the clock. Then relax and rock back a little further "
+            "before the next round.", None),
     Stretch("Standing Abduction Hold", "after", (), 8, True, False, False,
             "Hold a wall, turn the standing foot out, lift the other leg "
             "directly out to the side as high as it will go unassisted and "
-            "hold 8 seconds, 3 a side. Hips stay stacked — letting them roll "
+            "hold for the count. Hips stay stacked — letting them roll "
             "back turns it into a front kick and flatters the height.", None),
     Stretch("Chambered Side Kick Hold", "after", (), 6, True, False, False,
             "Chamber the knee high across the body, extend the leg out to the "
-            "side and hold it for 6 seconds, 3 a side. Whatever height you can "
+            "side and hold it for the count. Whatever height you can "
             "hold here is the height you have.", None),
 ]
 
@@ -286,6 +287,7 @@ def _why(hit, by_target, slot):
 
 def _step(s, why=None):
     return {"name": s.name, "seconds": s.seconds, "per_side": s.per_side,
+            "sets": ROUNDS.get(s.name, 1),
             "cues": s.cues, "video_url": s.url, "why": why}
 
 
@@ -342,6 +344,18 @@ def routine_for(slot, by_target, *, kicks=False, allow_floor=True,
 # exercise_id. Generated from the lists above rather than written out again,
 # so a stretch cannot end up in the catalogue with one set of cues and in the
 # library with another.
+
+# Drills that are repeated rather than held once. Everything else is a single
+# hold per side, which is what a static stretch is; these are working sets and
+# were being asked for as though they were one tick.
+ROUNDS = {
+    "Hamstring Contract-Relax": 3,
+    "Adductor Contract-Relax": 3,
+    "Active Straight-Leg Raise Hold": 3,
+    "Standing Front Kick Hold": 3,
+    "Standing Abduction Hold": 3,
+    "Chambered Side Kick Hold": 3,
+}
 
 ALL = BEFORE + AFTER + AXE_LADDER + SIDE_LADDER
 LADDER_NAMES = {s.name for s in AXE_LADDER + SIDE_LADDER}

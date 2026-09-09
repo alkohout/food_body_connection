@@ -1405,8 +1405,10 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
             if sx is None:
                 continue
             scheme = scheme_for_seconds(s["seconds"])
+            rounds = s.get("sets", 1)
             if scheme == "iso":
-                detail = f"{s['seconds']}s hold"
+                detail = (f"{rounds} x {s['seconds']}s hold" if rounds > 1
+                          else f"{s['seconds']}s hold")
                 if s["per_side"]:
                     detail += " each side"
             else:
@@ -1416,7 +1418,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
                 "target": sx.target, "equipment": sx.equipment,
                 "scheme": scheme, "prescription": detail, "why": s["why"],
                 "form_cues": s["cues"], "video_url": s["video_url"] or sx.video_url,
-                "sets": 1,
+                "sets": rounds,
                 "target_reps": None,
                 "target_seconds": s["seconds"] or None,
                 "target_weight": None, "target_band": None,
