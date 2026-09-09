@@ -252,6 +252,7 @@
               <option value="headache-forecast">Headache forecast</option>
               <option value="medication-change">Medication change</option>
               <option value="triptan-monthly" class="user4-only" style="display:none">Triptans per month</option>
+              <option value="pressure" class="user4-only" style="display:none">Barometric pressure</option>
             </select>
           </div>
 
@@ -563,6 +564,17 @@
             </div>
 
             <!-- Triptans per month (user 4 only) -->
+            <div id="panel-pressure" class="analysis-panel">
+              <h4>Barometric pressure</h4>
+              <p>Daily mean pressure for Christchurch with the biggest fall in any
+                 24-hour window below it, migraine-cluster days shaded and triptan
+                 doses marked. The dotted line is the forecast.</p>
+              <p id="pressure-status" class="status"></p>
+              <figure class="img-figure">
+                <img id="pressure-plot" src="" alt="Barometric pressure against migraine days" />
+              </figure>
+            </div>
+
             <div id="panel-triptan-monthly" class="analysis-panel">
               <h4>Triptans per month</h4>
               <p>Monthly count of Triptan doses logged, with the overall average shown as a dashed line.</p>

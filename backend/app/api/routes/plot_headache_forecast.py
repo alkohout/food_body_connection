@@ -18,6 +18,7 @@
 # per-day estimates carry wide confidence intervals — enough to rank days, not
 # enough to quote a percentage at anyone.
 
+import datetime as _dt
 import logging
 import traceback
 from io import BytesIO
@@ -37,10 +38,15 @@ from sqlalchemy.orm import Session
 from app.api.routes.auth import get_current_user
 from app.api.routes.plot_event_series import _get_allergen_data, _get_symptom_data, _save_fig
 from app.api.routes.plot_time_series_analysis import _local_day, cycle_length
+from app.analysis import pressure as bar
 from app.database import get_db
 from app.models.table_class import User
 
 logger = logging.getLogger(__name__)
+# A fall this size in 24 hours is the kind of change people describe. It is a
+# threshold for what to draw, not a claim about what it does.
+PRESSURE_FALL_HPA = 8.0
+
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 
 # A green -> blue sequential ramp, walking through teal.
@@ -261,6 +267,19 @@ def plot_headache_forecast(
         shows_anchor    = any(i["date"] == next_anchor for i in info)
         shows_uncertain = any(i["uncertain"] for i in info)
 
+        # Forecast pressure, drawn on the cells rather than beside them. Only
+        # the notable falls are marked: annotating every day would make the
+        # calendar unreadable to say "the weather was ordinary". A failure to
+        # reach the weather service leaves the calendar exactly as it was.
+        try:
+            ahead = bar.series(_dt.date.today(), _dt.date.today(),
+                               ahead=days_ahead)
+        except Exception as exc:                        # noqa: BLE001
+            logger.warning("forecast pressure unavailable: %s", exc)
+            ahead = {}
+        falls = {d: r["drop24"] for d, r in ahead.items()
+                 if r.get("drop24", 0) >= PRESSURE_FALL_HPA}
+
         fig, ax = plt.subplots(figsize=(9.0, 1.18 * n_weeks + 1.5))
         fig.patch.set_facecolor("white")
 
@@ -303,6 +322,19 @@ def plot_headache_forecast(
                         BAND_LABELS[item["band"]],
                         ha="center", va="center", fontsize=6.5, color=ink, zorder=4)
 
+            # A sharp predicted fall. Shown because the user asked to see it
+            # next to the forecast, and labelled as weather rather than as
+            # risk: nothing in their log links the two, and a marker on a
+            # risk calendar will be read as risk unless it says otherwise.
+            fall = falls.get(d.strftime("%Y-%m-%d"))
+            if item and fall:
+                # In the cell's ink, for the same reason the period diamond is:
+                # a fixed colour disappears at one end of the band ramp, and
+                # cyan on teal was invisible at exactly the busy end.
+                ax.text(x + cell * 0.45, y + cell * 0.08, f"\u2193{fall:.0f} hPa",
+                        ha="center", va="bottom", fontsize=7,
+                        color=ink, fontweight="bold", zorder=6)
+
             # Today
             if item and d == dates[0]:
                 ax.add_patch(mpatches.FancyBboxPatch(
@@ -339,6 +371,11 @@ def plot_headache_forecast(
                            label=BAND_LABELS[b])
             for b in BAND_ORDER
         ]
+        if falls:
+            legend_items.append(
+                mpatches.Patch(facecolor="white", edgecolor="#5f6368",
+                               label=f"\u2193 forecast pressure fall \u2265 {PRESSURE_FALL_HPA:.0f} hPa")
+            )
         if shows_uncertain:
             legend_items.append(
                 mpatches.Patch(facecolor="white", edgecolor="#5f6368", hatch="///",
@@ -359,9 +396,12 @@ def plot_headache_forecast(
         else:
             caption += f" · next {anchor} expected {next_anchor.strftime('%-d %b')}"
         fig.text(0.5, 0.012, caption, ha="center", fontsize=7.8, color="#5f6368")
-        fig.text(0.5, -0.012,
-                 "Pattern from a small number of cycles — indicative only, not a prediction.",
-                 ha="center", fontsize=7.2, color="#9aa0a6", style="italic")
+        tail = "Pattern from a small number of cycles — indicative only, not a prediction."
+        if falls:
+            tail += ("  Pressure falls are shown because you asked to watch them; "
+                     "no link to your migraines has been found in your log.")
+        fig.text(0.5, -0.012, tail, ha="center", fontsize=7.2, color="#9aa0a6",
+                 style="italic")
 
         plt.tight_layout(rect=[0, 0.05, 1, 1])
         return StreamingResponse(_save_fig(fig), media_type="image/png")

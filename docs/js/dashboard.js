@@ -820,6 +820,7 @@ function hideAllAnalysisPanels() {
     getElement("panel-headache-forecast"),
     getElement("panel-medication-change"),
     getElement("panel-triptan-monthly"),
+    getElement("panel-pressure"),
   ];
 
   panels.forEach(panel => {
@@ -895,6 +896,13 @@ async function showAnalysisPanel(selected) {
     const panel = getElement("panel-triptan-monthly");
     if (panel) panel.classList.add("visible");
     await fetchTriptanMonthlyPlot();
+    return;
+  }
+
+  if (selected === "pressure") {
+    const panel = getElement("panel-pressure");
+    if (panel) panel.classList.add("visible");
+    await fetchPressurePlot();
     return;
   }
 }
@@ -1847,6 +1855,33 @@ async function fetchAllergenRankPlot({ force = false } = {}) {
     allergenRankLoading = false;
   }
 }
+
+// Pressure is a live lookup rather than something in the database, so this
+// one can fail for reasons none of the other plots can — the weather service
+// being unreachable is not the same as there being no data.
+async function fetchPressurePlot() {
+  const statusEl = getElement("pressure-status");
+  const img = getElement("pressure-plot");
+  if (statusEl) statusEl.textContent = "Loading…";
+  if (img) img.style.display = "none";
+  try {
+    const tz = new Date().getTimezoneOffset();
+    const res = await fetch(
+      `${API_URL}/analysis/plot_pressure?days=120&ahead=7&tz_offset=${tz}`,
+      { headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` } });
+    if (!res.ok) throw new Error(`Server returned ${res.status}`);
+    const blob = await res.blob();
+    if (img.dataset.objectUrl) URL.revokeObjectURL(img.dataset.objectUrl);
+    img.src = URL.createObjectURL(blob);
+    img.dataset.objectUrl = img.src;
+    img.style.display = "";
+    if (statusEl) statusEl.textContent = "";
+  } catch (err) {
+    console.error("fetchPressurePlot failed:", err);
+    if (statusEl) statusEl.textContent = `Could not load plot: ${err.message}`;
+  }
+}
+
 
 async function fetchTriptanMonthlyPlot() {
   const statusEl = getElement("triptan-monthly-status");

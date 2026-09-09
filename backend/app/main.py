@@ -31,6 +31,7 @@ import app.api.routes.plot_checkin_trends as plot_checkin_trends
 import app.api.routes.plot_symptom_calendar as plot_symptom_calendar
 import app.api.routes.plot_headache_forecast as plot_headache_forecast
 import app.api.routes.plot_medication_change as plot_medication_change
+import app.api.routes.plot_pressure as plot_pressure
 
 app = FastAPI(title="Food–Body Connection API")
 
@@ -78,6 +79,7 @@ app.include_router(plot_checkin_trends.router)
 app.include_router(plot_symptom_calendar.router)
 app.include_router(plot_headache_forecast.router)
 app.include_router(plot_medication_change.router)
+app.include_router(plot_pressure.router)
 
 # Create tables (temporary — later use migrations)
 Base.metadata.create_all(bind=engine)
