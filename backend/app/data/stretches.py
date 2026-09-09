@@ -250,7 +250,11 @@ def _eligible(pool, day_targets, allow_floor, sore_knee):
         if s.knee_load and sore_knee:
             continue
         hit = [t for t in s.targets if t in day_targets]
-        if s.targets and not hit:
+        # Only filter on targets when there are some. A rest day trains
+        # nothing, so nothing matches, and matching nothing must not mean
+        # prescribing nothing — the stretching is most of the point of the
+        # day. With no session to follow, the routine is simply a general one.
+        if s.targets and not hit and day_targets:
             continue
         out.append((s, hit))
     # Stable, so the catalogue order breaks ties and the routine does not

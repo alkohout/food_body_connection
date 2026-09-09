@@ -187,6 +187,8 @@ RECENT_SCORES = 5         # how many recent next-day scores decide a phase
 MIN_EXERCISES_FOR_CREDIT = 3   # exercises needed for a session to count
 STALL_SESSIONS = 3        # identical failed attempts before backing the target off
 GRADUATE_SESSIONS = 3     # sessions finished at the ceiling before stepping up
+REST_WEEKDAY = 6          # Sunday, in Python's Monday-is-0 numbering
+DELOAD_EVERY_WEEKS = 6    # a planned easy week, counted from the first session
 STALL_FACTOR = 0.75       # how far back a stalled target drops
 # A single max effort is not a working set. Three sets at the number you could
 # just about reach once is the exact mistake that leaving reps in reserve
@@ -824,7 +826,7 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
     # easier version of the movement.
     exhausted = False
 
-    if action == "back_off":
+    if action in ("back_off", "deload"):
         sets = max(2, block.sets - 1)
 
     # What was actually completed last time. Two rules apply throughout:
@@ -849,9 +851,10 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
     elif block.scheme == "iso":
         holds = [(s.hold_seconds or 0) for s in last_sets]
         top, weakest = (max(holds), min(holds)) if holds else (0, 0)
-        if action == "back_off":
+        if action in ("back_off", "deload"):
             target = max(_repeat_floor(block.low, top), int(top * 0.8) or block.low)
-            why = "Held back while the knee settles."
+            why = ("Planned easy week — targets and sets come down together."
+                   if action == "deload" else "Held back while the knee settles.")
         elif action == "hold" or not top:
             target = max(_repeat_floor(block.low, top), top or block.low)
             why = "Repeat last time's hold." if top else "Starting point."
@@ -895,9 +898,10 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         easy_enough = all(r <= RPE_CEILING for r in rpes_r) if rpes_r else True
         if banded and weight is None:
             weight = last_band
-        if action == "back_off":
+        if action in ("back_off", "deload"):
             target = max(_repeat_floor(block.low, top), int(top * 0.8) or block.low)
-            why = "Volume cut while the knee settles."
+            why = ("Planned easy week — targets and sets come down together."
+                   if action == "deload" else "Volume cut while the knee settles.")
         elif action == "hold" or not top:
             target = max(_repeat_floor(block.low, top), min(top or block.low, block.high))
             why = "Repeat last time." if top else "Starting point."
@@ -952,10 +956,11 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         rpes = [s.rpe for s in prev if s.rpe is not None]
         easy = all(r <= RPE_CEILING for r in rpes) if rpes else True
 
-        if action == "back_off":
+        if action in ("back_off", "deload"):
             weight = _next_load(last_w, loads, up=False)
             target = block.low
-            why = "Load down a step while the knee settles."
+            why = ("Planned easy week — targets and sets come down together."
+                   if action == "deload" else "Load down a step while the knee settles.")
         elif last_w is None:
             weight = loads[1] if len(loads) > 1 else (loads[0] if loads else None)
             target = block.low
@@ -1072,6 +1077,15 @@ def choose_kind(db, user_id, tz_offset) -> dict:
     """
     today = (datetime.utcnow() - timedelta(minutes=tz_offset)).date()
 
+    # Checked before spacing. A rest day is a fixed point in the week, and
+    # "training every day" is a statement about the other six — otherwise the
+    # setting quietly overrules the rest day every time.
+    if today.weekday() == REST_WEEKDAY:
+        return {"kind": "rest",
+                "why": "Rest day. Your own practice only — no strength work "
+                       "and no knee minimum. A programme that can only ever "
+                       "add is how a good week turns into a sore one."}
+
     profile = db.query(TrainingProfile).filter(
         TrainingProfile.user_id == user_id).first()
     if strength_spacing(profile) == "daily":
@@ -1100,6 +1114,58 @@ def choose_kind(db, user_id, tz_offset) -> dict:
                 + " — today is practice plus the knee minimum, so the muscle "
                   "gets its recovery day while the knees still get their work."),
     }
+
+
+def recent_easy_days(db, user_id, tz_offset=0, days=7):
+    """Local dates in the window whose logs would have forced an easier session.
+
+    A gentle day is not a rest day, which is why this reports rather than
+    decides. Being ill is a load of its own, so a week spent under a migraine
+    has arguably earned the rest more than a week of good training — but a
+    week where the training was cut short for reasons that have since passed
+    is a week with capacity left in it, and only the person can say which of
+    those they are living in.
+    """
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    names = {s.symptom_id: (s.symptom_name or "").lower()
+             for s in db.query(Symptom).filter(Symptom.user_id == user_id).all()}
+    hits = set()
+    for log in db.query(SymptomLog).filter(SymptomLog.user_id == user_id).all():
+        if not log.date_time or log.symptom_id not in names:
+            continue
+        naive = (log.date_time.replace(tzinfo=None)
+                 if log.date_time.tzinfo else log.date_time)
+        if naive < cutoff:
+            continue
+        name = names[log.symptom_id]
+        level = log.symptom_intensity or 0
+        for key, levels in SESSION_LIMITS.items():
+            if key in name and level in levels:
+                hits.add(_local_date(log.date_time, tz_offset))
+    return sorted(hits)
+
+
+def deload_week(db, user_id, tz_offset=0):
+    """Whether this is a planned easy week, and which one.
+
+    Counted in whole weeks from the first session logged, so it lands on the
+    same weekday every time and can be seen coming. The engine already knew
+    how to ease off, but only ever as a reaction — to a stall, a sore knee, a
+    symptom. Nothing made it ease off while things were going well, which is
+    exactly when a programme accumulates the fatigue it later blames on a
+    single bad session.
+    """
+    dates = [_local_date(s.date_time, tz_offset)
+             for s in db.query(WorkoutSession).filter(
+                 WorkoutSession.user_id == user_id).all()
+             if s.date_time]
+    if not dates:
+        return None
+    today = (datetime.utcnow() - timedelta(minutes=tz_offset)).date()
+    week = (today - min(dates)).days // 7
+    if week and (week + 1) % DELOAD_EVERY_WEEKS == 0:
+        return {"week": week + 1, "every": DELOAD_EVERY_WEEKS}
+    return None
 
 
 def build_session(db, user_id, day=None, tz_offset=0, kind=None,
@@ -1158,6 +1224,14 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
     if decision["kind"] == "strength":
         middle = [(b, "strength") for b in prog["phases"][phase["phase"]]["days"][day]]
         theme = prog["phases"][phase["phase"]]["themes"][day]
+    elif decision["kind"] == "rest":
+        # Nothing in the middle at all — not even the knee minimum, which is
+        # there to fill the gap between strength days and on this one is the
+        # gap. What remains is the practice you would do anyway, and the
+        # stretching, which costs nothing to recover from and answers to
+        # frequency rather than to load.
+        middle = []
+        theme = "Rest day — practice and stretching"
     else:
         # Between strength days the knees still get their work; the muscle gets
         # its recovery day. It sits where the strength work would have been.
@@ -1176,6 +1250,9 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
     # What the log suggests, which is not the same as what is happening. The
     # suggestion is the default; a mode passed in is the user overruling it,
     # and they know whether the triptan worked.
+    deload = (deload_week(db, user_id, tz_offset)
+              if decision["kind"] == "strength" else None)
+
     suggested = session_limits(db, user_id, tz_offset)
     suggested_mode = (suggested or {}).get("mode", "full")
 
@@ -1232,6 +1309,12 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         sore_area = targets is None or (ex.target or "") in targets
         if action in ("back_off", "hold") and not sore_area:
             action = "progress"
+        # After the sore-area narrowing, not before it. A planned easy week is
+        # about accumulated fatigue rather than one joint, so it applies to
+        # everything — narrowed to the sore targets it would be a deload of
+        # whichever body part happened to hurt.
+        if deload and action == "progress":
+            action = "deload"
 
         # Balancing on a knee that gives way is the specific risk, so standing
         # single-leg work comes out rather than being trimmed. Note this is
@@ -1484,6 +1567,23 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
                      + ", ".join(sorted(set(dropped)))
                      + " — better a gap than something that trains a different "
                        "thing.")
+    if decision["kind"] == "rest":
+        easy = recent_easy_days(db, user_id, tz_offset)
+        if len(easy) >= 2:
+            notes.append(
+                f"You logged something that eased the session back on "
+                f"{len(easy)} of the last 7 days. That is a reason to take "
+                f"this day, not to skip it — being unwell is a load of its "
+                f"own, not a rest from one. But if those days have passed and "
+                f"you feel good, a strength session is a reasonable call, and "
+                f"the button above will give you one."
+            )
+    if deload:
+        notes.insert(0, f"Week {deload['week']} — a planned easy week, one in "
+                        f"every {deload['every']}. Targets and sets come down "
+                        f"across the board so the next block starts fresh. "
+                        f"Nothing is wrong: this is what stops something going "
+                        f"wrong.")
     if knee["awaiting_next_day"]:
         notes.append(f"Score the {prog['soreness']} you felt the morning after "
                      f"your last session — it is what decides whether load "
