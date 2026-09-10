@@ -166,7 +166,11 @@ SET_PAIN_BACKOFF = 4      # >= this mean pain during the last session -> back of
 SET_PAIN_HOLD = 3         # >= this -> hold progression rather than back off
 # Symptom logs are on a 0-3 scale: none, mild, moderate, severe. Moderate or
 # worse holds training back; mild repeats rather than progresses.
-SYMPTOM_WINDOW_DAYS = 2   # older than this and it is history, not today
+# One day, not two. A symptom two days old was still holding a session back on
+# a day the person felt fine, and training every day makes that the difference
+# between one gentle session and three. It is a rolling 24 hours from now
+# rather than "logged today", so a morning log stops counting tomorrow morning.
+SYMPTOM_WINDOW_DAYS = 1   # older than this and it is history, not today
 
 # Not all reports of the same score mean the same thing, so the threshold
 # depends on what was reported. Swelling is a joint saying it is inflamed and
