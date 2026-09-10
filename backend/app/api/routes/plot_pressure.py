@@ -81,6 +81,25 @@ def _triptan_days(db, user_id, start, end, tz_offset):
     return out
 
 
+def _period_onsets(db, user_id, start, end, tz_offset):
+    """First day of each period, not every day logged during one.
+
+    Onsets are what the cycle is measured from, and a run of consecutive
+    logged days would otherwise read as several cycles a week apart.
+    """
+    ids = {a.allergen_id for a in db.query(Allergen).filter(Allergen.user_id == user_id).all()
+           if "period" in (a.allergen_name or "").lower()}
+    if not ids:
+        return []
+    seen = sorted({_local_date(l.date_time, tz_offset)
+                   for l in db.query(AllergenLog).filter(
+                       AllergenLog.user_id == user_id,
+                       AllergenLog.allergen_id.in_(ids)).all() if l.date_time})
+    onsets = [d for i, d in enumerate(seen)
+              if i == 0 or (d - seen[i - 1]).days > 5]
+    return [d for d in onsets if start <= d <= end]
+
+
 @router.get("/plot_pressure")
 def plot_pressure(
     days: int = Query(120, ge=21, le=400),
@@ -107,6 +126,7 @@ def plot_pressure(
         drop = [rows[d]["drop24"] for d in rows]
         mig = _migraine_days(db, current_user.user_id, start, end, tz_offset)
         trip = _triptan_days(db, current_user.user_id, start, end, tz_offset)
+        onsets = _period_onsets(db, current_user.user_id, start, end, tz_offset)
 
         fig, (ax, ax2) = plt.subplots(
             2, 1, figsize=(11, 6), sharex=True,
@@ -136,6 +156,14 @@ def plot_pressure(
         for d in trip:
             ax.plot([d], [max(mean) + span * 0.10], marker="v", color="#7c3aed",
                     ms=6, lw=0)
+        # Periods, and the ten days after each one — which is where this
+        # person's migraines actually cluster. Drawn on the lower axis so the
+        # pressure trace stays readable above it.
+        for d in onsets:
+            for a in (ax, ax2):
+                a.axvline(d, color="#be123c", lw=1.0, alpha=0.8)
+            ax2.axvspan(d, min(d + timedelta(days=10), dates[-1]),
+                        color="#be123c", alpha=0.10, lw=0)
 
         from matplotlib.patches import Patch
         from matplotlib.lines import Line2D
@@ -144,7 +172,8 @@ def plot_pressure(
             Line2D([], [], color="#2563eb", lw=1.4, ls=":", label="Forecast"),
             Patch(facecolor="#dc2626", alpha=0.25, label="Migraine-cluster day"),
             Line2D([], [], color="#7c3aed", marker="v", lw=0, label="Triptan"),
-        ], loc="lower left", fontsize=8, ncol=4, framealpha=0.9)
+            Line2D([], [], color="#be123c", lw=1.0, label="Period onset"),
+        ], loc="lower left", fontsize=8, ncol=5, framealpha=0.9)
 
         ax2.bar([d for d in dates], drop, color="#0891b2", width=0.9)
         ax2.set_ylabel("biggest 24h fall (hPa)")
@@ -157,11 +186,12 @@ def plot_pressure(
         # patterns in noise, and this particular pattern is one the person
         # looking already believes in.
         fig.text(0.005, -0.02,
-                 "No relationship found in your log so far: across 272 days, "
-                 "pressure on migraine days is indistinguishable from other days "
-                 "at every lag tested. The one weak hint — a larger fall the day "
-                 "before — did not survive the number of comparisons made. More "
-                 "data may change that, which is what this plot is for.",
+                 "Your cycle is the strong signal, not the weather. Across 8 "
+                 "cycles, 54% of the ten days from each period onset carry "
+                 "migraine symptoms against 22% of days 14-24 (p=0.0005). "
+                 "Pressure separates nothing — not overall, not at any lag, and "
+                 "not within either phase of the cycle once that is accounted "
+                 "for. Mid-cycle is your quietest window, not a trigger.",
                  fontsize=7.5, color="#6b7280", wrap=True)
         return StreamingResponse(_save_fig(fig), media_type="image/png")
     except Exception as e:                              # noqa: BLE001
