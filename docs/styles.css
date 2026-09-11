@@ -994,3 +994,13 @@ textarea {
    on the second side after the first is ticked. */
 .tr-routine-done { border-left-color: #2563eb; opacity: 0.55; }
 .tr-routine-done .tr-routine-tick { border-color: #2563eb; }
+
+/* The chime toggle is a setting, not an action, so it sits quieter than the
+   timer buttons above it rather than competing with them. */
+.tr-chime-toggle {
+  width: auto;
+  margin: 0.15rem 0 0;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.75rem;
+  opacity: 0.85;
+}

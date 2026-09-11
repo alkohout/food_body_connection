@@ -4539,7 +4539,83 @@ let trRunKind = "plan";
 
 function trTimerStop() {
   if (trTimer.handle) clearInterval(trTimer.handle);
+  trCancelChime();
   trTimer = { handle: null, startedAt: 0, elapsed: 0 };
+}
+
+
+// A hold ends while you are looking at the ceiling rather than at the phone.
+//
+// Scheduled on the audio clock at the moment Start is pressed, not fired from
+// the interval tick. A backgrounded tab has its timers throttled and a locked
+// phone suspends them altogether, so the tick is exactly what stops being
+// reliable in the situation this is for. Web Audio schedules on its own
+// thread and keeps the appointment.
+//
+// Synthesised rather than a sound file: two short tones need no asset, no
+// network and no decode, and cannot half-load or 404 after a deploy.
+let trAudio = null;
+let trChimeNodes = [];
+let trChimeDueAt = 0;
+
+function trAudioCtx() {
+  // Made and resumed on a tap. A context created without a user gesture
+  // starts suspended on iOS and stays suspended.
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    if (!trAudio) trAudio = new Ctx();
+    if (trAudio.state === "suspended") trAudio.resume();
+    return trAudio;
+  } catch (err) {
+    return null;
+  }
+}
+
+function trChimeOn() {
+  return localStorage.getItem("tr_chime") !== "off";
+}
+
+function trScheduleChime(seconds) {
+  trCancelChime();
+  if (!trChimeOn() || !(seconds > 0)) return;
+  const ctx = trAudioCtx();
+  if (!ctx) return;
+  const at = ctx.currentTime + seconds;
+  trChimeDueAt = at;
+  // Two notes a fourth apart, the second overlapping the first's tail.
+  [[880, 0], [1174.7, 0.16]].forEach(([freq, offset]) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    // Ramped, because gating a sine on abruptly is a click rather than a note.
+    gain.gain.setValueAtTime(0.0001, at + offset);
+    gain.gain.exponentialRampToValueAtTime(0.3, at + offset + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + offset + 0.55);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(at + offset);
+    osc.stop(at + offset + 0.6);
+    trChimeNodes.push(osc);
+  });
+}
+
+function trCancelChime() {
+  // Never cancel one that is already due. The tick that notices the timer has
+  // finished calls trTimerStop, which lands at the same instant the chime is
+  // scheduled for — cancelling blind would silence it exactly when it matters.
+  const ctx = trAudio;
+  if (ctx && trChimeDueAt && trChimeDueAt <= ctx.currentTime + 0.15) {
+    trChimeNodes = [];
+    trChimeDueAt = 0;
+    return;
+  }
+  trChimeNodes.forEach((osc) => {
+    try { osc.stop(); } catch (err) { /* already stopped */ }
+  });
+  trChimeNodes = [];
+  trChimeDueAt = 0;
 }
 
 function trCurrentBlock() {
@@ -4964,6 +5040,7 @@ function trRenderTimer(body, b) {
       // Pause: form broke or it needed cutting short.
       trTimer.elapsed += Math.floor((Date.now() - trTimer.startedAt) / 1000);
       clearInterval(trTimer.handle);
+      trCancelChime();
       trTimer.handle = null;
       showStart("Resume");
       display.textContent = shown(trTimer.elapsed);
@@ -4973,6 +5050,10 @@ function trRenderTimer(body, b) {
     trTimer.startedAt = Date.now();
     trTimer.handle = setInterval(tick, 250);
     showStart("Pause");
+    // This tap is the user gesture the audio context needs, and the remaining
+    // time is what the chime is scheduled for — so a resume after a pause
+    // rings when the hold ends, not a full target later.
+    if (target) trScheduleChime(target - trTimer.elapsed);
   });
 
   const resetBtn = trEl("button", "Reset", "secondary");
@@ -5004,6 +5085,22 @@ function trRenderTimer(body, b) {
 
   controls.append(startBtn, resetBtn, log);
   body.appendChild(controls);
+
+  // Silenceable, and the setting sticks. Training at six in the morning in a
+  // house where other people are asleep is a normal reason to want it off.
+  const snd = trEl("button", trChimeOn() ? "\u266a Chime on" : "\u266a Chime off",
+                   "secondary tr-chime-toggle");
+  snd.type = "button";
+  snd.addEventListener("click", () => {
+    const on = !trChimeOn();
+    localStorage.setItem("tr_chime", on ? "on" : "off");
+    snd.textContent = on ? "\u266a Chime on" : "\u266a Chime off";
+    if (!on) trCancelChime();
+    // Rings once when switched on, both to confirm it works and because this
+    // tap is a user gesture — the first sound on iOS has to follow one.
+    else trScheduleChime(0.05);
+  });
+  body.appendChild(snd);
 }
 
 async function trLogRunSet(b, fields) {
