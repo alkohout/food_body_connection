@@ -1013,7 +1013,11 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         if ex.is_unilateral:
             detail += " each side"
         if weight is not None:
-            detail += f" @ {weight}kg"
+            # Per dumbbell, said out loud. The number is the weight of one
+            # assembled dumbbell including its bar, and on a two-dumbbell
+            # exercise "@ 5kg" reads just as easily as the pair — which is
+            # twice the load and a question worth not having to ask.
+            detail += f" @ {weight}kg per dumbbell"
 
     # A skipped exercise keeps the baseline from whenever it was last done, so
     # the reasoning should say when that was rather than implying "last time".
