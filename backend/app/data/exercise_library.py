@@ -223,6 +223,36 @@ LIBRARY = [
      "Let the arm travel right overhead at the top — the extra range is half "
      "the reason for going one at a time.", None),
 
+    # ── Aerobic. Effort is judged by breath, never by heart rate: a
+    # beta-blocker holds the pulse down, so a heart-rate target either cannot
+    # be reached or is reached at a genuinely unsafe effort. The talk test
+    # measures the same thing and is unaffected by the drug.
+    ("Brisk Walk", "conditioning", "whole", "none", False, False,
+     "Twenty to forty minutes at a pace where you could talk in sentences but "
+     "not sing. Do not chase a heart rate — on a beta-blocker the number stays "
+     "low however hard you work, and the breath is the honest gauge.", None),
+    ("Uphill Walk or Stairs", "conditioning", "whole", "none", False, False,
+     "Twenty to thirty minutes with real gradient in it — a hill, a set of "
+     "stairs, a treadmill incline. Breathing hard enough that a sentence comes "
+     "in pieces. This is the one that reads across to a day on the hill.", None),
+
+    # ── Bone. Density answers to how hard the skeleton is loaded, not how
+    # often, and none of this needs a deep knee bend.
+    ("Heel Drops", "strength", "calf", "bodyweight", False, False,
+     "Rise onto the toes, then drop onto the heels so the landing jars "
+     "slightly. Ten to twenty, holding a bench. The jolt is the point — it is "
+     "what loads the hip and spine — but it travels through a straight leg, "
+     "which is what keeps it off the knee. Stop if it is sharp anywhere.", None),
+    ("Step Up", "strength", "knee", "dumbbell", True, False,
+     "A step at about knee height, a dumbbell in each hand. Drive through the "
+     "whole front foot and step down under control rather than dropping. "
+     "Shallower step if the knee objects — height is the dial, not the load.",
+     None),
+    ("Farmer's Carry", "strength", "whole", "dumbbell", False, False,
+     "A dumbbell in each hand, walk twenty steps, turn, walk back. That is one "
+     "rep. Stand tall, shoulders down, do not lean. Loads the spine and hips "
+     "hard with no knee bend at all, which is why it is here.", None),
+
     ("Stretches", "mobility", "whole", "none", False, False, None, None),
     # A second mobility slot so a warm-up and a wind-down can both exist. One
     # exercise cannot fill both: a practice item is matched by exercise, and
@@ -247,5 +277,11 @@ EFFORT.update({
     "Band Hip Flexion": (2, False),
     "Tube Single Arm Row": (2, True),
     "Tube Single Arm Lat Pulldown": (2, False),
+    # Aerobic work is out on a reduced day and obviously out on a gentle one.
+    "Brisk Walk": (2, False),
+    "Uphill Walk or Stairs": (3, False),
+    "Heel Drops": (2, False),
+    "Step Up": (3, False),
+    "Farmer's Carry": (3, False),
 })
 

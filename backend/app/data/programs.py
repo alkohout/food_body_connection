@@ -165,7 +165,7 @@ KNEE_PHASES = {
                 Block("Single Leg Glute Bridge", "reps", 3, 8, 15),
                 Block("Lateral Band Walk", "reps", 3, 10, 15),
                 Block("Tube Seated Row", "reps", 3, 10, 20),
-                Block("Standing Calf Raise", "reps", 3, 12, 20),
+                Block("Heel Drops", "reps", 3, 10, 20),
                 Block("Tibialis Raise", "reps", 3, 12, 20),
                 Block("Side Plank", "iso", 3, 20, 40),
             ],
@@ -203,7 +203,7 @@ KNEE_PHASES = {
                 Block("Single Leg Glute Bridge", "reps", 3, 10, 15),
                 Block("Dumbbell Shoulder Press", "load", 3, 8, 12),
                 Block("Tube Face Pull", "reps", 3, 12, 20),
-                Block("Standing Calf Raise", "reps", 3, 12, 20),
+                Block("Heel Drops", "reps", 3, 12, 20),
                 Block("Side Plank", "iso", 3, 30, 45),
             ],
             "C": [
@@ -211,7 +211,7 @@ KNEE_PHASES = {
                 Block("Split Squat", "load", 3, 6, 10),
                 Block("Dumbbell Floor Press", "load", 3, 8, 12),
                 Block("Tube Lat Pulldown", "reps", 3, 12, 20),
-                Block("Tibialis Raise", "reps", 3, 15, 20),
+                Block("Step Up", "load", 3, 6, 10),
                 Block("Dead Bug", "reps", 3, 8, 15),
             ],
         },
@@ -229,7 +229,7 @@ KNEE_PHASES = {
                 Block("Split Squat", "load", 3, 8, 12),
                 Block("Standing Hip Abduction", "reps", 3, 12, 20),
                 Block("Dumbbell Floor Press", "load", 3, 8, 12),
-                Block("Dumbbell Row", "load", 3, 8, 12),
+                Block("Farmer's Carry", "load", 3, 2, 4),
                 Block("Plank", "iso", 3, 45, 75),
             ],
             "B": [
@@ -316,6 +316,23 @@ PROGRAMS = {
         # Hips are included because they control how the knee tracks.
         "soreness_targets": {"knee", "hip", "calf", "posterior"},
     },
+}
+
+# Aerobic work, which the programme had none of. The guidelines ask for
+# 150-300 minutes a week of moderate effort, and strength sets do not count
+# towards it however hard they feel.
+#
+# Keyed by day so it lands where it costs least: nothing on the heaviest knee
+# day, the graded walk on the single-leg day, and an easy one on the rest day —
+# a walk is not a rest from anything, and it is the day with room for it.
+#
+# Effort is judged by breath, never by pulse. On a beta-blocker a heart-rate
+# target is either unreachable or is reached at a genuinely unsafe effort.
+CONDITIONING = {
+    "A": [],
+    "B": [Block("Brisk Walk", "check", 1, 20, 40)],
+    "C": [Block("Uphill Walk or Stairs", "check", 1, 20, 30)],
+    "rest": [Block("Brisk Walk", "check", 1, 20, 40)],
 }
 
 DEFAULT_FOCUS = "general"

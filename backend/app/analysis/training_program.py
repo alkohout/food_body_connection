@@ -26,8 +26,8 @@ from app.data.stretches import (
     LADDER_NAMES, LADDER_NOTE, routine_for, scheme_for_seconds,
 )
 from app.data.programs import (
-    ASSIST_BANDS, Block, DEFAULT_FOCUS, MODE_ORDER, MODES, PRACTICE,
-    PROGRAMS, SESSION_LIMITS,
+    ASSIST_BANDS, Block, CONDITIONING, DEFAULT_FOCUS, MODE_ORDER, MODES,
+    PRACTICE, PROGRAMS, SESSION_LIMITS,
 )
 from app.models.table_class import (
     Exercise, PracticeItem, SetLog, Symptom, SymptomLog, TrainingProfile,
@@ -848,8 +848,16 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
     short = f"Only {len(last_sets)} of {expected} sets last time"
 
     if block.scheme == "check":
-        detail = "Practise it"
-        why = "Tick it off — logged so the knee load is on the record."
+        # A walk has a dose, and "practise it" does not carry one. The low and
+        # high of a conditioning block are minutes rather than reps.
+        if (ex.category or "") == "conditioning":
+            detail = (f"{block.low}-{block.high} min" if block.high
+                      else "Get it done")
+            why = ("Judge it by breath, not by pulse — a beta-blocker holds "
+                   "the heart rate down however hard you are working.")
+        else:
+            detail = "Practise it"
+            why = "Tick it off — logged so the knee load is on the record."
         target = None
 
     elif block.scheme == "iso":
@@ -1231,6 +1239,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
 
     if decision["kind"] == "strength":
         middle = [(b, "strength") for b in prog["phases"][phase["phase"]]["days"][day]]
+        middle += [(b, "conditioning") for b in CONDITIONING.get(day, [])]
         theme = prog["phases"][phase["phase"]]["themes"][day]
     elif decision["kind"] == "rest":
         # Nothing in the middle at all — not even the knee minimum, which is
@@ -1238,8 +1247,10 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         # gap. What remains is the practice you would do anyway, and the
         # stretching, which costs nothing to recover from and answers to
         # frequency rather than to load.
-        middle = []
-        theme = "Rest day — practice and stretching"
+        # A walk is not a rest from anything, and the rest day is the one with
+        # room for it.
+        middle = [(b, "conditioning") for b in CONDITIONING.get("rest", [])]
+        theme = "Rest day — a walk, practice and stretching"
     else:
         # Between strength days the knees still get their work; the muscle gets
         # its recovery day. It sits where the strength work would have been.
