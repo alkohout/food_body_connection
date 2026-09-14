@@ -344,6 +344,32 @@ DEFAULT_FOCUS = "general"
 # which is right for a pull-apart or a hip abduction — would be backwards.
 ASSIST_BANDS = {"spanish squat", "single leg squat"}
 
+# Movements to stand down while the back-outer corner of the knee is sore.
+#
+# Pain there points at the tendons and muscles crossing it — the lateral
+# hamstring, popliteus, outer calf — rather than at anything inside the joint,
+# and those are loaded hardest by deep knee bend, by lunging patterns, and by
+# banded lateral work. Trimming the volume of those is not the right answer;
+# a shallower lunge is still a lunge. They come out until it settles.
+#
+# What deliberately stays: clamshells and standing hip abduction. The knee
+# collapsing inward is the mechanism underneath all of this, and hip abductor
+# work is the fix for it — low load, no knee bend, and stopping it would treat
+# the episode while leaving the cause alone.
+POSTEROLATERAL_REST = {
+    "lunge", "split squat", "supported single leg squat", "single leg squat",
+    "lateral band walk", "cossack shifts", "lateral step down",
+    "anterior step down", "step up",
+}
+
+# Loaded end-range hamstring work, which is what an irritated hamstring tendon
+# least wants. The kick ladder is goal work and can wait a fortnight.
+HAMSTRING_END_RANGE = {
+    "hamstring contract-relax", "active straight-leg raise hold",
+    "standing front kick hold", "supine hamstring stretch",
+    "standing hamstring stretch", "romanian deadlift",
+}
+
 # What bookends a session when the user has not built their own routine. A
 # starting point only: practice is personal — tai chi, yoga, a warm-up walk —
 # and lives in the practice_item table, not in a programme. Appending one

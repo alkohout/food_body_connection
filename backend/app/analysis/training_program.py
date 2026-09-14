@@ -26,8 +26,9 @@ from app.data.stretches import (
     LADDER_NAMES, LADDER_NOTE, routine_for, scheme_for_seconds,
 )
 from app.data.programs import (
-    ASSIST_BANDS, Block, CONDITIONING, DEFAULT_FOCUS, MODE_ORDER, MODES,
-    PRACTICE, PROGRAMS, SESSION_LIMITS,
+    ASSIST_BANDS, Block, CONDITIONING, DEFAULT_FOCUS, HAMSTRING_END_RANGE,
+    MODE_ORDER, MODES, POSTEROLATERAL_REST, PRACTICE, PROGRAMS,
+    SESSION_LIMITS,
 )
 from app.models.table_class import (
     Exercise, PracticeItem, SetLog, Symptom, SymptomLog, TrainingProfile,
@@ -554,6 +555,22 @@ def symptom_side(name: str):
     return None
 
 
+def symptom_region(name):
+    """Which part of the knee a symptom names, if it names one.
+
+    The side has been read off the label since sides were added; the region
+    never was, so "knee pain - left lateral" and "knee pain - left medial"
+    drove exactly the same response. They do not want the same response: the
+    back-outer corner is tendon territory, loaded by deep bend and lunging,
+    and easing the volume of a lunge leaves it a lunge.
+    """
+    low = (name or "").lower()
+    for region in ("posterolateral", "posterior", "lateral", "medial", "anterior"):
+        if region in low:
+            return "lateral" if region == "posterolateral" else region
+    return None
+
+
 def recent_symptom(db, user_id, keywords, tz_offset=0):
     """The most significant matching report from the last couple of days.
 
@@ -600,6 +617,7 @@ def recent_symptom(db, user_id, keywords, tz_offset=0):
             continue
 
         report = {
+            "region": symptom_region(name),
             "name": name, "level": level, "when": naive, "action": action,
             "kind": rule["kind"], "instability": rule["instability"],
             "side": symptom_side(name),
@@ -643,6 +661,7 @@ def knee_state(db, user_id, word="soreness", keywords=None, tz_offset=0) -> dict
             "affected_side": flagged["side"],
             "instability": flagged["instability"],
             "symptom_kind": flagged["kind"],
+            "region": flagged.get("region"),
         }
 
     sessions = (
@@ -1257,7 +1276,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         middle = [(b, "maintenance") for b in prog["maintenance"]]
         theme = "Practice and maintenance"
 
-    blocks, missing = [], []
+    blocks, missing, resting = [], [], []
     # The slot travels with the block. Practice bookends a session at both
     # ends and the group alone cannot tell them apart, which matters once
     # something attached to a practice item depends on whether the session has
@@ -1341,6 +1360,16 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         # leg at a time and involves no balance at all.
         if knee.get("instability") and sore_area and ex.needs_balance:
             dropped.append(ex.exercise_name)
+            continue
+
+        # Back-outer knee pain stands movements down rather than shrinking
+        # them. A shallower lunge is still a lunge, and the structures that
+        # hurt there are loaded by the pattern rather than by the volume.
+        if (knee.get("region") in ("lateral", "posterior")
+                and knee["action"] in ("back_off", "hold")
+                and (ex.exercise_name or "").strip().lower()
+                in (POSTEROLATERAL_REST | HAMSTRING_END_RANGE)):
+            resting.append(ex.exercise_name)
             continue
 
         # Only the sore side eases off. Detraining the good leg because the
@@ -1526,6 +1555,13 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
             sx = by_name.get(s["name"].strip().lower())
             if sx is None:
                 continue
+            # The kick ladder is loaded end-range hamstring work, which is the
+            # last thing an irritated hamstring tendon wants. It is goal work
+            # and can wait a fortnight.
+            if (knee.get("region") in ("lateral", "posterior")
+                    and knee["action"] in ("back_off", "hold")
+                    and s["name"].strip().lower() in HAMSTRING_END_RANGE):
+                continue
             scheme = scheme_for_seconds(s["seconds"])
             rounds = s.get("sets", 1)
             if scheme == "iso":
@@ -1581,6 +1617,32 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
                      + ", ".join(sorted(set(dropped)))
                      + ". Two-legged work carries on at reduced volume.")
         dropped = []
+    # Standing movements down leaves a gap, and a gap is not rehabilitation.
+    # An isometric hold is what an irritated tendon tolerates, and often eases
+    # within the hold itself, so it goes in where the lunging came out.
+    if resting and not any(b["exercise"] == "Hamstring Isometric" for b in blocks):
+        iso_ex = by_name.get("hamstring isometric")
+        if iso_ex is not None and _within_limits(iso_ex, limits):
+            iso_prior, iso_when, iso_test = _last_sets(db, user_id, iso_ex.exercise_id)
+            item = _prescribe(Block("Hamstring Isometric", "iso", 3, 20, 45),
+                              iso_ex, iso_prior, "progress", loads,
+                              last_done=iso_when, stalled=False,
+                              from_assessment=iso_test, bands=bands)
+            item.pop("exhausted", None)
+            item["group"] = "strength"
+            item["slot"] = None
+            item["why"] = ("Loading the tendon in the way it tolerates while "
+                           "the bending patterns are out. " + item["why"])
+            blocks.append(item)
+
+    if resting:
+        notes.insert(0, "Resting the back-outer corner of the knee: "
+                     + ", ".join(sorted(set(resting)))
+                     + " are out until it settles. Deep bend, lunging and "
+                       "banded side-steps are what load those structures, and "
+                       "a lighter version of them is still the same movement. "
+                       "Hip abduction work stays in — the knee falling inward "
+                       "is the cause underneath this, not a symptom of it.")
     if dropped:
         notes.append("Left out because nothing you have can stand in for "
                      + ", ".join(sorted(set(dropped)))

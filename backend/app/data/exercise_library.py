@@ -253,6 +253,17 @@ LIBRARY = [
      "rep. Stand tall, shoulders down, do not lean. Loads the spine and hips "
      "hard with no knee bend at all, which is why it is here.", None),
 
+    # Early loading for an irritated hamstring tendon. An isometric hold is
+    # what a cranky tendon tolerates when lengthening and shortening it under
+    # load still hurts — and it often eases the pain within the hold itself,
+    # which is why it comes first rather than rest.
+    ("Hamstring Isometric", "strength", "posterior", "bodyweight", True, True,
+     "Sit on a chair, knee bent about 90 degrees, heel on the floor. Press the "
+     "heel down and back into the floor at roughly half effort and hold. It "
+     "must be pain-free or close to it — this is not the painful bend being "
+     "tested again, it is the opposite. Ease off if the outer-back corner "
+     "complains at all.", None),
+
     ("Stretches", "mobility", "whole", "none", False, False, None, None),
     # A second mobility slot so a warm-up and a wind-down can both exist. One
     # exercise cannot fill both: a practice item is matched by exercise, and
@@ -283,5 +294,6 @@ EFFORT.update({
     "Heel Drops": (2, False),
     "Step Up": (3, False),
     "Farmer's Carry": (3, False),
+    "Hamstring Isometric": (1, False),
 })
 
