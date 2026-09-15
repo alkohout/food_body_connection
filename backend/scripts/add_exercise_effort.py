@@ -21,59 +21,11 @@ from sqlalchemy import inspect, text          # noqa: E402
 from app.database import engine, SessionLocal # noqa: E402
 from app.models.table_class import Exercise   # noqa: E402
 
-# name -> (exertion, floor_based)
-EFFORT = {
-    # Gentle and upright: what is left on a bad day.
-    "tai chi exercises": (1, False),
-    "tai chi form 42": (1, False),
-    "tai chi form 37": (1, False),
-    "stretches": (1, False),
-    "single leg balance": (1, False),
-    "quad set": (1, True),
-    "terminal knee extension": (1, False),
-    "tibialis raise": (1, False),
-    "standing calf raise": (1, False),
-    "band pull apart": (1, False),
-    "prone y raise": (1, True),
-    "clamshell": (1, True),
-    "side lying hip abduction": (1, True),
-    "standing hip abduction": (1, False),
-    "lateral band walk": (2, False),
+# The table itself lives in the catalogue now. It was duplicated here, which
+# meant it only ever reached accounts this script was run against — everything
+# seeded afterwards silently used the column defaults.
+from app.data.exercise_library import EFFORT   # noqa: E402
 
-    # Moderate.
-    "tai chi sword": (2, False),
-    "wall sit": (2, False),
-    "spanish squat": (2, False),
-    "supported single leg squat": (2, False),
-    "wide leg squat": (2, False),
-    "glute bridge": (2, True),
-    "single leg glute bridge": (2, True),
-    "bird dog": (2, True),
-    "dead bug": (2, True),
-    "sit up": (2, True),
-    "plank": (2, True),
-    "side plank": (2, True),
-    "incline push up": (2, False),
-    "push up": (2, True),
-    "tricep dip": (2, False),
-    "bicep curl": (2, False),
-    "dumbbell row": (2, True),
-    "dumbbell shoulder press": (2, False),
-    "dumbbell floor press": (2, True),
-
-    # Demanding.
-    "kung fu pattern": (3, False),
-    "side kick": (3, False),
-    "goblet squat": (3, False),
-    "box squat": (3, False),
-    "split squat": (3, False),
-    "lunge": (3, False),
-    "single leg squat": (3, False),
-    "lateral step down": (3, False),
-    "anterior step down": (3, False),
-    "romanian deadlift": (3, False),
-    "pike push up": (3, True),
-}
 
 
 def main() -> int:

@@ -297,6 +297,70 @@ LIBRARY += library_rows()
 # catalogue and wrong for a stretch done lying down or a row done sitting on
 # the floor, and both of those decide whether it survives a headache day.
 EFFORT = dict(effort_rows())
+
+# The original catalogue's values, moved here from the one-off script that set
+# them. They were only ever applied by that migration, so every account seeded
+# afterwards fell back to the column defaults and lost them — which is not a
+# cosmetic loss. Fifteen exercises lost floor_based, so a headache day that is
+# supposed to rule out anything done lying down prescribed the plank, the
+# push-up and the dead bug anyway. Eleven lost their exertion-3 rating, so a
+# reduced day kept the goblet squat and the step-downs. Thirteen lost
+# exertion 1, so a gentle day dropped the tai chi it was meant to leave in.
+#
+# One table now, and the migration reads it from here.
+EFFORT.update({
+    # Gentle and upright: what is left on a bad day.
+    "tai chi exercises": (1, False),
+    "tai chi form 42": (1, False),
+    "tai chi form 37": (1, False),
+    "stretches": (1, False),
+    "single leg balance": (1, False),
+    "quad set": (1, True),
+    "terminal knee extension": (1, False),
+    "tibialis raise": (1, False),
+    "standing calf raise": (1, False),
+    "band pull apart": (1, False),
+    "prone y raise": (1, True),
+    "clamshell": (1, True),
+    "side lying hip abduction": (1, True),
+    "standing hip abduction": (1, False),
+    "lateral band walk": (2, False),
+
+    # Moderate.
+    "tai chi sword": (2, False),
+    "wall sit": (2, False),
+    "spanish squat": (2, False),
+    "supported single leg squat": (2, False),
+    "wide leg squat": (2, False),
+    "glute bridge": (2, True),
+    "single leg glute bridge": (2, True),
+    "bird dog": (2, True),
+    "dead bug": (2, True),
+    "sit up": (2, True),
+    "plank": (2, True),
+    "side plank": (2, True),
+    "incline push up": (2, False),
+    "push up": (2, True),
+    "tricep dip": (2, False),
+    "bicep curl": (2, False),
+    "dumbbell row": (2, True),
+    "dumbbell shoulder press": (2, False),
+    "dumbbell floor press": (2, True),
+
+    # Demanding.
+    "kung fu pattern": (3, False),
+    "side kick": (3, False),
+    "goblet squat": (3, False),
+    "box squat": (3, False),
+    "split squat": (3, False),
+    "lunge": (3, False),
+    "single leg squat": (3, False),
+    "lateral step down": (3, False),
+    "anterior step down": (3, False),
+    "romanian deadlift": (3, False),
+    "pike push up": (3, True),
+})
+
 EFFORT.update({
     # The two placeholders that stand for a routine. Left to the default they
     # come out at moderate effort, which rules the whole stretch routine out on
@@ -319,4 +383,15 @@ EFFORT.update({
     "Hamstring Isometric": (1, False),
     "Pelvic Floor Training": (1, False),
 })
+
+# The migration's keys were lowercase and the library's names are not, so the
+# seed — which looks up by the library name — would have matched none of them
+# and quietly gone on using the defaults. Normalised to the catalogue's own
+# spelling, and anything left unmatched is a typo worth failing on rather than
+# silently ignoring.
+_canonical = {r[0].strip().lower(): r[0] for r in LIBRARY}
+_unknown = sorted(k for k in EFFORT if k.strip().lower() not in _canonical)
+if _unknown:                                    # pragma: no cover - a data typo
+    raise ValueError(f"EFFORT names not in the library: {_unknown}")
+EFFORT = {_canonical[k.strip().lower()]: v for k, v in EFFORT.items()}
 

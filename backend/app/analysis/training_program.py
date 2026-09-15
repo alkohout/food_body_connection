@@ -1726,6 +1726,15 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         for i in range(len(blocks) - 1, -1, -1):
             if blocks[i]["exercise_id"] in known:
                 continue
+            # Only demanding loaded work is rationed. Meeting three unfamiliar
+            # loading patterns in one session is what hurt a tendon; learning a
+            # pelvic floor lift, a new stretch or a walk is not, and counting
+            # those held back most of a session — pelvic floor work included —
+            # for anyone whose programme had just changed. Which, given how
+            # often this one has changed, was nearly everyone.
+            row = by_id.get(blocks[i]["exercise_id"])
+            if blocks[i].get("group") != "strength" or (row and (row.exertion or 2) < 2):
+                continue
             met += 1
             # Never empty the session to enforce a pacing rule.
             if met > NEW_PER_SESSION and len(blocks) > 1:
