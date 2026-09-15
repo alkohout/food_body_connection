@@ -194,6 +194,21 @@ STALL_SESSIONS = 3        # identical failed attempts before backing the target 
 GRADUATE_SESSIONS = 3     # sessions finished at the ceiling before stepping up
 REST_WEEKDAY = 6          # Sunday, in Python's Monday-is-0 numbering
 DELOAD_EVERY_WEEKS = 6    # a planned easy week, counted from the first session
+# A week may carry about a third more work than the week before it. Every
+# other safeguard in here watches one exercise at a time — the stall rule, the
+# back-off, the deload — and none of them can see the session as a whole. That
+# is the gap a mobility routine went through when it went from one logged set
+# a day to thirty-six in four days.
+# Measured as the last seven days against the average week of the last
+# twenty-eight — the acute-to-chronic comparison — rather than this week
+# against last week. Week against week is far too jumpy at the start: someone
+# whose previous week held one session has a baseline of nothing, every
+# subsequent week looks like a threefold increase, and the rule fires
+# permanently and says to cut more sets than the session contains.
+RAMP_LIMIT = 1.3
+RAMP_MIN_BASELINE = 60    # a chronic week below this is not yet a baseline
+RAMP_MAX_TRIM = 0.35      # never cut more than this much of a session
+NEW_PER_SESSION = 2       # unfamiliar movements to meet on any one day
 STALL_FACTOR = 0.75       # how far back a stalled target drops
 # A single max effort is not a working set. Three sets at the number you could
 # just about reach once is the exact mistake that leaving reps in reserve
@@ -1180,6 +1195,23 @@ def recent_easy_days(db, user_id, tz_offset=0, days=7):
     return sorted(hits)
 
 
+def _sets_between(db, user_id, start, end, tz_offset):
+    """Sets logged with a session date in [start, end]."""
+    n = 0
+    for st, s in (db.query(SetLog, WorkoutSession)
+                  .join(WorkoutSession, SetLog.session_id == WorkoutSession.session_id)
+                  .filter(SetLog.user_id == user_id).all()):
+        if s.date_time and start <= _local_date(s.date_time, tz_offset) <= end:
+            n += 1
+    return n
+
+
+def _ever_logged(db, user_id):
+    """Exercise ids this person has done at least once."""
+    return {st.exercise_id for st in
+            db.query(SetLog).filter(SetLog.user_id == user_id).all()}
+
+
 def deload_week(db, user_id, tz_offset=0):
     """Whether this is a planned easy week, and which one.
 
@@ -1597,7 +1629,75 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
             expanded.append(item)
     blocks = expanded
 
+    # ── How much, and how new ────────────────────────────────────────────
+    # Two limits on the session as a whole, which nothing else here applies.
+    # Volume injuries do not come from any one exercise being too hard; they
+    # come from the total going up faster than tissue adapts, and from meeting
+    # several unfamiliar movements at once. Both happened at the same time and
+    # cost a tendon.
+    today_local = (datetime.utcnow() - timedelta(minutes=tz_offset)).date()
+    planned = sum(b["sets"] * (2 if b["per_side"] else 1) for b in blocks)
+    recent = _sets_between(db, user_id, today_local - timedelta(days=6),
+                           today_local - timedelta(days=1), tz_offset)
+    chronic = _sets_between(db, user_id, today_local - timedelta(days=27),
+                            today_local - timedelta(days=1), tz_offset) / 4.0
+    acute = recent + planned
+    trimmed, floor_reached = [], False
+    if chronic >= RAMP_MIN_BASELINE and acute > chronic * RAMP_LIMIT:
+        budget = chronic * RAMP_LIMIT
+        keep_at_least = planned * (1 - RAMP_MAX_TRIM)
+        # Trim the stretching first: it is the least of the training and the
+        # most of the count, and cutting strength work to make room for holds
+        # would be the wrong way round. Never gut the session, though — a rule
+        # that can delete most of a day is worse than the ramp it prevents.
+        while recent + planned > budget and planned > keep_at_least:
+            nxt = next((i for i in range(len(blocks) - 1, -1, -1)
+                        if blocks[i]["group"] == "mobility"), None)
+            if nxt is None:
+                break
+            trimmed.append(blocks[nxt]["exercise"])
+            planned -= blocks[nxt]["sets"] * (2 if blocks[nxt]["per_side"] else 1)
+            blocks.pop(nxt)
+        floor_reached = recent + planned > budget
+
+    # Unfamiliar movements, rationed. Four of these arrived together on the
+    # day before the flare, two of them the patterns that caused it.
+    #
+    # Only once there is an established routine to introduce them into. A first
+    # session is entirely unfamiliar by definition, and gated on novelty alone
+    # this rationed a beginner down to two exercises and then, on a day that
+    # limits had already thinned, down to none at all. The same baseline the
+    # ramp rule waits for is the right one to wait for here.
+    held_back = []
+    if chronic >= RAMP_MIN_BASELINE:
+        known = _ever_logged(db, user_id)
+        met = 0
+        for i in range(len(blocks) - 1, -1, -1):
+            if blocks[i]["exercise_id"] in known:
+                continue
+            met += 1
+            # Never empty the session to enforce a pacing rule.
+            if met > NEW_PER_SESSION and len(blocks) > 1:
+                held_back.append(blocks[i]["exercise"])
+                blocks.pop(i)
+
     notes = []
+    if trimmed:
+        notes.append(f"Trimmed {len(trimmed)} stretch(es): this week would "
+                     f"otherwise reach {acute} sets against a usual week of "
+                     f"{chronic:.0f}. Volume rising faster than tissue adapts "
+                     f"is how a tendon gets sore with no single exercise "
+                     f"being too hard.")
+    elif floor_reached:
+        notes.append(f"This week is running well above your usual "
+                     f"({acute} sets against {chronic:.0f}) and there is not "
+                     f"much stretching left to cut. Worth doing less of "
+                     f"something today by choice rather than by injury.")
+    if held_back:
+        notes.append("Held back for another day: " + ", ".join(sorted(set(held_back)))
+                     + f". No more than {NEW_PER_SESSION} unfamiliar movements "
+                       f"in a session — meeting several at once is how you end "
+                       f"up unable to tell which one disagreed with you.")
     # `is None`, not falsiness: a plastic bar that genuinely weighs nothing is
     # recorded as 0.0, and asking someone to go and weigh what they just told
     # you is how a prompt gets ignored.

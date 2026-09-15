@@ -282,6 +282,12 @@ LIBRARY += library_rows()
 # the floor, and both of those decide whether it survives a headache day.
 EFFORT = dict(effort_rows())
 EFFORT.update({
+    # The two placeholders that stand for a routine. Left to the default they
+    # come out at moderate effort, which rules the whole stretch routine out on
+    # a gentle day — and for the general programme, whose exercises are all
+    # moderate, that leaves a session with nothing in it at all.
+    "Stretches": (1, False),
+    "Mobility Warm-Up": (1, False),
     "Tube Seated Row": (2, True),
     "Tube Lat Pulldown": (2, False),
     "Tube Face Pull": (1, False),
