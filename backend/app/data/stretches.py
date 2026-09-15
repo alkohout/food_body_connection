@@ -173,16 +173,29 @@ AFTER = [
 
 AXE_LADDER = [
     Stretch("Hamstring Contract-Relax", "after", (), 6, True, True, False,
-            "Belt round the foot, leg up to the first resistance. Press the "
-            "leg down into the belt at about a third of your strength for the "
-            "six seconds on the clock, breathing out. Then relax and take up "
-            "the slack that appears before the next round. Never press into "
-            "pain.", None),
+            "Belt round the ball of the foot with the ankle relaxed, not "
+            "hauled back — a dorsiflexed ankle turns this into a calf stretch "
+            "and stops short of the hamstring. Leg up to the first "
+            "resistance. Press the leg down into the belt at about a third of "
+            "your strength for the six seconds on the clock, breathing out. "
+            "Then relax and take up the slack before the next round. Never "
+            "press into pain.", None),
     Stretch("Active Straight-Leg Raise Hold", "after", (), 8, True, True, False,
-            "Belt off, other leg flat. Lift the leg as high as it will go on "
-            "its own and hold for the count. It will be well below "
-            "where the belt took you — that gap is the whole problem, and "
-            "closing it is what raises the kick.", None),
+            "Belt off, other leg flat, and let the foot hang relaxed or gently "
+            "pointed — do not pull the toes back. With the toes back the calf "
+            "runs out of length before the hamstring does and caps the raise, "
+            "which is also the wrong ankle for a kick. Lift the leg as high as "
+            "it will go on its own and hold for the count. It will be well "
+            "below where the belt took you; that gap is the whole problem.",
+            None),
+    Stretch("Straight-Knee Calf Stretch", "after", (), 40, True, False, False,
+            "Hands on a wall, back leg straight, heel driven down. The knee "
+            "must stay locked — bending it slackens the gastrocnemius and the "
+            "stretch moves to the soleus underneath, which is not the one "
+            "limiting you. Because gastrocnemius crosses the knee it is "
+            "already long in any straight-leg raise, so its length is part of "
+            "your kick height whether or not it feels like a leg stretch.",
+            None),
     Stretch("Standing Front Kick Hold", "after", (), 6, True, False, False,
             "Hold a wall. Lift the straight leg in front as high as you can "
             "control and hold it there for the count. Chest tall. "
@@ -235,6 +248,8 @@ EQUIVALENT = {
     "Standing Hamstring Stretch": "hamstring",
     "Supine Figure-4": "glute",
     "90/90 Hip Rotation Hold": "glute",
+    "Standing Calf Stretch": "calf",
+    "Straight-Knee Calf Stretch": "calf",
 }
 
 
@@ -334,6 +349,8 @@ def routine_for(slot, by_target, *, kicks=False, allow_floor=True,
             if rotation % 2 == 0 else
             "the side kick — hip opening and the strength to hold it there")
     keep = [s for s, _ in _eligible(ladder, day_targets, allow_floor, sore_knee)]
+    already = {EQUIVALENT.get(s["name"]) for s in steps} - {None}
+    keep = [s for s in keep if EQUIVALENT.get(s.name) not in already]
     for i, s in enumerate(keep):
         steps.append(_step(s, f"Working towards {goal}." if i == 0 else None))
     return steps
