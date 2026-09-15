@@ -26,7 +26,7 @@ from app.data.stretches import (
     LADDER_NAMES, LADDER_NOTE, routine_for, scheme_for_seconds,
 )
 from app.data.programs import (
-    ASSIST_BANDS, Block, CONDITIONING, DEFAULT_FOCUS, HAMSTRING_END_RANGE,
+    ASSIST_BANDS, Block, CONDITIONING, DAILY, DEFAULT_FOCUS, HAMSTRING_END_RANGE,
     MODE_ORDER, MODES, POSTEROLATERAL_REST, PRACTICE, PROGRAMS,
     SESSION_LIMITS,
 )
@@ -1321,6 +1321,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
     if decision["kind"] == "strength":
         middle = [(b, "strength") for b in prog["phases"][phase["phase"]]["days"][day]]
         middle += [(b, "conditioning") for b in CONDITIONING.get(day, [])]
+        middle += [(b, "pelvic") for b in DAILY]
         theme = prog["phases"][phase["phase"]]["themes"][day]
     elif decision["kind"] == "rest":
         # Nothing in the middle at all — not even the knee minimum, which is
@@ -1331,11 +1332,13 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         # A walk is not a rest from anything, and the rest day is the one with
         # room for it.
         middle = [(b, "conditioning") for b in CONDITIONING.get("rest", [])]
+        middle += [(b, "pelvic") for b in DAILY]
         theme = "Rest day — a walk, practice and stretching"
     else:
         # Between strength days the knees still get their work; the muscle gets
         # its recovery day. It sits where the strength work would have been.
         middle = [(b, "maintenance") for b in prog["maintenance"]]
+        middle += [(b, "pelvic") for b in DAILY]
         theme = "Practice and maintenance"
 
     blocks, missing, resting = [], [], []

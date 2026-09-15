@@ -264,6 +264,22 @@ LIBRARY = [
      "tested again, it is the opposite. Ease off if the outer-back corner "
      "complains at all.", None),
 
+    # Pelvic floor. Nothing in here addressed it, and the programme has just
+    # been given impact work and loaded carries — both of which raise
+    # intra-abdominal pressure and push down on exactly this structure. Adding
+    # the demand without the capacity is the wrong order.
+    ("Pelvic Floor Training", "strength", "core", "none", False, True,
+     "Sitting or standing. Draw up and in, as if stopping wind and then "
+     "stopping the flow of urine — a lift, not a clench. The buttocks, thighs "
+     "and stomach should stay relaxed, and if your shoulders rise or you hold "
+     "your breath you are bracing rather than lifting. Hold for the count "
+     "breathing normally, then let go completely: the release matters as much "
+     "as the lift. Finish with eight to ten quick one-second lifts, which is a "
+     "different fibre type and what actually catches a cough or a sneeze. If "
+     "it is uncomfortable, or things are no better after a couple of months, "
+     "see a pelvic health physiotherapist rather than simply doing more.",
+     None),
+
     ("Stretches", "mobility", "whole", "none", False, False, None, None),
     # A second mobility slot so a warm-up and a wind-down can both exist. One
     # exercise cannot fill both: a practice item is matched by exercise, and
@@ -301,5 +317,6 @@ EFFORT.update({
     "Step Up": (3, False),
     "Farmer's Carry": (3, False),
     "Hamstring Isometric": (1, False),
+    "Pelvic Floor Training": (1, False),
 })
 

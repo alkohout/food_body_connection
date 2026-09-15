@@ -4697,7 +4697,8 @@ function trRenderRunner() {
   const groupLabel = { practice: "practice", maintenance: "maintenance",
                        assessment: "baseline test", strength: "strength",
                        mobility: "stretch",
-                       conditioning: "aerobic" }[b.group] || b.group;
+                       conditioning: "aerobic",
+                       pelvic: "pelvic floor" }[b.group] || b.group;
   head.textContent = `${trRun.idx + 1} of ${blocks.length} — ${groupLabel}`;
 
   // An exercise the engine swapped out from under you is worth saying out

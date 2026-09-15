@@ -335,6 +335,12 @@ CONDITIONING = {
     "rest": [Block("Brisk Walk", "check", 1, 20, 40)],
 }
 
+# Done every day, including rest days. Pelvic floor training answers to
+# frequency rather than to load — the guidance is daily, and it takes two
+# minutes — so it does not belong in the A/B/C rotation where it would come
+# round every third day.
+DAILY = [Block("Pelvic Floor Training", "iso", 3, 6, 10)]
+
 DEFAULT_FOCUS = "general"
 
 # Exercises where the band holds you up rather than fighting you. In a Spanish
