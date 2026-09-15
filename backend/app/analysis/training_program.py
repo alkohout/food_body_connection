@@ -294,20 +294,55 @@ def _next_load(current, loads, up=True):
     return lower[-1] if lower else loads[0]
 
 
-def _last_sets(db, user_id, exercise_id):
+class History:
+    """Every logged set for one person, read once and kept.
+
+    Each rule below used to fetch this for itself — the last sets for an
+    exercise, whether it has stalled, whether it has topped out, how much work
+    the week holds, what has ever been done at all. Every one of those ran a
+    query across the whole of somebody's history, and most were called once per
+    exercise inside the block loop. Drawing a single session took a hundred and
+    fourteen statements and five seconds.
+
+    It is the same data every time, so it is read once. This is less code than
+    the version that was slow, not more.
+    """
+
+    def __init__(self, db, user_id):
+        self.rows = (
+            db.query(SetLog, WorkoutSession)
+            .join(WorkoutSession, SetLog.session_id == WorkoutSession.session_id)
+            .filter(SetLog.user_id == user_id).all()
+        )
+        self.by_exercise, self.by_session = {}, {}
+        for st, s in self.rows:
+            self.by_exercise.setdefault(st.exercise_id, []).append((st, s))
+            self.by_session.setdefault(st.session_id, []).append(st)
+
+    def for_exercise(self, exercise_id):
+        return self.by_exercise.get(exercise_id, [])
+
+    def ever_logged(self):
+        return set(self.by_exercise)
+
+    def sets_of(self, session):
+        """A session's sets without going back for them.
+
+        session.sets is a lazy relationship, so reading it inside a loop over
+        sessions is one query per session — which was the whole of what
+        remained after the per-exercise queries went.
+        """
+        return self.by_session.get(session.session_id, [])
+
+
+def _last_sets(hist, exercise_id):
     """Sets from the most recent session that included this exercise, and when.
 
     The date matters because a skipped exercise keeps its old baseline. Without
     it the prescription would say "every set hit 10 — one more" about a session
     three weeks ago as though it were the last one.
     """
-    rows = (
-        db.query(SetLog, WorkoutSession)
-        .join(WorkoutSession, SetLog.session_id == WorkoutSession.session_id)
-        .filter(SetLog.user_id == user_id, SetLog.exercise_id == exercise_id)
-        .all()
-    )
-    dated = [(st, s) for st, s in rows if s.date_time]
+    dated = [(st, s) for st, s in hist.for_exercise(exercise_id) if s.date_time]
     if not dated:
         return [], None, False
     latest = max(s.date_time for _, s in dated)
@@ -449,7 +484,7 @@ def _equipment_swap(name, equipment, by_name, available):
     return Block(sub_name, scheme, 3, low, high), ex
 
 
-def _substitute(db, user_id, name, by_name):
+def _substitute(hist, name, by_name):
     """The easiest-first alternative the user actually owns and is not stuck on.
 
     Returns (Block, Exercise) or None. Nothing is substituted for an exercise
@@ -461,13 +496,13 @@ def _substitute(db, user_id, name, by_name):
         ex = by_name.get(sub_name.strip().lower())
         if ex is None:
             continue
-        if _stalled(db, user_id, ex.exercise_id, scheme):
+        if _stalled(hist, ex.exercise_id, scheme):
             continue          # no point moving onto something already stuck
         return Block(sub_name, scheme, 3, low, high), ex
     return None
 
 
-def _topped_out(db, user_id, exercise_id, scheme, high) -> bool:
+def _topped_out(hist, exercise_id, scheme, high) -> bool:
     """Has this been finished at the top of its range often enough to move on?
 
     The mirror of _stalled, and the case its docstring sets aside: someone
@@ -483,14 +518,8 @@ def _topped_out(db, user_id, exercise_id, scheme, high) -> bool:
     if field is None or not high:
         return False
 
-    rows = (
-        db.query(SetLog, WorkoutSession)
-        .join(WorkoutSession, SetLog.session_id == WorkoutSession.session_id)
-        .filter(SetLog.user_id == user_id, SetLog.exercise_id == exercise_id)
-        .all()
-    )
     by_session = {}
-    for st, s in rows:
+    for st, s in hist.for_exercise(exercise_id):
         if s.date_time:
             by_session.setdefault(s.date_time, []).append(st)
     if len(by_session) < GRADUATE_SESSIONS:
@@ -503,7 +532,7 @@ def _topped_out(db, user_id, exercise_id, scheme, high) -> bool:
     return True
 
 
-def _stalled(db, user_id, exercise_id, scheme) -> bool:
+def _stalled(hist, exercise_id, scheme) -> bool:
     """Has this exercise been stuck at the same failed target for a while?
 
     Repeating a target the person cannot complete is not a training plan, it is
@@ -515,14 +544,8 @@ def _stalled(db, user_id, exercise_id, scheme) -> bool:
     dropped back. So a stall needs the last attempt to have actually fallen
     short as well.
     """
-    rows = (
-        db.query(SetLog, WorkoutSession)
-        .join(WorkoutSession, SetLog.session_id == WorkoutSession.session_id)
-        .filter(SetLog.user_id == user_id, SetLog.exercise_id == exercise_id)
-        .all()
-    )
     by_session = {}
-    for st, s in rows:
+    for st, s in hist.for_exercise(exercise_id):
         if s.date_time:
             by_session.setdefault(s.date_time, []).append(st)
     if len(by_session) < STALL_SESSIONS:
@@ -654,7 +677,8 @@ def recent_symptom(db, user_id, keywords, tz_offset=0):
     return best
 
 
-def knee_state(db, user_id, word="soreness", keywords=None, tz_offset=0) -> dict:
+def knee_state(db, user_id, word="soreness", keywords=None, tz_offset=0,
+               hist=None) -> dict:
     """Whether to back off, hold, or progress, and why."""
     # A symptom logged elsewhere in the app outranks anything the training
     # log knows: it is a report of how the body is today, and it applies even
@@ -686,6 +710,7 @@ def knee_state(db, user_id, word="soreness", keywords=None, tz_offset=0) -> dict
             "region": flagged.get("region"),
         }
 
+    sets_of = hist.sets_of if hist is not None else (lambda s: s.sets)
     sessions = (
         db.query(WorkoutSession)
         .filter(WorkoutSession.user_id == user_id)
@@ -702,10 +727,10 @@ def knee_state(db, user_id, word="soreness", keywords=None, tz_offset=0) -> dict
     # session logged with no sets, would otherwise mask the last real one and
     # silently switch the back-off rule off.
     last = next(
-        (s for s in sessions if any(x.pain is not None for x in s.sets)),
+        (s for s in sessions if any(x.pain is not None for x in sets_of(s))),
         None,
     )
-    pains = [x.pain for x in last.sets if x.pain is not None] if last else []
+    pains = [x.pain for x in sets_of(last) if x.pain is not None] if last else []
     mean_pain = round(sum(pains) / len(pains), 1) if pains else None
 
     scored = next((s for s in sessions if s.next_day_knee is not None), None)
@@ -739,7 +764,7 @@ def knee_state(db, user_id, word="soreness", keywords=None, tz_offset=0) -> dict
     # those scores. The result is a programme that progresses on the silent
     # assumption that nothing hurts and cannot advance a phase however well it
     # goes. Any session with sets in it is worth a morning-after score.
-    worked = next((s for s in sessions if s.sets), None)
+    worked = next((s for s in sessions if sets_of(s)), None)
     awaiting = (worked.session_id
                 if worked is not None and worked.next_day_knee is None else None)
     return {"action": "progress",
@@ -750,16 +775,22 @@ def knee_state(db, user_id, word="soreness", keywords=None, tz_offset=0) -> dict
 # A session counts towards leaving a phase only if it covered a fair part of
 # the day. Otherwise six sessions of one exercise each would unlock loaded
 # squatting without the tolerance for the phase before it ever being shown.
-def _substantial(session, strength_names) -> bool:
-    covered = {
-        st.exercise.exercise_name.strip().lower()
-        for st in session.sets
-        if st.exercise is not None
-    } & strength_names
-    return len(covered) >= MIN_EXERCISES_FOR_CREDIT
+def _substantial(session, strength_names, names_by_id=None, sets=None) -> bool:
+    # names_by_id when the caller already has it. Reading st.exercise lazily
+    # fires one query per set — for someone with a few hundred logged sets
+    # that was most of the queries behind drawing a session, to answer a
+    # question the caller could already answer from memory.
+    rows = session.sets if sets is None else sets
+    if names_by_id is not None:
+        covered = {names_by_id[st.exercise_id].strip().lower()
+                   for st in rows if st.exercise_id in names_by_id}
+    else:
+        covered = {st.exercise.exercise_name.strip().lower()
+                   for st in rows if st.exercise is not None}
+    return len(covered & strength_names) >= MIN_EXERCISES_FOR_CREDIT
 
 
-def current_phase(db, user_id, focus=None) -> dict:
+def current_phase(db, user_id, focus=None, hist=None) -> dict:
     """Which phase, and what still has to happen to leave it."""
     phases = program(focus or user_focus(db, user_id))["phases"]
     all_strength = [
@@ -777,7 +808,11 @@ def current_phase(db, user_id, focus=None) -> dict:
         for day in spec["days"].values()
         for b in day
     }
-    sessions = [s for s in all_strength if _substantial(s, strength_names)]
+    names_by_id = {e.exercise_id: e.exercise_name for e in
+                   db.query(Exercise).filter(Exercise.user_id == user_id).all()}
+    sessions = [s for s in all_strength
+                if _substantial(s, strength_names, names_by_id,
+                                hist.sets_of(s) if hist is not None else None)]
     partial = len(all_strength) - len(sessions)
     done = len(sessions)
 
@@ -1202,21 +1237,10 @@ def recent_easy_days(db, user_id, tz_offset=0, days=7):
     return sorted(hits)
 
 
-def _sets_between(db, user_id, start, end, tz_offset):
+def _sets_between(hist, start, end, tz_offset):
     """Sets logged with a session date in [start, end]."""
-    n = 0
-    for st, s in (db.query(SetLog, WorkoutSession)
-                  .join(WorkoutSession, SetLog.session_id == WorkoutSession.session_id)
-                  .filter(SetLog.user_id == user_id).all()):
-        if s.date_time and start <= _local_date(s.date_time, tz_offset) <= end:
-            n += 1
-    return n
-
-
-def _ever_logged(db, user_id):
-    """Exercise ids this person has done at least once."""
-    return {st.exercise_id for st in
-            db.query(SetLog).filter(SetLog.user_id == user_id).all()}
+    return sum(1 for _, s in hist.rows
+               if s.date_time and start <= _local_date(s.date_time, tz_offset) <= end)
 
 
 def _days_since_flare(db, user_id, regions, tz_offset):
@@ -1270,9 +1294,10 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
     """The whole prescription for the next session."""
     focus = user_focus(db, user_id)
     prog = program(focus)
-    phase = current_phase(db, user_id, focus)
+    hist = History(db, user_id)
+    phase = current_phase(db, user_id, focus, hist)
     knee = knee_state(db, user_id, prog["soreness"],
-                      prog.get("symptom_keywords"), tz_offset)
+                      prog.get("symptom_keywords"), tz_offset, hist)
     profile = db.query(TrainingProfile).filter(
         TrainingProfile.user_id == user_id).first()
     loads = achievable_loads(profile)
@@ -1460,7 +1485,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         # records which side each set was done on.
         affected = knee.get("affected_side") if sore_area else None
 
-        prior, when, from_test = _last_sets(db, user_id, ex.exercise_id)
+        prior, when, from_test = _last_sets(hist, ex.exercise_id)
 
         # Stepping up happens before the prescription rather than after it, so
         # everything downstream — the sore-side split, the limits check, the
@@ -1468,17 +1493,17 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         # afterwards it would prescribe one exercise and describe another.
         graduated = None
         step_up = PROGRESSIONS.get(block.name.strip().lower())
-        if step_up and _topped_out(db, user_id, ex.exercise_id, block.scheme, block.high):
+        if step_up and _topped_out(hist, ex.exercise_id, block.scheme, block.high):
             up_ex = by_name.get(step_up[0].strip().lower())
             if up_ex is not None and (available is None or up_ex.equipment in available):
                 graduated = ex.exercise_name
                 block = Block(step_up[0], step_up[1], block.sets, step_up[2], step_up[3])
                 ex = up_ex
-                prior, when, from_test = _last_sets(db, user_id, ex.exercise_id)
+                prior, when, from_test = _last_sets(hist, ex.exercise_id)
 
         item = _prescribe(
             block, ex, prior, action, loads, last_done=when,
-            stalled=_stalled(db, user_id, ex.exercise_id, block.scheme),
+            stalled=_stalled(hist, ex.exercise_id, block.scheme),
             from_assessment=from_test, bands=bands,
         )
 
@@ -1487,7 +1512,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         if affected and ex.is_unilateral and action in ("back_off", "hold"):
             healthy = _prescribe(
                 block, ex, prior, "progress", loads, last_done=when,
-                stalled=_stalled(db, user_id, ex.exercise_id, block.scheme),
+                stalled=_stalled(hist, ex.exercise_id, block.scheme),
                 from_assessment=from_test, bands=bands,
             )
             other = "left" if affected == "right" else "right"
@@ -1519,7 +1544,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
             ) if when is None else None
 
         if item.pop("exhausted", False):
-            swap = _substitute(db, user_id, block.name, by_name)
+            swap = _substitute(hist, block.name, by_name)
             if swap is None:
                 # Nothing to move to, so say what is happening rather than
                 # repeating a target that has already failed three times.
@@ -1527,11 +1552,11 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
                                 "swap it for something you can complete.")
             else:
                 sub_block, sub_ex = swap
-                sub_prior, sub_when, sub_test = _last_sets(db, user_id, sub_ex.exercise_id)
+                sub_prior, sub_when, sub_test = _last_sets(hist, sub_ex.exercise_id)
                 item = _prescribe(
                     sub_block, sub_ex, sub_prior, action, loads,
                     last_done=sub_when,
-                    stalled=_stalled(db, user_id, sub_ex.exercise_id, sub_block.scheme),
+                    stalled=_stalled(hist, sub_ex.exercise_id, sub_block.scheme),
                     from_assessment=sub_test, bands=bands,
                 )
                 item.pop("exhausted", None)
@@ -1688,9 +1713,9 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
     # cost a tendon.
     today_local = (datetime.utcnow() - timedelta(minutes=tz_offset)).date()
     planned = sum(b["sets"] * (2 if b["per_side"] else 1) for b in blocks)
-    recent = _sets_between(db, user_id, today_local - timedelta(days=6),
+    recent = _sets_between(hist, today_local - timedelta(days=6),
                            today_local - timedelta(days=1), tz_offset)
-    chronic = _sets_between(db, user_id, today_local - timedelta(days=27),
+    chronic = _sets_between(hist, today_local - timedelta(days=27),
                             today_local - timedelta(days=1), tz_offset) / 4.0
     acute = recent + planned
     trimmed, floor_reached = [], False
@@ -1721,7 +1746,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
     # ramp rule waits for is the right one to wait for here.
     held_back = []
     if chronic >= RAMP_MIN_BASELINE:
-        known = _ever_logged(db, user_id)
+        known = hist.ever_logged()
         met = 0
         for i in range(len(blocks) - 1, -1, -1):
             if blocks[i]["exercise_id"] in known:
@@ -1783,7 +1808,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
     if resting and not any(b["exercise"] == "Hamstring Isometric" for b in blocks):
         iso_ex = by_name.get("hamstring isometric")
         if iso_ex is not None and _within_limits(iso_ex, limits):
-            iso_prior, iso_when, iso_test = _last_sets(db, user_id, iso_ex.exercise_id)
+            iso_prior, iso_when, iso_test = _last_sets(hist, iso_ex.exercise_id)
             item = _prescribe(Block("Hamstring Isometric", "iso", 3, 20, 45),
                               iso_ex, iso_prior, "progress", loads,
                               last_done=iso_when, stalled=False,
