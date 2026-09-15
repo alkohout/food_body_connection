@@ -209,6 +209,13 @@ RAMP_LIMIT = 1.3
 RAMP_MIN_BASELINE = 60    # a chronic week below this is not yet a baseline
 RAMP_MAX_TRIM = 0.35      # never cut more than this much of a session
 NEW_PER_SESSION = 2       # unfamiliar movements to meet on any one day
+# Clear days after a back-outer knee report before anything comes back, and
+# then one more movement returns every few days rather than all of them at
+# once. A tendon that hurts in the morning and feels fine once warm has not
+# recovered — it has warmed up, which is a property of tendons and the reason
+# people re-injure them the day they feel better.
+SETTLE_DAYS = 3
+RETURN_EVERY_DAYS = 3
 STALL_FACTOR = 0.75       # how far back a stalled target drops
 # A single max effort is not a working set. Three sets at the number you could
 # just about reach once is the exact mistake that leaving reps in reserve
@@ -1212,6 +1219,29 @@ def _ever_logged(db, user_id):
             db.query(SetLog).filter(SetLog.user_id == user_id).all()}
 
 
+def _days_since_flare(db, user_id, regions, tz_offset):
+    """Days since the last report naming one of these knee regions.
+
+    Deliberately not the 24-hour window the rest of the symptom machinery
+    uses. That window answers "is it sore today", which for a tendon is the
+    wrong question: it is sore in the morning and fine by lunchtime whatever
+    its actual state, so an on-off switch tied to today's log hands back the
+    aggravating movements on the first morning somebody feels well.
+    """
+    ids = {s.symptom_id: (s.symptom_name or "").lower()
+           for s in db.query(Symptom).filter(Symptom.user_id == user_id).all()}
+    ids = {k: v for k, v in ids.items()
+           if "knee" in v and symptom_region(v) in regions}
+    if not ids:
+        return None
+    today = (datetime.utcnow() - timedelta(minutes=tz_offset)).date()
+    seen = [_local_date(l.date_time, tz_offset)
+            for l in db.query(SymptomLog).filter(
+                SymptomLog.user_id == user_id,
+                SymptomLog.symptom_id.in_(ids.keys())).all() if l.date_time]
+    return (today - max(seen)).days if seen else None
+
+
 def deload_week(db, user_id, tz_offset=0):
     """Whether this is a planned easy week, and which one.
 
@@ -1343,6 +1373,16 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
     else:
         limits = suggested
 
+    # How far through the settling period the back-outer knee is, if at all.
+    flare_days = _days_since_flare(db, user_id, ("lateral", "posterior"), tz_offset)
+    if flare_days is None or flare_days > SETTLE_DAYS + RETURN_EVERY_DAYS * 6:
+        flare_days, return_budget = None, 99
+    elif flare_days < SETTLE_DAYS:
+        return_budget = 0
+    else:
+        return_budget = 1 + (flare_days - SETTLE_DAYS) // RETURN_EVERY_DAYS
+    returned = 0
+
     by_id = {e.exercise_id: e for e in by_name.values()}
     dropped, limited, used_ids = [], [], set()
     for block, group, slot in templates:
@@ -1397,12 +1437,20 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         # Back-outer knee pain stands movements down rather than shrinking
         # them. A shallower lunge is still a lunge, and the structures that
         # hurt there are loaded by the pattern rather than by the volume.
-        if (knee.get("region") in ("lateral", "posterior")
-                and knee["action"] in ("back_off", "hold")
-                and (ex.exercise_name or "").strip().lower()
-                in (POSTEROLATERAL_REST | HAMSTRING_END_RANGE)):
+        #
+        # Counted from the last report rather than from today's, and handed
+        # back a movement at a time: everything returning together on the
+        # first good morning is how the same tendon gets irritated twice.
+        if ((ex.exercise_name or "").strip().lower()
+                in (POSTEROLATERAL_REST | HAMSTRING_END_RANGE)
+                and flare_days is not None
+                and returned >= return_budget):
             resting.append(ex.exercise_name)
             continue
+        if ((ex.exercise_name or "").strip().lower()
+                in (POSTEROLATERAL_REST | HAMSTRING_END_RANGE)
+                and flare_days is not None):
+            returned += 1
 
         # Only the sore side eases off. Detraining the good leg because the
         # other one hurts loses training for nothing, and the log already
@@ -1736,13 +1784,18 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
             blocks.append(item)
 
     if resting:
+        when = ("today" if flare_days == 0
+                else f"{flare_days} day{'s' if flare_days != 1 else ''} ago")
         notes.insert(0, "Resting the back-outer corner of the knee: "
                      + ", ".join(sorted(set(resting)))
-                     + " are out until it settles. Deep bend, lunging and "
-                       "banded side-steps are what load those structures, and "
-                       "a lighter version of them is still the same movement. "
-                       "Hip abduction work stays in — the knee falling inward "
-                       "is the cause underneath this, not a symptom of it.")
+                     + f" are out. You last reported it {when}, and these come "
+                       f"back one at a time from day {SETTLE_DAYS} rather than "
+                       f"all together. A tendon that hurts in the morning and "
+                       f"frees up once you are warm has warmed up, not healed — "
+                       f"that is what tendons do, and it is why the good "
+                       f"morning is the dangerous one. Hip abduction work "
+                       f"stays in throughout: the knee falling inward is the "
+                       f"cause underneath this, not a symptom of it.")
     if dropped:
         notes.append("Left out because nothing you have can stand in for "
                      + ", ".join(sorted(set(dropped)))
