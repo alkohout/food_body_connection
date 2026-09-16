@@ -1004,3 +1004,25 @@ textarea {
   font-size: 0.75rem;
   opacity: 0.85;
 }
+
+/* The fortnight ahead. A row per day, with the aerobic sessions picked out —
+   they are the ones that need planning around, since the rest happen wherever
+   you already are. */
+.tr-ahead-list { display: flex; flex-direction: column; margin-top: 0.5rem; }
+
+.tr-ahead-row {
+  display: flex; align-items: baseline; gap: 0.6rem;
+  padding: 0.3rem 0.4rem; border-radius: 4px; font-size: 0.85rem;
+}
+.tr-ahead-row:nth-child(odd) { background: rgba(0, 0, 0, 0.025); }
+
+.tr-ahead-date { flex: 0 0 3.6rem; color: #6b7280; font-size: 0.8rem; }
+.tr-ahead-day { flex: 0 0 3.4rem; font-weight: 600; }
+.tr-ahead-mid { display: flex; flex-wrap: wrap; gap: 0.4rem 0.7rem; align-items: baseline; }
+.tr-ahead-theme { color: #374151; }
+.tr-ahead-aero { color: #0891b2; font-weight: 600; white-space: nowrap; }
+.tr-ahead-deload { color: #92400e; font-size: 0.75rem; }
+
+.tr-ahead-today { outline: 2px solid #2563eb; outline-offset: -2px; }
+.tr-ahead-rest .tr-ahead-day { color: #6b7280; font-weight: 500; }
+.tr-ahead-rule { height: 1px; background: #e5e7eb; margin: 0.35rem 0; }

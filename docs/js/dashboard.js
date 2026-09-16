@@ -3879,6 +3879,14 @@ function setupTraining() {
     const sec = getElement("tr-plan");
     if (sec) sec.style.display = sec.style.display === "none" ? "" : "none";
   });
+  const aheadBtn = getElement("tr-ahead-toggle");
+  if (aheadBtn) aheadBtn.addEventListener("click", async () => {
+    const sec = getElement("tr-ahead");
+    if (!sec) return;
+    const opening = sec.style.display === "none";
+    sec.style.display = opening ? "" : "none";
+    if (opening) await trRenderAhead();
+  });
   const eqBtn = getElement("tr-equip-toggle");
   if (eqBtn) eqBtn.addEventListener("click", async () => {
     const sec = getElement("tr-equip");
@@ -4139,6 +4147,53 @@ async function trRenderPractice(host) {
 
   host.appendChild(card);
 }
+
+// The next fortnight, so the walks can be planned around and the day's theme
+// is not a surprise. A projection rather than a promise: the rotation counts
+// sessions rather than dates, so anything that changes a session moves
+// everything after it, and the panel says so rather than looking certain.
+async function trRenderAhead() {
+  const box = getElement("tr-ahead");
+  if (!box) return;
+  box.replaceChildren();
+  box.appendChild(trEl("p", "Loading\u2026", "tr-hint"));
+  await ensureFreshToken();
+  const tz = new Date().getTimezoneOffset();
+  const res = await fetch(`${API_URL}/training/upcoming?days=14&tz_offset=${tz}`,
+                          { headers: trAuth() });
+  box.replaceChildren();
+  if (!res.ok) {
+    box.appendChild(trEl("p", `Could not load the plan (${res.status}).`, "tr-warn"));
+    return;
+  }
+  const data = await res.json();
+  box.appendChild(trEl("p", `Phase ${data.phase} — ${data.phase_label}`, "tr-card-title"));
+
+  const list = trEl("div", null, "tr-ahead-list");
+  let lastWeek = null;
+  data.days.forEach((d) => {
+    const when = new Date(`${d.date}T12:00:00`);
+    // A rule between weeks, so a fortnight reads as two of them.
+    const wk = `${when.getFullYear()}-${Math.floor((when - new Date(when.getFullYear(), 0, 1)) / 6048e5)}`;
+    if (lastWeek !== null && wk !== lastWeek) list.appendChild(trEl("div", null, "tr-ahead-rule"));
+    lastWeek = wk;
+
+    const row = trEl("div", null, "tr-ahead-row");
+    if (d.today) row.classList.add("tr-ahead-today");
+    if (d.kind === "rest") row.classList.add("tr-ahead-rest");
+    row.appendChild(trEl("span", `${d.weekday} ${when.getDate()}`, "tr-ahead-date"));
+    row.appendChild(trEl("span", d.day ? `Day ${d.day}` : "Rest", "tr-ahead-day"));
+    const mid = trEl("div", null, "tr-ahead-mid");
+    mid.appendChild(trEl("span", d.theme, "tr-ahead-theme"));
+    if (d.aerobic) mid.appendChild(trEl("span", `\u25b8 ${d.aerobic}`, "tr-ahead-aero"));
+    if (d.deload) mid.appendChild(trEl("span", "easy week", "tr-ahead-deload"));
+    row.appendChild(mid);
+    list.appendChild(row);
+  });
+  box.appendChild(list);
+  box.appendChild(trEl("p", data.caveat, "tr-hint"));
+}
+
 
 async function trRenderEquipmentPanel() {
   const box = getElement("tr-equip");

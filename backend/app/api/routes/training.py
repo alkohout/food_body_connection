@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
 from app.analysis.training_program import (
-    ALWAYS_AVAILABLE, available_equipment, build_session, program,
+    ALWAYS_AVAILABLE, available_equipment, build_session, program, upcoming,
     strength_spacing, user_focus, visible_programs,
 )
 from app.data.programs import SESSION_LIMITS
@@ -558,6 +558,17 @@ def todays_session(
     """
     return build_session(db, current_user.user_id, day=day,
                          tz_offset=tz_offset, kind=kind, mode=mode)
+
+
+@router.get("/upcoming")
+def upcoming_days(
+    days: int = Query(14, ge=7, le=35),
+    tz_offset: int = Query(0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """The shape of the next fortnight, for planning around."""
+    return upcoming(db, current_user.user_id, days=days, tz_offset=tz_offset)
 
 
 @router.get("/assessment")

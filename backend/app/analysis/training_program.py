@@ -1806,6 +1806,66 @@ def _apply_pacing(hist, blocks, by_id, tz_offset):
     return trimmed, held_back, floor_reached, acute, chronic
 
 
+def upcoming(db, user_id, days=14, tz_offset=0):
+    """What the next fortnight is shaped like, so it can be planned around.
+
+    A projection rather than a promise. It assumes every day gets trained and
+    nothing is logged that changes the shape — a headache, a sore knee or a
+    skipped day all move the rotation, because the rotation counts sessions
+    rather than dates. It says so rather than implying a certainty it does not
+    have.
+
+    Built from the same rules build_session uses: the rest weekday, the A/B/C
+    order, the day a deload falls on. Rewriting them here is how a planner ends
+    up disagreeing with the programme it is planning.
+    """
+    focus = user_focus(db, user_id)
+    prog = program(focus)
+    phase = current_phase(db, user_id, focus)
+    spacing = strength_spacing(db.query(TrainingProfile).filter(
+        TrainingProfile.user_id == user_id).first())
+    today = (datetime.utcnow() - timedelta(minutes=tz_offset)).date()
+
+    first = min((_local_date(s.date_time, tz_offset)
+                 for s in db.query(WorkoutSession).filter(
+                     WorkoutSession.user_id == user_id).all() if s.date_time),
+                default=None)
+
+    done = phase["sessions_done"]
+    out = []
+    for offset in range(days):
+        when = today + timedelta(days=offset)
+        row = {"date": when.isoformat(), "weekday": when.strftime("%a"),
+               "today": offset == 0}
+
+        if when.weekday() == REST_WEEKDAY:
+            row.update(kind="rest", day=None,
+                       theme="Rest day — a walk, practice and stretching")
+        elif spacing != "daily" and offset and out and out[-1]["kind"] == "strength":
+            # Alternating spacing puts a practice day after each strength day.
+            row.update(kind="practice", day=None, theme="Practice and maintenance")
+        else:
+            letter = DAY_ORDER[done % len(DAY_ORDER)]
+            done += 1
+            row.update(kind="strength", day=letter,
+                       theme=prog["phases"][phase["phase"]]["themes"][letter])
+
+        cond = CONDITIONING.get("rest" if row["kind"] == "rest" else row["day"], [])
+        row["aerobic"] = (f"{cond[0].name} — {cond[0].low}-{cond[0].high} min"
+                          if cond else None)
+
+        week = ((when - first).days // 7 + 1) if first else 0
+        row["deload"] = bool(week and week % DELOAD_EVERY_WEEKS == 0)
+        out.append(row)
+
+    return {"days": out, "phase": phase["phase"], "phase_label": phase["label"],
+            "focus": focus,
+            "caveat": "A projection, not a promise. The rotation counts "
+                      "sessions rather than dates, so a rest, a skipped day or "
+                      "anything logged that changes a session shifts "
+                      "everything after it."}
+
+
 def build_session(db, user_id, day=None, tz_offset=0, kind=None,
                   mode=None) -> dict:
     """The whole prescription for the next session."""
