@@ -1853,7 +1853,7 @@ def upcoming(db, user_id, days=14, tz_offset=0):
             row.update(kind="strength", day=letter,
                        theme=prog["phases"][phase["phase"]]["themes"][letter])
 
-        cond = CONDITIONING.get("rest" if row["kind"] == "rest" else row["day"], [])
+        cond = CONDITIONING.get(when.weekday(), [])
         row["aerobic"] = (f"{cond[0].name} — {cond[0].low}-{cond[0].high} min"
                           if cond else None)
 
@@ -1925,7 +1925,6 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
 
     if decision["kind"] == "strength":
         middle = [(b, "strength") for b in prog["phases"][phase["phase"]]["days"][day]]
-        middle += [(b, "conditioning") for b in CONDITIONING.get(day, [])]
         middle += [(b, "pelvic") for b in DAILY]
         theme = prog["phases"][phase["phase"]]["themes"][day]
     elif decision["kind"] == "rest":
@@ -1936,8 +1935,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         # frequency rather than to load.
         # A walk is not a rest from anything, and the rest day is the one with
         # room for it.
-        middle = [(b, "conditioning") for b in CONDITIONING.get("rest", [])]
-        middle += [(b, "pelvic") for b in DAILY]
+        middle = [(b, "pelvic") for b in DAILY]
         theme = "Rest day — a walk, practice and stretching"
     else:
         # Between strength days the knees still get their work; the muscle gets
@@ -1945,6 +1943,11 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         middle = [(b, "maintenance") for b in prog["maintenance"]]
         middle += [(b, "pelvic") for b in DAILY]
         theme = "Practice and maintenance"
+
+    # The walk belongs to the date rather than to the session, so it lands the
+    # same way on a strength day, a practice day and a rest day.
+    weekday = (datetime.utcnow() - timedelta(minutes=tz_offset)).date().weekday()
+    middle += [(b, "conditioning") for b in CONDITIONING.get(weekday, [])]
 
     blocks, missing, resting = [], [], []
     # The slot travels with the block. Practice bookends a session at both

@@ -328,11 +328,22 @@ PROGRAMS = {
 #
 # Effort is judged by breath, never by pulse. On a beta-blocker a heart-rate
 # target is either unreachable or is reached at a genuinely unsafe effort.
+# Keyed by weekday, not by the A/B/C rotation. The rotation counts sessions,
+# so it drifts against the calendar — and an aerobic session you cannot plan a
+# week ahead is one that does not happen.
+#
+# Two short walks and one long one rather than a walk most days. The
+# guidelines ask for 150-300 minutes a week and say nothing about how many
+# days that is spread over, and for someone whose goal is a day on the hill
+# the shape matters more than the total: a tramp is hours on your feet, and
+# five half-hour walks never get near that. The long one also carries the pack
+# progression, which is the honest way to add load for tramping.
+#
+# Monday, Wednesday, Friday. Monday-is-0, as Python counts weekdays.
 CONDITIONING = {
-    "A": [],
-    "B": [Block("Brisk Walk", "check", 1, 20, 40)],
-    "C": [Block("Uphill Walk or Stairs", "check", 1, 20, 30)],
-    "rest": [Block("Brisk Walk", "check", 1, 20, 40)],
+    0: [Block("Brisk Walk", "check", 1, 25, 30)],
+    2: [Block("Brisk Walk", "check", 1, 25, 30)],
+    4: [Block("Long Walk", "check", 1, 60, 120)],
 }
 
 # Done every day, including rest days. Pelvic floor training answers to

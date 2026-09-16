@@ -134,8 +134,34 @@ def test_rest_day_is_a_rest_day():
     # nothing, so nothing matched and the routine came out empty.
     check("rest day still gets its stretches",
           any(b["group"] == "mobility" for b in r["blocks"]))
-    check("rest day still gets its walk",
-          any(b["group"] == "conditioning" for b in r["blocks"]))
+    # The walk moved to Monday, Wednesday and Friday, so Sunday is now rest
+    # rather than rest-with-a-walk. Asserted rather than deleted, because a
+    # silent reappearance would be a regression either way.
+    check("rest day has no aerobic session of its own",
+          not any(b["group"] == "conditioning" for b in r["blocks"]))
+    db.close()
+
+
+def test_walks_land_on_the_calendar():
+    """Keyed by weekday, not by the A/B/C rotation, so they can be planned.
+
+    The rotation counts sessions, so keyed to it a walk drifts against the
+    week and the fortnight view cannot be trusted to plan around.
+    """
+    db, uid, byn, sy = fresh()
+    seen = {}
+    for offset in range(28, 35):                  # a full Monday-to-Sunday week
+        when = at(offset)
+        r = build(db, uid, kind=None if when.weekday() == 6 else "strength")
+        aerobic = [b["exercise"] for b in r["blocks"] if b["group"] == "conditioning"]
+        seen[when.weekday()] = aerobic
+    check("a walk on Monday and Wednesday",
+          seen.get(0) == ["Brisk Walk"] and seen.get(2) == ["Brisk Walk"],
+          f"Mon {seen.get(0)}, Wed {seen.get(2)}")
+    check("the long walk on Friday", seen.get(4) == ["Long Walk"], str(seen.get(4)))
+    check("nothing on Tuesday, Thursday, Saturday or Sunday",
+          all(not seen.get(d) for d in (1, 3, 5, 6)),
+          str({d: seen.get(d) for d in (1, 3, 5, 6) if seen.get(d)}))
     db.close()
 
 

@@ -231,6 +231,12 @@ LIBRARY = [
      "Twenty to forty minutes at a pace where you could talk in sentences but "
      "not sing. Do not chase a heart rate — on a beta-blocker the number stays "
      "low however hard you work, and the breath is the honest gauge.", None),
+    ("Long Walk", "conditioning", "whole", "none", False, False,
+     "An hour to two hours, with gradient in it if you can find some. This is "
+     "the one that reads across to a day on the hill: what a tramp asks for is "
+     "time on your feet, and no number of half-hour walks adds up to it. Once "
+     "the knee is settled, wear the pack you actually tramp with and let its "
+     "weight be the thing that goes up over the months.", None),
     ("Uphill Walk or Stairs", "conditioning", "whole", "none", False, False,
      "Twenty to thirty minutes with real gradient in it — a hill, a set of "
      "stairs, a treadmill incline. Breathing hard enough that a sentence comes "
@@ -377,6 +383,7 @@ EFFORT.update({
     # Aerobic work is out on a reduced day and obviously out on a gentle one.
     "Brisk Walk": (2, False),
     "Uphill Walk or Stairs": (3, False),
+    "Long Walk": (3, False),
     "Heel Drops": (2, False),
     "Step Up": (3, False),
     "Farmer's Carry": (3, False),
