@@ -1821,7 +1821,10 @@ def upcoming(db, user_id, days=14, tz_offset=0):
     """
     focus = user_focus(db, user_id)
     prog = program(focus)
-    phase = current_phase(db, user_id, focus)
+    # Read once and handed on, for the same reason build_session does it:
+    # current_phase walks the sessions and reads the sets of each, which is a
+    # query apiece without it.
+    phase = current_phase(db, user_id, focus, History(db, user_id))
     spacing = strength_spacing(db.query(TrainingProfile).filter(
         TrainingProfile.user_id == user_id).first())
     today = (datetime.utcnow() - timedelta(minutes=tz_offset)).date()

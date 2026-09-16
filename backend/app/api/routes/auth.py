@@ -215,8 +215,13 @@ def refresh_token(current_user: User = Depends(get_current_user)):
     the hour meaningless — so the client has to ask before it lapses rather
     than after.
     """
+    # The same claims login mints, not a subset. A refreshed token that is a
+    # different shape from the original is a trap: anything reading a claim
+    # login supplies works until the first refresh and then stops, an hour into
+    # a session, for no reason the logs would explain.
     return {
-        "access_token": create_access_token(data={"sub": str(current_user.user_id)}),
+        "access_token": create_access_token(
+            data={"sub": str(current_user.user_id), "email": current_user.email}),
         "token_type": "bearer",
     }
 

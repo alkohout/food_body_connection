@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.routes.auth import get_current_user
 from app.analysis.training_program import (
@@ -138,7 +138,14 @@ def _session_out(s: WorkoutSession) -> dict:
 
 
 def _owned_session(db, user_id: int, session_id: int) -> WorkoutSession:
-    s = db.query(WorkoutSession).filter(
+    # The sets and their exercise names come with it. Every route that returns
+    # a session renders all of them, so leaving the relationships lazy meant a
+    # query per set — and logging a set returns the session, so the cost grew
+    # with every set logged. Fifty taps into a session it was fetching fifty
+    # rows one at a time to answer each one.
+    s = db.query(WorkoutSession).options(
+        selectinload(WorkoutSession.sets).selectinload(SetLog.exercise)
+    ).filter(
         WorkoutSession.session_id == session_id,
         WorkoutSession.user_id == user_id,
     ).first()
@@ -157,6 +164,7 @@ def list_sessions(
 ):
     rows = (
         db.query(WorkoutSession)
+        .options(selectinload(WorkoutSession.sets).selectinload(SetLog.exercise))
         .filter(WorkoutSession.user_id == current_user.user_id)
         .order_by(WorkoutSession.date_time.desc())
         .limit(limit)
@@ -655,7 +663,9 @@ def _practice_out(item: PracticeItem) -> dict:
 
 def _user_practice(db, user_id):
     return sorted(
-        db.query(PracticeItem).filter(PracticeItem.user_id == user_id).all(),
+        db.query(PracticeItem).options(
+            selectinload(PracticeItem.exercise),
+            selectinload(PracticeItem.alternate)).filter(PracticeItem.user_id == user_id).all(),
         key=lambda i: (i.slot != "before", i.position, i.practice_item_id),
     )
 
