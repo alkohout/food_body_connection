@@ -683,6 +683,27 @@ def knee_state(db, user_id, word="soreness", keywords=None, tz_offset=0,
     # A symptom logged elsewhere in the app outranks anything the training
     # log knows: it is a report of how the body is today, and it applies even
     # before the first session is logged.
+    sets_of = hist.sets_of if hist is not None else (lambda s: s.sets)
+    sessions = (
+        db.query(WorkoutSession)
+        .filter(WorkoutSession.user_id == user_id)
+        .order_by(WorkoutSession.date_time.desc())
+        .limit(5)
+        .all()
+    )
+
+    # Worked out before anything can return, and carried on every branch.
+    #
+    # It used to be computed only on the path where nothing was wrong, and
+    # every other branch hardcoded None — a logged symptom, a sore morning
+    # score, painful sets. The morning-score box is hidden unless this names a
+    # session, so the prompt vanished precisely when something hurt, which is
+    # when the score matters most. Someone whose knee had settled could not
+    # record that it had settled, because they had reported it hurting.
+    worked = next((s for s in sessions if sets_of(s)), None)
+    awaiting = (worked.session_id
+                if worked is not None and worked.next_day_knee is None else None)
+
     flagged = recent_symptom(db, user_id, keywords or [], tz_offset)
     if flagged:
         level = {1: "mild", 2: "moderate", 3: "severe"}.get(flagged["level"],
@@ -702,7 +723,7 @@ def knee_state(db, user_id, word="soreness", keywords=None, tz_offset=0,
         return {
             "action": flagged["action"],
             "reason": reason,
-            "awaiting_next_day": None,
+            "awaiting_next_day": awaiting,
             "from_symptom_log": True,
             "affected_side": flagged["side"],
             "instability": flagged["instability"],
@@ -711,13 +732,6 @@ def knee_state(db, user_id, word="soreness", keywords=None, tz_offset=0,
         }
 
     sets_of = hist.sets_of if hist is not None else (lambda s: s.sets)
-    sessions = (
-        db.query(WorkoutSession)
-        .filter(WorkoutSession.user_id == user_id)
-        .order_by(WorkoutSession.date_time.desc())
-        .limit(5)
-        .all()
-    )
     if not sessions:
         return {"action": "progress", "reason": "No sessions logged yet.",
                 "awaiting_next_day": None}
@@ -741,17 +755,17 @@ def knee_state(db, user_id, word="soreness", keywords=None, tz_offset=0,
             "reason": (f"{word.capitalize()} was {scored.next_day_knee}/10 the day "
                        f"after your last scored session. Load comes down a step "
                        f"and volume is cut."),
-            "awaiting_next_day": None,
+            "awaiting_next_day": awaiting,
         }
     if mean_pain is not None and mean_pain >= SET_PAIN_BACKOFF:
         return {"action": "back_off",
                 "reason": f"Mean pain in the last session was {mean_pain}/10.",
-                "awaiting_next_day": None}
+                "awaiting_next_day": awaiting}
     if mean_pain is not None and mean_pain >= SET_PAIN_HOLD:
         return {"action": "hold",
                 "reason": f"Mean pain {mean_pain}/10 last session — repeat it "
                           f"rather than adding load.",
-                "awaiting_next_day": None}
+                "awaiting_next_day": awaiting}
 
     # Not a reason to back off, but the score is the input to the rule, so ask
     # for it — only where there was actually a session worth scoring.
@@ -764,9 +778,6 @@ def knee_state(db, user_id, word="soreness", keywords=None, tz_offset=0,
     # those scores. The result is a programme that progresses on the silent
     # assumption that nothing hurts and cannot advance a phase however well it
     # goes. Any session with sets in it is worth a morning-after score.
-    worked = next((s for s in sessions if sets_of(s)), None)
-    awaiting = (worked.session_id
-                if worked is not None and worked.next_day_knee is None else None)
     return {"action": "progress",
             "reason": f"No lingering {word} — progressing.",
             "awaiting_next_day": awaiting}
