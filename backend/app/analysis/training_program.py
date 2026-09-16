@@ -214,7 +214,12 @@ NEW_PER_SESSION = 2       # unfamiliar movements to meet on any one day
 # once. A tendon that hurts in the morning and feels fine once warm has not
 # recovered — it has warmed up, which is a property of tendons and the reason
 # people re-injure them the day they feel better.
-SETTLE_DAYS = 3
+# One clear day, at the owner's call, after a morning score of nought and a
+# session that went well. Three was my number and a conventional one rather
+# than a measured one, and the staging below is the half of this that matters:
+# the movements still come back one at a time, so a flare can still be traced
+# to whichever one caused it.
+SETTLE_DAYS = 1
 RETURN_EVERY_DAYS = 3
 STALL_FACTOR = 0.75       # how far back a stalled target drops
 # A single max effort is not a working set. Three sets at the number you could
