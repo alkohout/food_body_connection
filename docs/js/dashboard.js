@@ -4114,6 +4114,74 @@ async function trRenderPractice(host) {
 // is not a surprise. A projection rather than a promise: the rotation counts
 // sessions rather than dates, so anything that changes a session moves
 // everything after it, and the panel says so rather than looking certain.
+// The walk gets its own card rather than a step in the runner. It is done at
+// another time of day — before work, after dinner — so inside the session it
+// was something to skip past on the way to the next exercise, and a step you
+// always skip stops being read.
+async function trRenderAerobic() {
+  const sec = getElement("tr-aerobic-section");
+  const box = getElement("tr-aerobic");
+  if (!sec || !box) return;
+  const tz = new Date().getTimezoneOffset();
+  const res = await fetch(`${API_URL}/training/aerobic?tz_offset=${tz}`,
+                          { headers: trAuth() });
+  if (!res.ok) { sec.style.display = "none"; return; }
+  const a = (await res.json()).aerobic;
+  if (!a) { sec.style.display = "none"; return; }   // nothing on today
+
+  sec.style.display = "";
+  box.replaceChildren();
+
+  if (a.done) {
+    box.appendChild(trEl("p", `\u2713 ${a.exercise} done — ${a.logged_minutes} min`,
+                         "tr-card-title"));
+    const undo = trEl("button", "Undo", "secondary tr-chime-toggle");
+    undo.type = "button";
+    undo.addEventListener("click", async () => {
+      await ensureFreshToken();
+      await fetch(`${API_URL}/training/aerobic/${a.session_id}`,
+                  { method: "DELETE", headers: trAuth() });
+      await trRenderAerobic();
+    });
+    box.appendChild(undo);
+    return;
+  }
+
+  box.appendChild(trEl("p", `Today's walk — ${a.exercise}, ${a.prescription}`,
+                       "tr-card-title"));
+  if (a.why) box.appendChild(trEl("p", a.why, "tr-hint"));
+  if (a.form_cues) box.appendChild(trEl("p", a.form_cues, "tr-cues"));
+
+  const row = trEl("div", null, "tr-inline");
+  const mins = document.createElement("input");
+  mins.type = "number"; mins.min = "1"; mins.max = "600";
+  mins.placeholder = `${a.low}-${a.high} min`;
+  mins.id = "tr-aerobic-min";
+  const save = trEl("button", "Log walk", "secondary");
+  save.type = "button";
+  const status = trEl("p", "", "tr-hint");
+  save.addEventListener("click", async () => {
+    const v = trNum("tr-aerobic-min");
+    if (v === null || v < 1 || v > 600) {
+      status.textContent = "How many minutes?";
+      return;
+    }
+    status.textContent = "Saving\u2026";
+    await ensureFreshToken();
+    const r = await fetch(`${API_URL}/training/aerobic?tz_offset=${tz}`, {
+      method: "POST",
+      headers: { ...trAuth(), "Content-Type": "application/json" },
+      body: JSON.stringify({ minutes: v }),
+    });
+    if (!r.ok) { status.textContent = `Could not save that (${r.status}).`; return; }
+    await trRenderAerobic();
+  });
+  row.append(mins, save);
+  box.appendChild(row);
+  box.appendChild(status);
+}
+
+
 async function trRenderAhead() {
   const box = getElement("tr-ahead");
   if (!box) return;
@@ -4472,6 +4540,9 @@ async function trLoadPlan() {
   const res = await fetch(`${API_URL}/training/today?${q}`, { headers: trAuth() });
   trPlan = res.ok ? await res.json() : null;
   trRenderPlan();
+  // Here rather than at each call site: every path that refreshes the plan
+  // should refresh the walk with it, and there are a dozen of them.
+  await trRenderAerobic();
 }
 
 async function trSaveNextDay() {

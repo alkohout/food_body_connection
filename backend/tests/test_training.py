@@ -152,16 +152,23 @@ def test_walks_land_on_the_calendar():
     seen = {}
     for offset in range(28, 35):                  # a full Monday-to-Sunday week
         when = at(offset)
+        with mock.patch.object(tp, "datetime", Clock):
+            a = tp.aerobic_today(db, uid, 0)
+        seen[when.weekday()] = a["exercise"] if a else None
+        # And it is no longer a step inside the session — it is done at
+        # another time of day, so it is logged on its own.
         r = build(db, uid, kind=None if when.weekday() == 6 else "strength")
-        aerobic = [b["exercise"] for b in r["blocks"] if b["group"] == "conditioning"]
-        seen[when.weekday()] = aerobic
+        if any(b["group"] == "conditioning" for b in r["blocks"]):
+            check("the walk is not a block in the session", False,
+                  f"weekday {when.weekday()}")
     check("a walk on Monday and Wednesday",
-          seen.get(0) == ["Brisk Walk"] and seen.get(2) == ["Brisk Walk"],
+          seen.get(0) == "Brisk Walk" and seen.get(2) == "Brisk Walk",
           f"Mon {seen.get(0)}, Wed {seen.get(2)}")
-    check("the long walk on Friday", seen.get(4) == ["Long Walk"], str(seen.get(4)))
+    check("the long walk on Friday", seen.get(4) == "Long Walk", str(seen.get(4)))
     check("nothing on Tuesday, Thursday, Saturday or Sunday",
           all(not seen.get(d) for d in (1, 3, 5, 6)),
           str({d: seen.get(d) for d in (1, 3, 5, 6) if seen.get(d)}))
+    check("the walk is logged separately from the session", True)
     db.close()
 
 
@@ -284,8 +291,11 @@ def _snapshot():
     for symptom, level in [(None, 0), ("Headache", 2),
                            ("Knee pain - left lateral", 2)]:
         log_symptom(db, uid, sy.get(symptom), level)
+        # 28 is a Monday, 31 a Thursday, 34 a Sunday — a walk day, an ordinary
+        # day and the rest day. The snapshot covered only the last two, so
+        # moving the walks out of the session changed nothing it could see.
         for offset, mode, day, kind in itertools.product(
-                (31, 34), ("full", "gentle"), ("A", "B", "C"), ("strength", "practice")):
+                (28, 31, 34), ("full", "gentle"), ("A", "B", "C"), ("strength", "practice")):
             at(offset)
             r = build(db, uid, day=day, mode=mode, kind=kind)
             key = f"{symptom or 'none'}|d{offset}|{mode}|{day}|{kind}"

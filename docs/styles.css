@@ -1026,3 +1026,9 @@ textarea {
 .tr-ahead-today { outline: 2px solid #2563eb; outline-offset: -2px; }
 .tr-ahead-rest .tr-ahead-day { color: #6b7280; font-weight: 500; }
 .tr-ahead-rule { height: 1px; background: #e5e7eb; margin: 0.35rem 0; }
+
+/* The walk's own card. Deliberately looks like the morning-score prompt
+   rather than like a session block — it is a separate thing done at a
+   separate time, and looking the same as the training would undo the point. */
+#tr-aerobic .tr-inline { margin-top: 0.5rem; }
+#tr-aerobic input[type="number"] { max-width: 8rem; }

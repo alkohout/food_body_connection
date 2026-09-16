@@ -7,14 +7,18 @@ proof of ownership.
 """
 import json
 from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Optional
+
+from pydantic import BaseModel, Field
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.routes.auth import get_current_user
 from app.analysis.training_program import (
-    ALWAYS_AVAILABLE, available_equipment, build_session, program, upcoming,
+    AEROBIC_SESSION, ALWAYS_AVAILABLE, aerobic_today, available_equipment,
+    build_session, program, upcoming,
     strength_spacing, user_focus, visible_programs,
 )
 from app.data.programs import SESSION_LIMITS
@@ -566,6 +570,78 @@ def todays_session(
     """
     return build_session(db, current_user.user_id, day=day,
                          tz_offset=tz_offset, kind=kind, mode=mode)
+
+
+class AerobicLog(BaseModel):
+    minutes: int = Field(ge=1, le=600)
+    rpe: Optional[int] = Field(default=None, ge=1, le=10)
+    notes: Optional[str] = None
+
+
+@router.get("/aerobic")
+def aerobic(
+    tz_offset: int = Query(0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Today's walk, if there is one, and whether it has been done."""
+    return {"aerobic": aerobic_today(db, current_user.user_id, tz_offset)}
+
+
+@router.post("/aerobic", status_code=201)
+def log_aerobic(
+    payload: AerobicLog,
+    tz_offset: int = Query(0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Record the walk, as its own session.
+
+    Its own session rather than a set appended to the day's training, because
+    it happened at another time and under its own effort. Typed as aerobic so
+    the phase rule does not count it as strength work and the morning-after
+    prompt does not attach itself to it — a score stored against a walk would
+    never count towards leaving a phase, and the person would answer it for
+    nothing.
+    """
+    today = aerobic_today(db, current_user.user_id, tz_offset)
+    if today is None:
+        raise HTTPException(400, "No aerobic session is scheduled for today.")
+    if today["done"]:
+        raise HTTPException(409, "Today's walk is already logged.")
+
+    # Stamped here rather than left to the column default, so the instant the
+    # walk is recorded at is the one the "already logged today" check reads
+    # back — the two were free to disagree while they came from different
+    # clocks.
+    session = WorkoutSession(
+        user_id=current_user.user_id, session_type=AEROBIC_SESSION,
+        date_time=datetime.now(timezone.utc),
+        duration_min=payload.minutes, overall_rpe=payload.rpe,
+        notes=payload.notes,
+    )
+    db.add(session)
+    db.flush()
+    if today["exercise_id"]:
+        db.add(SetLog(user_id=current_user.user_id, session_id=session.session_id,
+                      exercise_id=today["exercise_id"], set_number=1,
+                      hold_seconds=payload.minutes * 60, rpe=payload.rpe))
+    db.commit()
+    return {"aerobic": aerobic_today(db, current_user.user_id, tz_offset)}
+
+
+@router.delete("/aerobic/{session_id}", status_code=204)
+def unlog_aerobic(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Undo it. Logging the wrong day is easy and should not need a database."""
+    s = _owned_session(db, current_user.user_id, session_id)
+    if s.session_type != AEROBIC_SESSION:
+        raise HTTPException(400, "That is not an aerobic session.")
+    db.delete(s)
+    db.commit()
 
 
 @router.get("/upcoming")

@@ -193,6 +193,9 @@ MIN_EXERCISES_FOR_CREDIT = 3   # exercises needed for a session to count
 STALL_SESSIONS = 3        # identical failed attempts before backing the target off
 GRADUATE_SESSIONS = 3     # sessions finished at the ceiling before stepping up
 REST_WEEKDAY = 6          # Sunday, in Python's Monday-is-0 numbering
+# Its own session type, so it does not get counted as strength work by the
+# phase rule or picked up as the session whose morning-after score matters.
+AEROBIC_SESSION = "aerobic"
 DELOAD_EVERY_WEEKS = 6    # a planned easy week, counted from the first session
 # A week may carry about a third more work than the week before it. Every
 # other safeguard in here watches one exercise at a time — the stall rule, the
@@ -705,7 +708,8 @@ def knee_state(db, user_id, word="soreness", keywords=None, tz_offset=0,
     # session, so the prompt vanished precisely when something hurt, which is
     # when the score matters most. Someone whose knee had settled could not
     # record that it had settled, because they had reported it hurting.
-    worked = next((s for s in sessions if sets_of(s)), None)
+    worked = next((s for s in sessions
+                   if sets_of(s) and s.session_type != AEROBIC_SESSION), None)
     awaiting = (worked.session_id
                 if worked is not None and worked.next_day_knee is None else None)
 
@@ -1802,6 +1806,45 @@ def _apply_pacing(hist, blocks, by_id, tz_offset):
     return trimmed, held_back, floor_reached, acute, chronic
 
 
+def aerobic_today(db, user_id, tz_offset=0):
+    """The walk scheduled for today, and whether it has been done.
+
+    Separate from the session rather than a block inside it. It happens at
+    another time of day — before work, after dinner — so threading it through
+    the session runner made it a step to skip past on the way to the next
+    exercise, and something skipped often enough stops being read at all.
+
+    Returns None on a day with nothing scheduled.
+    """
+    today = (datetime.utcnow() - timedelta(minutes=tz_offset)).date()
+    blocks = CONDITIONING.get(today.weekday(), [])
+    if not blocks:
+        return None
+    block = blocks[0]
+
+    ex = next((e for e in db.query(Exercise).filter(
+        Exercise.user_id == user_id, Exercise.is_archived.is_(False)).all()
+        if (e.exercise_name or "").strip().lower() == block.name.strip().lower()), None)
+
+    done = next((s for s in db.query(WorkoutSession).filter(
+        WorkoutSession.user_id == user_id,
+        WorkoutSession.session_type == AEROBIC_SESSION).all()
+        if s.date_time and _local_date(s.date_time, tz_offset) == today), None)
+
+    return {
+        "exercise": block.name,
+        "exercise_id": ex.exercise_id if ex else None,
+        "low": block.low, "high": block.high,
+        "prescription": f"{block.low}-{block.high} min",
+        "form_cues": ex.form_cues if ex else None,
+        "why": ("Judged by breath rather than pulse — a beta-blocker holds the "
+                "heart rate down however hard you are working."),
+        "done": bool(done),
+        "logged_minutes": done.duration_min if done else None,
+        "session_id": done.session_id if done else None,
+    }
+
+
 def upcoming(db, user_id, days=14, tz_offset=0):
     """What the next fortnight is shaped like, so it can be planned around.
 
@@ -1939,11 +1982,6 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
         middle = [(b, "maintenance") for b in prog["maintenance"]]
         middle += [(b, "pelvic") for b in DAILY]
         theme = "Practice and maintenance"
-
-    # The walk belongs to the date rather than to the session, so it lands the
-    # same way on a strength day, a practice day and a rest day.
-    weekday = (datetime.utcnow() - timedelta(minutes=tz_offset)).date().weekday()
-    middle += [(b, "conditioning") for b in CONDITIONING.get(weekday, [])]
 
     blocks, missing, resting = [], [], []
     # The slot travels with the block. Practice bookends a session at both
