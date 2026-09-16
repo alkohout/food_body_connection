@@ -1300,129 +1300,140 @@ def deload_week(db, user_id, tz_offset=0):
     return None
 
 
-def build_session(db, user_id, day=None, tz_offset=0, kind=None,
-                  mode=None) -> dict:
-    """The whole prescription for the next session."""
-    focus = user_focus(db, user_id)
-    prog = program(focus)
-    hist = History(db, user_id)
-    phase = current_phase(db, user_id, focus, hist)
-    knee = knee_state(db, user_id, prog["soreness"],
-                      prog.get("symptom_keywords"), tz_offset, hist)
-    profile = db.query(TrainingProfile).filter(
-        TrainingProfile.user_id == user_id).first()
-    loads = achievable_loads(profile)
-    bands = achievable_bands(profile)
-    available = available_equipment(profile)
+def _expand_mobility(db, user_id, blocks, templates, by_id, by_name,
+                     knee, limits, prog, tz_offset):
+    """Turn each mobility placeholder into the stretches it stands for.
 
-    # Rotate A/B/C by how many strength sessions have been done, so the next
-    # one is simply the next in the cycle. Anything that is not a real day
-    # falls back to that rather than raising: a caller passing something odd
-    # should get a sensible session, not a 500.
-    if day not in DAY_ORDER:
-        day = DAY_ORDER[phase["sessions_done"] % len(DAY_ORDER)]
+    A second pass rather than part of the block loop, because a stretch is
+    chosen from what the whole session trained and the warm-up slot is built
+    before any of it exists.
+    """
+    # ── The stretch routine ────────────────────────────────────────────────
+    # A second pass, because a stretch has to know what the whole session
+    # trained and the "before" slot is built before any of it exists. Done
+    # inline it could only ever match the exercises that happened to come
+    # earlier in the list.
+    by_target = {}
+    for item in blocks:
+        if item.get("group") == "practice":
+            continue
+        ex = by_id.get(item["exercise_id"])
+        if ex is None or not ex.target:
+            continue
+        by_target.setdefault(ex.target, []).append(item["exercise"])
 
-    by_name = {
-        e.exercise_name.strip().lower(): e
-        for e in db.query(Exercise).filter(
-            Exercise.user_id == user_id, Exercise.is_archived.is_(False)).all()
-    }
+    # Whether to pin the kick ladder on. Derived from what is in the session
+    # rather than from a setting, so it follows the person who actually kicks
+    # without asking everybody else to turn it off.
+    # From the templates, not from what survived. Whether someone is chasing
+    # kick height is a fact about their training, and reading it off the
+    # blocks meant a day that limited the kung fu out also decided they were
+    # no longer a kicker — so the ladder disappeared on exactly the days the
+    # exertion gate below was there to judge.
+    kicks = any(
+        any(w in block.name.lower() for w in ("side kick", "kung fu"))
+        for block, _, _ in templates
+    )
+    expanded = []
+    for item in blocks:
+        ex = by_id.get(item["exercise_id"])
+        # A practice item only. "Stretches" is a placeholder standing for a
+        # routine; a mobility exercise that lands in a strength slot is just
+        # that exercise. Keyed on the category alone, a session with no bands
+        # substituted Band Hip Flexion for the Active Straight-Leg Raise Hold —
+        # a stretch — and the strength slot then expanded into a second copy of
+        # the entire stretch routine.
+        if (ex is None or ex.category != "mobility"
+                or item.get("group") != "practice"):
+            expanded.append(item)
+            continue
+        slot = item.get("slot") or "after"
+        routine = routine_for(
+            slot, by_target,
+            # The ladder is goal work — unassisted holds at end range, which
+            # is moderate effort however calm it looks. On a gentle day the
+            # stretches should only be restorative, so it comes out. Stated
+            # rather than left to fall out of the martial practice being
+            # limited out, which is what happened to be true today and would
+            # stop being true the moment someone else took this up.
+            kicks=kicks and (limits or {}).get("max_exertion", 3) >= 2,
+            allow_floor=(limits or {}).get("allow_floor", True),
+            # Only when the sore joint is one these stretches would load. A
+            # sore shoulder is no reason to drop the quad stretch.
+            sore_knee=(knee["action"] in ("back_off", "hold")
+                       and "knee" in (prog.get("soreness_targets") or ("knee",))),
+            # Every completed session, not just the strength ones. Keyed on
+            # strength sessions, a stretch of practice days would hand out the
+            # same ladder every time, so whichever kick came up first would be
+            # the only one ever trained.
+            rotation=db.query(WorkoutSession).filter(
+                WorkoutSession.user_id == user_id).count(),
+        )
 
-    decision = {"kind": kind, "why": "Chosen explicitly."} if kind in ("strength", "practice") \
-        else choose_kind(db, user_id, tz_offset)
-
-    # A user's own routine wins. The programme default is a starting point for
-    # someone who has not built one, not something to append over the top.
-    rows = db.query(PracticeItem).filter(PracticeItem.user_id == user_id).all()
-    due_form = None
-    if rows:
-        practice = {"before": [], "after": []}
-        for item in sorted(rows, key=lambda i: (i.position, i.practice_item_id)):
-            ex_row = item.exercise
-            if ex_row is None:
+        # One step per stretch, shaped like any other exercise, so the runner
+        # counts a hold down and logs it the way it does a wall sit. A single
+        # item with a list inside it needed its own controls and could not be
+        # timed, which is the one thing a hold actually wants.
+        steps = []
+        for s in routine:
+            sx = by_name.get(s["name"].strip().lower())
+            if sx is None:
                 continue
-            name = ex_row.exercise_name
-            if item.alternates_with_id and item.alternate is not None:
-                due_id = due_of_pair(db, user_id, item.exercise_id,
-                                     item.alternates_with_id)
-                name = (ex_row.exercise_name if due_id == item.exercise_id
-                        else item.alternate.exercise_name)
-                due_form = name
-            practice.setdefault(item.slot, []).append(
-                Block(name, item.scheme, item.sets, item.low, item.high)
-            )
-    else:
-        practice = PRACTICE.get(focus, PRACTICE[DEFAULT_FOCUS])
+            # The kick ladder is loaded end-range hamstring work, which is the
+            # last thing an irritated hamstring tendon wants. It is goal work
+            # and can wait a fortnight.
+            if (knee.get("region") in ("lateral", "posterior")
+                    and knee["action"] in ("back_off", "hold")
+                    and s["name"].strip().lower() in HAMSTRING_END_RANGE):
+                continue
+            scheme = scheme_for_seconds(s["seconds"])
+            rounds = s.get("sets", 1)
+            if scheme == "iso":
+                detail = (f"{rounds} x {s['seconds']}s hold" if rounds > 1
+                          else f"{s['seconds']}s hold")
+                if s["per_side"]:
+                    detail += " each side"
+            else:
+                detail = "Work through it" + (" each side" if s["per_side"] else "")
+            steps.append({
+                "exercise_id": sx.exercise_id, "exercise": sx.exercise_name,
+                "target": sx.target, "equipment": sx.equipment,
+                "scheme": scheme, "prescription": detail, "why": s["why"],
+                "form_cues": s["cues"], "video_url": s["video_url"] or sx.video_url,
+                "sets": rounds,
+                "target_reps": None,
+                "target_seconds": s["seconds"] or None,
+                "target_weight": None, "target_band": None,
+                "per_side": s["per_side"],
+                "group": "mobility", "slot": slot,
+            })
 
-    if decision["kind"] == "strength":
-        middle = [(b, "strength") for b in prog["phases"][phase["phase"]]["days"][day]]
-        middle += [(b, "conditioning") for b in CONDITIONING.get(day, [])]
-        middle += [(b, "pelvic") for b in DAILY]
-        theme = prog["phases"][phase["phase"]]["themes"][day]
-    elif decision["kind"] == "rest":
-        # Nothing in the middle at all — not even the knee minimum, which is
-        # there to fill the gap between strength days and on this one is the
-        # gap. What remains is the practice you would do anyway, and the
-        # stretching, which costs nothing to recover from and answers to
-        # frequency rather than to load.
-        # A walk is not a rest from anything, and the rest day is the one with
-        # room for it.
-        middle = [(b, "conditioning") for b in CONDITIONING.get("rest", [])]
-        middle += [(b, "pelvic") for b in DAILY]
-        theme = "Rest day — a walk, practice and stretching"
-    else:
-        # Between strength days the knees still get their work; the muscle gets
-        # its recovery day. It sits where the strength work would have been.
-        middle = [(b, "maintenance") for b in prog["maintenance"]]
-        middle += [(b, "pelvic") for b in DAILY]
-        theme = "Practice and maintenance"
+        if steps:
+            if slot == "after" and any(s["name"] in LADDER_NAMES for s in routine):
+                steps[-1]["routine_note"] = LADDER_NOTE
+            expanded.extend(steps)
+        else:
+            # Nothing in the library to point at yet, so the routine stays a
+            # list inside the one item. Better a named list that cannot be
+            # timed than dropping the stretches out of the session entirely.
+            item["routine"] = routine
+            item["routine_note"] = LADDER_NOTE if kicks and slot == "after" else None
+            expanded.append(item)
+    return expanded
 
-    blocks, missing, resting = [], [], []
-    # The slot travels with the block. Practice bookends a session at both
-    # ends and the group alone cannot tell them apart, which matters once
-    # something attached to a practice item depends on whether the session has
-    # happened yet.
-    templates = [(b, "practice", "before") for b in practice["before"]]
-    templates += [(b, g, None) for b, g in middle]
-    templates += [(b, "practice", "after") for b in practice["after"]]
 
-    # What the log suggests, which is not the same as what is happening. The
-    # suggestion is the default; a mode passed in is the user overruling it,
-    # and they know whether the triptan worked.
-    deload = (deload_week(db, user_id, tz_offset)
-              if decision["kind"] == "strength" else None)
+def _prescribe_blocks(db, user_id, hist, templates, by_name, by_id, prog,
+                      knee, limits, loads, bands, available, deload,
+                      flare_days, return_budget, blocks, missing, resting):
+    """Turn each template into an instruction, or explain why it is not there.
 
-    suggested = session_limits(db, user_id, tz_offset)
-    suggested_mode = (suggested or {}).get("mode", "full")
+    This is where an exercise meets everything that might change it: kit that
+    is not to hand, a stall, a ceiling reached, a sore side, a day's limits, a
+    knee being rested. One pass, one exercise at a time.
 
-    if mode in MODES and mode != suggested_mode:
-        chosen = dict(MODES[mode])
-        if suggested:
-            chosen["note"] = (
-                f"{MODES[mode]['note']} You chose this over the suggested "
-                f"{MODES[suggested_mode]['label'].lower()} after logging "
-                f"{suggested['symptom'].lower()} as {suggested['level_word']}."
-            )
-            chosen["symptom"] = suggested["symptom"]
-            chosen["level_word"] = suggested["level_word"]
-            chosen["logged_at"] = suggested["logged_at"]
-        chosen["mode"] = mode
-        chosen["overridden"] = True
-        limits = None if mode == "full" else chosen
-    else:
-        limits = suggested
-
-    # How far through the settling period the back-outer knee is, if at all.
-    flare_days = _days_since_flare(db, user_id, ("lateral", "posterior"), tz_offset)
-    if flare_days is None or flare_days > SETTLE_DAYS + RETURN_EVERY_DAYS * 6:
-        flare_days, return_budget = None, 99
-    elif flare_days < SETTLE_DAYS:
-        return_budget = 0
-    else:
-        return_budget = 1 + (flare_days - SETTLE_DAYS) // RETURN_EVERY_DAYS
-    returned = 0
-
-    by_id = {e.exercise_id: e for e in by_name.values()}
+    Fills blocks, and reports what fell out and why.
+    """
+    returned = 0                      # rested movements handed back so far
     dropped, limited, used_ids = [], [], set()
     for block, group, slot in templates:
         ex = by_name.get(block.name.strip().lower())
@@ -1603,119 +1614,129 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
                            f"have not marked as available. {item['why']}")
         blocks.append(item)
 
-    # ── The stretch routine ────────────────────────────────────────────────
-    # A second pass, because a stretch has to know what the whole session
-    # trained and the "before" slot is built before any of it exists. Done
-    # inline it could only ever match the exercises that happened to come
-    # earlier in the list.
-    by_target = {}
-    for item in blocks:
-        if item.get("group") == "practice":
-            continue
-        ex = by_id.get(item["exercise_id"])
-        if ex is None or not ex.target:
-            continue
-        by_target.setdefault(ex.target, []).append(item["exercise"])
+    return dropped, limited
 
-    # Whether to pin the kick ladder on. Derived from what is in the session
-    # rather than from a setting, so it follows the person who actually kicks
-    # without asking everybody else to turn it off.
-    # From the templates, not from what survived. Whether someone is chasing
-    # kick height is a fact about their training, and reading it off the
-    # blocks meant a day that limited the kung fu out also decided they were
-    # no longer a kicker — so the ladder disappeared on exactly the days the
-    # exertion gate below was there to judge.
-    kicks = any(
-        any(w in block.name.lower() for w in ("side kick", "kung fu"))
-        for block, _, _ in templates
-    )
-    expanded = []
-    for item in blocks:
-        ex = by_id.get(item["exercise_id"])
-        # A practice item only. "Stretches" is a placeholder standing for a
-        # routine; a mobility exercise that lands in a strength slot is just
-        # that exercise. Keyed on the category alone, a session with no bands
-        # substituted Band Hip Flexion for the Active Straight-Leg Raise Hold —
-        # a stretch — and the strength slot then expanded into a second copy of
-        # the entire stretch routine.
-        if (ex is None or ex.category != "mobility"
-                or item.get("group") != "practice"):
-            expanded.append(item)
-            continue
-        slot = item.get("slot") or "after"
-        routine = routine_for(
-            slot, by_target,
-            # The ladder is goal work — unassisted holds at end range, which
-            # is moderate effort however calm it looks. On a gentle day the
-            # stretches should only be restorative, so it comes out. Stated
-            # rather than left to fall out of the martial practice being
-            # limited out, which is what happened to be true today and would
-            # stop being true the moment someone else took this up.
-            kicks=kicks and (limits or {}).get("max_exertion", 3) >= 2,
-            allow_floor=(limits or {}).get("allow_floor", True),
-            # Only when the sore joint is one these stretches would load. A
-            # sore shoulder is no reason to drop the quad stretch.
-            sore_knee=(knee["action"] in ("back_off", "hold")
-                       and "knee" in (prog.get("soreness_targets") or ("knee",))),
-            # Every completed session, not just the strength ones. Keyed on
-            # strength sessions, a stretch of practice days would hand out the
-            # same ladder every time, so whichever kick came up first would be
-            # the only one ever trained.
-            rotation=db.query(WorkoutSession).filter(
-                WorkoutSession.user_id == user_id).count(),
-        )
+def _add_rehab_isometric(hist, blocks, by_name, resting, limits, loads, bands):
+    """Put back something the sore knee tolerates where the lunging came out."""
+    # Standing movements down leaves a gap, and a gap is not rehabilitation.
+    # An isometric hold is what an irritated tendon tolerates, and often eases
+    # within the hold itself, so it goes in where the lunging came out.
+    if resting and not any(b["exercise"] == "Hamstring Isometric" for b in blocks):
+        iso_ex = by_name.get("hamstring isometric")
+        if iso_ex is not None and _within_limits(iso_ex, limits):
+            iso_prior, iso_when, iso_test = _last_sets(hist, iso_ex.exercise_id)
+            item = _prescribe(Block("Hamstring Isometric", "iso", 3, 20, 45),
+                              iso_ex, iso_prior, "progress", loads,
+                              last_done=iso_when, stalled=False,
+                              from_assessment=iso_test, bands=bands)
+            item.pop("exhausted", None)
+            item["group"] = "strength"
+            item["slot"] = None
+            item["why"] = ("Loading the tendon in the way it tolerates while "
+                           "the bending patterns are out. " + item["why"])
+            blocks.append(item)
 
-        # One step per stretch, shaped like any other exercise, so the runner
-        # counts a hold down and logs it the way it does a wall sit. A single
-        # item with a list inside it needed its own controls and could not be
-        # timed, which is the one thing a hold actually wants.
-        steps = []
-        for s in routine:
-            sx = by_name.get(s["name"].strip().lower())
-            if sx is None:
-                continue
-            # The kick ladder is loaded end-range hamstring work, which is the
-            # last thing an irritated hamstring tendon wants. It is goal work
-            # and can wait a fortnight.
-            if (knee.get("region") in ("lateral", "posterior")
-                    and knee["action"] in ("back_off", "hold")
-                    and s["name"].strip().lower() in HAMSTRING_END_RANGE):
-                continue
-            scheme = scheme_for_seconds(s["seconds"])
-            rounds = s.get("sets", 1)
-            if scheme == "iso":
-                detail = (f"{rounds} x {s['seconds']}s hold" if rounds > 1
-                          else f"{s['seconds']}s hold")
-                if s["per_side"]:
-                    detail += " each side"
-            else:
-                detail = "Work through it" + (" each side" if s["per_side"] else "")
-            steps.append({
-                "exercise_id": sx.exercise_id, "exercise": sx.exercise_name,
-                "target": sx.target, "equipment": sx.equipment,
-                "scheme": scheme, "prescription": detail, "why": s["why"],
-                "form_cues": s["cues"], "video_url": s["video_url"] or sx.video_url,
-                "sets": rounds,
-                "target_reps": None,
-                "target_seconds": s["seconds"] or None,
-                "target_weight": None, "target_band": None,
-                "per_side": s["per_side"],
-                "group": "mobility", "slot": slot,
-            })
 
-        if steps:
-            if slot == "after" and any(s["name"] in LADDER_NAMES for s in routine):
-                steps[-1]["routine_note"] = LADDER_NOTE
-            expanded.extend(steps)
-        else:
-            # Nothing in the library to point at yet, so the routine stays a
-            # list inside the one item. Better a named list that cannot be
-            # timed than dropping the stretches out of the session entirely.
-            item["routine"] = routine
-            item["routine_note"] = LADDER_NOTE if kicks and slot == "after" else None
-            expanded.append(item)
-    blocks = expanded
 
+def _build_notes(prog, profile, decision, knee, limits, deload, flare_days,
+                 missing, dropped, limited, resting, trimmed, held_back,
+                 floor_reached, acute, chronic, easy_days):
+    """Everything the session wants to say for itself, in one place.
+
+    Assembling these inside build_session meant the explanation for a decision
+    sat two hundred lines from the decision, and the order they appear in was
+    whatever order the code happened to run.
+    """
+    notes = []
+    if trimmed:
+        notes.append(f"Trimmed {len(trimmed)} stretch(es): this week would "
+                     f"otherwise reach {acute} sets against a usual week of "
+                     f"{chronic:.0f}. Volume rising faster than tissue adapts "
+                     f"is how a tendon gets sore with no single exercise "
+                     f"being too hard.")
+    elif floor_reached:
+        notes.append(f"This week is running well above your usual "
+                     f"({acute} sets against {chronic:.0f}) and there is not "
+                     f"much stretching left to cut. Worth doing less of "
+                     f"something today by choice rather than by injury.")
+    if held_back:
+        notes.append("Held back for another day: " + ", ".join(sorted(set(held_back)))
+                     + f". No more than {NEW_PER_SESSION} unfamiliar movements "
+                       f"in a session — meeting several at once is how you end "
+                       f"up unable to tell which one disagreed with you.")
+    # `is None`, not falsiness: a plastic bar that genuinely weighs nothing is
+    # recorded as 0.0, and asking someone to go and weigh what they just told
+    # you is how a prompt gets ignored.
+    if profile is None or profile.dumbbell_bar_kg is None:
+        notes.append("Weigh a bare dumbbell bar and save it in your profile — "
+                     "every load below assumes the bar is included.")
+    if missing:
+        notes.append("Not in your library yet: " + ", ".join(missing)
+                     + ". Load the starter library to add them.")
+    if limits:
+        note = limits["note"]
+        if limited:
+            note += (" Out today: " + ", ".join(sorted(set(limited))) + ".")
+        notes.insert(0, note)
+    if knee.get("instability") and dropped:
+        notes.append("Single-leg work is out while the knee is giving way: "
+                     + ", ".join(sorted(set(dropped)))
+                     + ". Two-legged work carries on at reduced volume.")
+        dropped = []
+
+    if resting:
+        when = ("today" if flare_days == 0
+                else f"{flare_days} day{'s' if flare_days != 1 else ''} ago")
+        notes.insert(0, "Resting the back-outer corner of the knee: "
+                     + ", ".join(sorted(set(resting)))
+                     + f" are out. You last reported it {when}, and these come "
+                       f"back one at a time from day {SETTLE_DAYS} rather than "
+                       f"all together. A tendon that hurts in the morning and "
+                       f"frees up once you are warm has warmed up, not healed — "
+                       f"that is what tendons do, and it is why the good "
+                       f"morning is the dangerous one. Hip abduction work "
+                       f"stays in throughout: the knee falling inward is the "
+                       f"cause underneath this, not a symptom of it.")
+    if dropped:
+        notes.append("Left out because nothing you have can stand in for "
+                     + ", ".join(sorted(set(dropped)))
+                     + " — better a gap than something that trains a different "
+                       "thing.")
+    if decision["kind"] == "rest":
+        easy = easy_days
+        if len(easy) >= 2:
+            notes.append(
+                f"You logged something that eased the session back on "
+                f"{len(easy)} of the last 7 days. That is a reason to take "
+                f"this day, not to skip it — being unwell is a load of its "
+                f"own, not a rest from one. But if those days have passed and "
+                f"you feel good, a strength session is a reasonable call, and "
+                f"the button above will give you one."
+            )
+    if deload:
+        notes.insert(0, f"Week {deload['week']} — a planned easy week, one in "
+                        f"every {deload['every']}. Targets and sets come down "
+                        f"across the board so the next block starts fresh. "
+                        f"Nothing is wrong: this is what stops something going "
+                        f"wrong.")
+    if knee["awaiting_next_day"]:
+        notes.append(f"Score the {prog['soreness']} you felt the morning after "
+                     f"your last session — it is what decides whether load "
+                     f"goes up.")
+
+    return notes
+
+
+def _apply_pacing(hist, blocks, by_id, tz_offset):
+    """Trim the session against how much has been done lately, and how new it is.
+
+    Split out of build_session, which had grown to thirteen concerns and six
+    hundred lines. These two rules are the only ones that look at the session
+    as a whole rather than at one exercise, which is why they belong together
+    and apart.
+
+    Returns what it did so the notes can say it.
+    """
     # ── How much, and how new ────────────────────────────────────────────
     # Two limits on the session as a whole, which nothing else here applies.
     # Volume injuries do not come from any one exercise being too hard; they
@@ -1777,99 +1798,149 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
                 held_back.append(blocks[i]["exercise"])
                 blocks.pop(i)
 
-    notes = []
-    if trimmed:
-        notes.append(f"Trimmed {len(trimmed)} stretch(es): this week would "
-                     f"otherwise reach {acute} sets against a usual week of "
-                     f"{chronic:.0f}. Volume rising faster than tissue adapts "
-                     f"is how a tendon gets sore with no single exercise "
-                     f"being too hard.")
-    elif floor_reached:
-        notes.append(f"This week is running well above your usual "
-                     f"({acute} sets against {chronic:.0f}) and there is not "
-                     f"much stretching left to cut. Worth doing less of "
-                     f"something today by choice rather than by injury.")
-    if held_back:
-        notes.append("Held back for another day: " + ", ".join(sorted(set(held_back)))
-                     + f". No more than {NEW_PER_SESSION} unfamiliar movements "
-                       f"in a session — meeting several at once is how you end "
-                       f"up unable to tell which one disagreed with you.")
-    # `is None`, not falsiness: a plastic bar that genuinely weighs nothing is
-    # recorded as 0.0, and asking someone to go and weigh what they just told
-    # you is how a prompt gets ignored.
-    if profile is None or profile.dumbbell_bar_kg is None:
-        notes.append("Weigh a bare dumbbell bar and save it in your profile — "
-                     "every load below assumes the bar is included.")
-    if missing:
-        notes.append("Not in your library yet: " + ", ".join(missing)
-                     + ". Load the starter library to add them.")
-    if limits:
-        note = limits["note"]
-        if limited:
-            note += (" Out today: " + ", ".join(sorted(set(limited))) + ".")
-        notes.insert(0, note)
-    if knee.get("instability") and dropped:
-        notes.append("Single-leg work is out while the knee is giving way: "
-                     + ", ".join(sorted(set(dropped)))
-                     + ". Two-legged work carries on at reduced volume.")
-        dropped = []
-    # Standing movements down leaves a gap, and a gap is not rehabilitation.
-    # An isometric hold is what an irritated tendon tolerates, and often eases
-    # within the hold itself, so it goes in where the lunging came out.
-    if resting and not any(b["exercise"] == "Hamstring Isometric" for b in blocks):
-        iso_ex = by_name.get("hamstring isometric")
-        if iso_ex is not None and _within_limits(iso_ex, limits):
-            iso_prior, iso_when, iso_test = _last_sets(hist, iso_ex.exercise_id)
-            item = _prescribe(Block("Hamstring Isometric", "iso", 3, 20, 45),
-                              iso_ex, iso_prior, "progress", loads,
-                              last_done=iso_when, stalled=False,
-                              from_assessment=iso_test, bands=bands)
-            item.pop("exhausted", None)
-            item["group"] = "strength"
-            item["slot"] = None
-            item["why"] = ("Loading the tendon in the way it tolerates while "
-                           "the bending patterns are out. " + item["why"])
-            blocks.append(item)
+    return trimmed, held_back, floor_reached, acute, chronic
 
-    if resting:
-        when = ("today" if flare_days == 0
-                else f"{flare_days} day{'s' if flare_days != 1 else ''} ago")
-        notes.insert(0, "Resting the back-outer corner of the knee: "
-                     + ", ".join(sorted(set(resting)))
-                     + f" are out. You last reported it {when}, and these come "
-                       f"back one at a time from day {SETTLE_DAYS} rather than "
-                       f"all together. A tendon that hurts in the morning and "
-                       f"frees up once you are warm has warmed up, not healed — "
-                       f"that is what tendons do, and it is why the good "
-                       f"morning is the dangerous one. Hip abduction work "
-                       f"stays in throughout: the knee falling inward is the "
-                       f"cause underneath this, not a symptom of it.")
-    if dropped:
-        notes.append("Left out because nothing you have can stand in for "
-                     + ", ".join(sorted(set(dropped)))
-                     + " — better a gap than something that trains a different "
-                       "thing.")
-    if decision["kind"] == "rest":
-        easy = recent_easy_days(db, user_id, tz_offset)
-        if len(easy) >= 2:
-            notes.append(
-                f"You logged something that eased the session back on "
-                f"{len(easy)} of the last 7 days. That is a reason to take "
-                f"this day, not to skip it — being unwell is a load of its "
-                f"own, not a rest from one. But if those days have passed and "
-                f"you feel good, a strength session is a reasonable call, and "
-                f"the button above will give you one."
+
+def build_session(db, user_id, day=None, tz_offset=0, kind=None,
+                  mode=None) -> dict:
+    """The whole prescription for the next session."""
+    focus = user_focus(db, user_id)
+    prog = program(focus)
+    hist = History(db, user_id)
+    phase = current_phase(db, user_id, focus, hist)
+    knee = knee_state(db, user_id, prog["soreness"],
+                      prog.get("symptom_keywords"), tz_offset, hist)
+    profile = db.query(TrainingProfile).filter(
+        TrainingProfile.user_id == user_id).first()
+    loads = achievable_loads(profile)
+    bands = achievable_bands(profile)
+    available = available_equipment(profile)
+
+    # Rotate A/B/C by how many strength sessions have been done, so the next
+    # one is simply the next in the cycle. Anything that is not a real day
+    # falls back to that rather than raising: a caller passing something odd
+    # should get a sensible session, not a 500.
+    if day not in DAY_ORDER:
+        day = DAY_ORDER[phase["sessions_done"] % len(DAY_ORDER)]
+
+    by_name = {
+        e.exercise_name.strip().lower(): e
+        for e in db.query(Exercise).filter(
+            Exercise.user_id == user_id, Exercise.is_archived.is_(False)).all()
+    }
+
+    decision = {"kind": kind, "why": "Chosen explicitly."} if kind in ("strength", "practice") \
+        else choose_kind(db, user_id, tz_offset)
+
+    # A user's own routine wins. The programme default is a starting point for
+    # someone who has not built one, not something to append over the top.
+    rows = db.query(PracticeItem).filter(PracticeItem.user_id == user_id).all()
+    due_form = None
+    if rows:
+        practice = {"before": [], "after": []}
+        for item in sorted(rows, key=lambda i: (i.position, i.practice_item_id)):
+            ex_row = item.exercise
+            if ex_row is None:
+                continue
+            name = ex_row.exercise_name
+            if item.alternates_with_id and item.alternate is not None:
+                due_id = due_of_pair(db, user_id, item.exercise_id,
+                                     item.alternates_with_id)
+                name = (ex_row.exercise_name if due_id == item.exercise_id
+                        else item.alternate.exercise_name)
+                due_form = name
+            practice.setdefault(item.slot, []).append(
+                Block(name, item.scheme, item.sets, item.low, item.high)
             )
-    if deload:
-        notes.insert(0, f"Week {deload['week']} — a planned easy week, one in "
-                        f"every {deload['every']}. Targets and sets come down "
-                        f"across the board so the next block starts fresh. "
-                        f"Nothing is wrong: this is what stops something going "
-                        f"wrong.")
-    if knee["awaiting_next_day"]:
-        notes.append(f"Score the {prog['soreness']} you felt the morning after "
-                     f"your last session — it is what decides whether load "
-                     f"goes up.")
+    else:
+        practice = PRACTICE.get(focus, PRACTICE[DEFAULT_FOCUS])
+
+    if decision["kind"] == "strength":
+        middle = [(b, "strength") for b in prog["phases"][phase["phase"]]["days"][day]]
+        middle += [(b, "conditioning") for b in CONDITIONING.get(day, [])]
+        middle += [(b, "pelvic") for b in DAILY]
+        theme = prog["phases"][phase["phase"]]["themes"][day]
+    elif decision["kind"] == "rest":
+        # Nothing in the middle at all — not even the knee minimum, which is
+        # there to fill the gap between strength days and on this one is the
+        # gap. What remains is the practice you would do anyway, and the
+        # stretching, which costs nothing to recover from and answers to
+        # frequency rather than to load.
+        # A walk is not a rest from anything, and the rest day is the one with
+        # room for it.
+        middle = [(b, "conditioning") for b in CONDITIONING.get("rest", [])]
+        middle += [(b, "pelvic") for b in DAILY]
+        theme = "Rest day — a walk, practice and stretching"
+    else:
+        # Between strength days the knees still get their work; the muscle gets
+        # its recovery day. It sits where the strength work would have been.
+        middle = [(b, "maintenance") for b in prog["maintenance"]]
+        middle += [(b, "pelvic") for b in DAILY]
+        theme = "Practice and maintenance"
+
+    blocks, missing, resting = [], [], []
+    # The slot travels with the block. Practice bookends a session at both
+    # ends and the group alone cannot tell them apart, which matters once
+    # something attached to a practice item depends on whether the session has
+    # happened yet.
+    templates = [(b, "practice", "before") for b in practice["before"]]
+    templates += [(b, g, None) for b, g in middle]
+    templates += [(b, "practice", "after") for b in practice["after"]]
+
+    # What the log suggests, which is not the same as what is happening. The
+    # suggestion is the default; a mode passed in is the user overruling it,
+    # and they know whether the triptan worked.
+    deload = (deload_week(db, user_id, tz_offset)
+              if decision["kind"] == "strength" else None)
+
+    suggested = session_limits(db, user_id, tz_offset)
+    suggested_mode = (suggested or {}).get("mode", "full")
+
+    if mode in MODES and mode != suggested_mode:
+        chosen = dict(MODES[mode])
+        if suggested:
+            chosen["note"] = (
+                f"{MODES[mode]['note']} You chose this over the suggested "
+                f"{MODES[suggested_mode]['label'].lower()} after logging "
+                f"{suggested['symptom'].lower()} as {suggested['level_word']}."
+            )
+            chosen["symptom"] = suggested["symptom"]
+            chosen["level_word"] = suggested["level_word"]
+            chosen["logged_at"] = suggested["logged_at"]
+        chosen["mode"] = mode
+        chosen["overridden"] = True
+        limits = None if mode == "full" else chosen
+    else:
+        limits = suggested
+
+    # How far through the settling period the back-outer knee is, if at all.
+    flare_days = _days_since_flare(db, user_id, ("lateral", "posterior"), tz_offset)
+    if flare_days is None or flare_days > SETTLE_DAYS + RETURN_EVERY_DAYS * 6:
+        flare_days, return_budget = None, 99
+    elif flare_days < SETTLE_DAYS:
+        return_budget = 0
+    else:
+        return_budget = 1 + (flare_days - SETTLE_DAYS) // RETURN_EVERY_DAYS
+    by_id = {e.exercise_id: e for e in by_name.values()}
+    dropped, limited = _prescribe_blocks(
+        db, user_id, hist, templates, by_name, by_id, prog, knee, limits,
+        loads, bands, available, deload, flare_days, return_budget,
+        blocks, missing, resting)
+
+    blocks = _expand_mobility(db, user_id, blocks, templates, by_id, by_name,
+                              knee, limits, prog, tz_offset)
+
+
+    trimmed, held_back, floor_reached, acute, chronic = _apply_pacing(
+        hist, blocks, by_id, tz_offset)
+
+    _add_rehab_isometric(hist, blocks, by_name, resting, limits, loads, bands)
+
+    notes = _build_notes(
+        prog, profile, decision, knee, limits, deload, flare_days, missing,
+        dropped, limited, resting, trimmed, held_back, floor_reached, acute,
+        chronic, recent_easy_days(db, user_id, tz_offset)
+        if decision["kind"] == "rest" else [])
 
     return {
         "day": day,
