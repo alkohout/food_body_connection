@@ -12,8 +12,8 @@ HOST="${1:-ubuntu@159.13.61.101}"
 DEST="${2:-$HOME/fbc-backups}"
 mkdir -p "$DEST"
 echo "==> pulling from $HOST"
-sudo_rsync() { ssh "$HOST" "sudo tar -C /var/backups -cf - fbc" | tar -C "$DEST/.." -xf - ; }
 ssh "$HOST" 'sudo ls -la /var/backups/fbc | tail -5'
-sudo_rsync
+ssh "$HOST" "sudo tar -C /var/backups -cf - fbc" \
+  | tar -C "$DEST" --strip-components=1 -xf -
 echo "==> now in $DEST:"
 ls -la "$DEST" | tail -5
