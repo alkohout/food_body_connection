@@ -1,0 +1,15 @@
+# 15:00 UTC is 3am in New Zealand — after the day's training is logged and
+# before anyone is awake to notice the load.
+#
+# Persistent so a run missed while the machine was down happens on the next
+# boot rather than being skipped in silence.
+[Unit]
+Description=Nightly Food Body Connection database backup
+
+[Timer]
+OnCalendar=*-*-* 15:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

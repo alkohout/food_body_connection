@@ -1,0 +1,18 @@
+# A nightly copy of the database that lives outside Neon.
+#
+# Runs as foodbody because .env is mode 600 and owned by it — the dump needs
+# DB_URL, and nothing else on the box should be able to read it.
+#
+# A timer rather than cron so that failures land in the journal. The previous
+# backup script failed silently for months and left a zero-byte file behind,
+# which is the whole reason this one is wired to something that reports.
+[Unit]
+Description=Food Body Connection database backup
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=foodbody
+Group=foodbody
+WorkingDirectory=/opt/foodbodyconnection
+ExecStart=/opt/foodbodyconnection/venv/bin/python scripts/backup_db.py --out /var/backups/fbc --keep 30
