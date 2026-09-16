@@ -1084,11 +1084,6 @@ function setupTimeSeries() {
   const periImg     = getElement("ts-peri-plot");
   const periWindow  = getElement("ts-peri-window");
 
-  function resetPeriResult() {
-    if (periFigure) periFigure.style.display = "none";
-    if (periStatus) periStatus.textContent = "";
-  }
-
   async function fetchPeriPlot() {
     const type  = typeSelect.value;
     const name  = nameSelect.value;
@@ -1588,19 +1583,6 @@ function setSummaryState(message) {
   if (summaryDiv) summaryDiv.innerText = message;
 }
 
-function setButtonLoading(button, loadingText = "Loading...") {
-  if (!button) return;
-  button.disabled = true;
-  button.dataset.originalText = button.textContent;
-  button.textContent = loadingText;
-}
-
-function restoreButton(button, fallbackText = "Load") {
-  if (!button) return;
-  button.disabled = false;
-  button.textContent = button.dataset.originalText || fallbackText;
-}
-
 function renderAnalysisStats(stats) {
   // Keys from the API, not labels: the backend still calls these allergens
   // and renaming them here silently broke the lookup. The visible wording
@@ -1706,11 +1688,6 @@ async function fetchAISummary() {
   } finally {
     if (btn) btn.disabled = false;
   }
-}
-
-function setAnalysisStatus(message) {
-  const el = getElement("analysis-status");
-  if (el) el.textContent = message;
 }
 
 // =========================================================
@@ -2155,21 +2132,6 @@ const setupTabs = () => {
 // =========================================================
 // Captions
 // =========================================================
-
-function updateCaptions(allergenName, symptomGroup, lagText) {
-  const elements = {
-    "caption-allergen": allergenName,
-    "caption-symptom-group": symptomGroup,
-    "caption-lag": lagText,
-    "caption-allergen-dose": allergenName,
-    "caption-lag-dose": lagText
-  };
-
-  for (const [id, text] of Object.entries(elements)) {
-    const el = getElement(id);
-    if (el) el.textContent = text;
-  }
-}
 
 // =========================================================
 // Global click handler for hiding suggestions
@@ -4671,10 +4633,6 @@ function trCancelChime() {
   });
   trChimeNodes = [];
   trChimeDueAt = 0;
-}
-
-function trCurrentBlock() {
-  return trRun && trRun.plan.blocks[trRun.idx];
 }
 
 function trStartRunner(blocks) {

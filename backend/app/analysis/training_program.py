@@ -1150,11 +1150,7 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
     }
 
 
-def _local_date(dt, tz_offset):
-    if dt is None:
-        return None
-    naive = dt.replace(tzinfo=None) if dt.tzinfo else dt
-    return (naive - timedelta(minutes=tz_offset)).date()
+from app.analysis.data_tools import local_date as _local_date   # noqa: E402
 
 
 def strength_spacing(profile) -> str:

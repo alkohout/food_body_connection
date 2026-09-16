@@ -240,6 +240,21 @@ def _parse_day(value, end_of_day=False):
     return d + timedelta(hours=23, minutes=59, seconds=59) if end_of_day else d
 
 
+def local_date(dt, tz_offset):
+    """The user's local calendar day for a stored instant.
+
+    Written out three times across the app — here, the training engine and two
+    plot routes — and only one of those copies checked for a missing
+    timestamp. Rows with a null date_time are ordinary in this database, so the
+    other two were an AttributeError waiting for a call site that forgot to
+    guard. One copy, and it is the careful one.
+    """
+    if dt is None:
+        return None
+    naive = dt.replace(tzinfo=None) if dt.tzinfo else dt
+    return (naive - timedelta(minutes=tz_offset)).date()
+
+
 def _to_local(dt, tz_offset):
     """Stored UTC instant -> the user's local wall clock (naive)."""
     if dt is None:

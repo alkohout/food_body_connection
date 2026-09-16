@@ -27,6 +27,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.analysis import pressure as bar
+from app.analysis.data_tools import local_date as _local_date
 from app.api.routes.auth import get_current_user
 from app.api.routes.plot_event_series import _save_fig
 from app.database import get_db
@@ -43,10 +44,6 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 MIGRAINE_TERMS = ("headache", "visual disturbance", "nausea", "head pressure",
                   "brain fog", "dizziness", "vertigo", "migraine", "aura",
                   "light sensitivity", "sound sensitivity")
-
-
-def _local_date(dt, tz_offset):
-    return (dt.replace(tzinfo=None) - timedelta(minutes=tz_offset)).date()
 
 
 def _migraine_days(db, user_id, start, end, tz_offset):

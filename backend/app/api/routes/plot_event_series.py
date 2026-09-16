@@ -12,6 +12,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from app.analysis.data_tools import local_date
 from app.database import get_db
 from app.api.routes.auth import get_current_user
 from app.models.table_class import User, AllergenLog, SymptomLog, Allergen, Symptom, Medication, MedicationRegimen, DailyCheckin
@@ -170,14 +171,11 @@ def _get_checkin_data(db, user_id, variable_name, from_dt, to_dt, tz_offset: int
     # the UTC instants of local midnight.  Taking .date() off the UTC instant
     # would compare a local date against a UTC one and silently widen the range
     # by a day at each end, so convert back to the local date first.
-    def _local_date(dt):
-        return (dt.replace(tzinfo=None) - timedelta(minutes=tz_offset)).date()
-
     q = db.query(DailyCheckin).filter(DailyCheckin.user_id == user_id)
     if from_dt:
-        q = q.filter(DailyCheckin.checkin_date >= _local_date(from_dt))
+        q = q.filter(DailyCheckin.checkin_date >= local_date(from_dt, tz_offset))
     if to_dt:
-        q = q.filter(DailyCheckin.checkin_date <= _local_date(to_dt))
+        q = q.filter(DailyCheckin.checkin_date <= local_date(to_dt, tz_offset))
 
     records = q.order_by(DailyCheckin.checkin_date, DailyCheckin.period).all()
 

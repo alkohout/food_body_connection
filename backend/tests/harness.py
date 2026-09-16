@@ -15,8 +15,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
-from sqlalchemy import create_engine                      # noqa: E402
+from sqlalchemy import DateTime, create_engine, event    # noqa: E402
 from sqlalchemy.orm import sessionmaker                   # noqa: E402
+from sqlalchemy.orm.attributes import set_committed_value  # noqa: E402
 
 from app.data.exercise_library import EFFORT, LIBRARY     # noqa: E402
 from app.models.table_class import (                      # noqa: E402
@@ -41,12 +42,37 @@ class Clock(datetime):
         return cls._now
 
 
+def _mimic_postgres(session_factory):
+    """Hand back timezone-aware timestamps, as the real database does.
+
+    SQLite drops the offset on a DateTime(timezone=True) column and returns a
+    naive value; Postgres returns an aware one. So a comparison between a
+    stored timestamp and datetime.utcnow() — which is naive — raises in
+    production and passes silently here. That is the one class of bug this
+    suite was structurally unable to see, and it has already been hit twice
+    while writing these checks.
+
+    set_committed_value rather than setattr: the point is to change what the
+    test reads, not to mark every loaded row as modified.
+    """
+    @event.listens_for(session_factory, "loaded_as_persistent")
+    def _(_session, instance):                              # noqa: ANN001
+        for col in instance.__table__.columns:
+            if not isinstance(col.type, DateTime) or not col.type.timezone:
+                continue
+            value = getattr(instance, col.key, None)
+            if value is not None and value.tzinfo is None:
+                set_committed_value(instance, col.key,
+                                    value.replace(tzinfo=timezone.utc))
+    return session_factory
+
+
 def fresh(focus="knee", kit=("band", "dumbbell", "tube"), spacing="daily",
           history_days=30, broad_history=True, score=1):
     """A session bound to a new in-memory database, plus the ids you need."""
     engine = create_engine("sqlite://")
     Base.metadata.create_all(engine)
-    db = sessionmaker(bind=engine)()
+    db = _mimic_postgres(sessionmaker(bind=engine))()
 
     user = User(email="t@example.invalid", password_hash="x")
     db.add(user)
