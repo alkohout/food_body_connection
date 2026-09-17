@@ -3532,6 +3532,18 @@ async function trCheckForOpenSession() {
   resume.addEventListener("click", async () => {
     trSession = s;
     trRenderSession();
+    // What was being done matters, not just that something was. Resuming an
+    // assessment with the day's plan hands you an ordinary session and loses
+    // the tests you were part-way through.
+    if (s.session_type === "assessment") {
+      const got = await fetch(`${API_URL}/training/assessment`, { headers: trAuth() });
+      if (got.ok) {
+        const data = await got.json();
+        trRunKind = "assessment";
+        trStartRunner(data.items);
+        return;
+      }
+    }
     await trLoadPlan();
     if (trPlan) trStartRunner();
   });

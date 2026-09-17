@@ -17,7 +17,8 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.routes.auth import get_current_user
 from app.analysis.training_program import (
-    AEROBIC_SESSION, ALWAYS_AVAILABLE, aerobic_today, available_equipment,
+    AEROBIC_SESSION, ALWAYS_AVAILABLE, ASSESSMENT_SESSION, aerobic_today,
+    available_equipment,
     build_session, program, upcoming,
     strength_spacing, user_focus, visible_programs,
 )
@@ -628,7 +629,11 @@ def finish_session(
     survive that.
     """
     s = _owned_session(db, current_user.user_id, session_id)
-    if payload.session_type:
+    # An assessment keeps its type whatever the browser thinks. The browser
+    # holds that fact in a variable, so a reload loses it and finishing would
+    # reclassify the session as ordinary training — silently discarding the
+    # measurements eight exercises are prescribed from.
+    if payload.session_type and s.session_type != ASSESSMENT_SESSION:
         s.session_type = payload.session_type
     if payload.notes is not None:
         s.notes = payload.notes

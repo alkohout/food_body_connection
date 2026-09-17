@@ -196,6 +196,10 @@ REST_WEEKDAY = 6          # Sunday, in Python's Monday-is-0 numbering
 # Its own session type, so it does not get counted as strength work by the
 # phase rule or picked up as the session whose morning-after score matters.
 AEROBIC_SESSION = "aerobic"
+# A measurement, not a workout. Nothing may quietly turn it into one: the
+# prescriptions for eight exercises are derived from it, and the only thing
+# marking it as a measurement is this string.
+ASSESSMENT_SESSION = "assessment"
 DELOAD_EVERY_WEEKS = 6    # a planned easy week, counted from the first session
 # A week may carry about a third more work than the week before it. Every
 # other safeguard in here watches one exercise at a time — the stall rule, the

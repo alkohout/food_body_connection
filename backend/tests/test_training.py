@@ -258,6 +258,23 @@ def test_an_interrupted_session_can_be_picked_up():
                           db=db, current_user=user)
     check("a finished session is not offered again",
           routes.open_session(db=db, current_user=user)["session"] is None)
+
+    # Finishing a resumed assessment must not turn it into ordinary training.
+    # The browser holds "this is an assessment" in a variable, so a reload
+    # loses it and finishing would reclassify the session — throwing away the
+    # measurements that eight exercises are prescribed from.
+    a = routes.create_session(routes.SessionCreate(session_type="assessment"),
+                              db=db, current_user=user)
+    routes.add_set(a["session_id"], routes.SetCreate(
+        exercise_id=byn["Push Up"].exercise_id, set_number=1, reps=12),
+        db=db, current_user=user)
+    routes.finish_session(a["session_id"],
+                          routes.SessionFinish(session_type="strength"),
+                          db=db, current_user=user)
+    kept = db.query(WorkoutSession).filter(
+        WorkoutSession.session_id == a["session_id"]).first()
+    check("an assessment cannot be reclassified by finishing it",
+          kept.session_type == "assessment", kept.session_type)
     row = db.query(WorkoutSession).filter(WorkoutSession.session_id == sid).first()
     check("finishing stamps the session closed", row.finished_at is not None)
 
