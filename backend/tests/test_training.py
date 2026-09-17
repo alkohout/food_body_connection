@@ -8,6 +8,7 @@ time it is inconvenient.
 """
 import itertools
 import json
+from datetime import datetime, timedelta, timezone
 import os
 import sys
 from unittest import mock
@@ -225,6 +226,54 @@ def test_pacing_rules_do_not_gut_a_session():
     if held:
         check("only demanding work is held back",
               "Stretch" not in held[0] and "Pelvic" not in held[0], held[0][:90])
+    db.close()
+
+
+def test_an_interrupted_session_can_be_picked_up():
+    """The browser held the only record that a session was open.
+
+    So a reload during one lost it: the runner came back empty, a second
+    session was created beside the first, and the sets already logged were
+    stranded. It has happened here at least once.
+    """
+    import app.api.routes.training as routes
+    from app.models.table_class import User, WorkoutSession
+    db, uid, byn, sy = fresh(history_days=3, broad_history=False)
+    user = db.query(User).first()
+    check("nothing open to begin with",
+          routes.open_session(db=db, current_user=user)["session"] is None)
+
+    started = routes.create_session(routes.SessionCreate(session_type="strength"),
+                                    db=db, current_user=user)
+    sid = started["session_id"]
+    for n in (1, 2):
+        routes.add_set(sid, routes.SetCreate(
+            exercise_id=byn["Push Up"].exercise_id, set_number=n, reps=8),
+            db=db, current_user=user)
+    found = routes.open_session(db=db, current_user=user)["session"]
+    check("a reload recovers the open session and its sets",
+          found is not None and found["session_id"] == sid and len(found["sets"]) == 2)
+
+    routes.finish_session(sid, routes.SessionFinish(session_type="strength"),
+                          db=db, current_user=user)
+    check("a finished session is not offered again",
+          routes.open_session(db=db, current_user=user)["session"] is None)
+    row = db.query(WorkoutSession).filter(WorkoutSession.session_id == sid).first()
+    check("finishing stamps the session closed", row.finished_at is not None)
+
+    # One abandoned days ago is not the session you are in the middle of.
+    db.add(WorkoutSession(user_id=uid, session_type="strength",
+                          date_time=datetime.now(timezone.utc) - timedelta(hours=30)))
+    db.commit()
+    check("a long-abandoned session is not offered",
+          routes.open_session(db=db, current_user=user)["session"] is None)
+
+    # The walk is logged in one shot; there is nothing to resume.
+    db.add(WorkoutSession(user_id=uid, session_type="aerobic",
+                          date_time=datetime.now(timezone.utc)))
+    db.commit()
+    check("an aerobic session is never offered for resume",
+          routes.open_session(db=db, current_user=user)["session"] is None)
     db.close()
 
 

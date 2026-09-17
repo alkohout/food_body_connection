@@ -98,8 +98,11 @@ def fresh(focus="knee", kit=("band", "dumbbell", "tube"), spacing="daily",
     logged = [r[0] for r in LIBRARY if r[1] in ("strength", "martial", "mobility")] \
         if broad_history else ["Spanish Squat", "Push Up", "Plank"]
     for i in range(history_days):
+        # finished_at, because these stand for sessions already done. Without
+        # it every one of them looks like a session still in progress.
         s = WorkoutSession(user_id=user.user_id, date_time=START + timedelta(days=i),
-                           session_type="strength", next_day_knee=score)
+                           session_type="strength", next_day_knee=score,
+                           finished_at=START + timedelta(days=i, hours=1))
         db.add(s)
         db.flush()
         for name in logged:

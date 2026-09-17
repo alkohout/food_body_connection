@@ -7,7 +7,7 @@ proof of ownership.
 """
 import json
 from datetime import datetime, timedelta, timezone
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -576,6 +576,71 @@ class AerobicLog(BaseModel):
     minutes: int = Field(ge=1, le=600)
     rpe: Optional[int] = Field(default=None, ge=1, le=10)
     notes: Optional[str] = None
+
+
+# How long a session stays resumable. Long enough to cover a morning session
+# picked up after work, short enough that last week's abandoned one is gone.
+RESUME_WINDOW_HOURS = 12
+
+
+class SessionFinish(BaseModel):
+    session_type: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@router.get("/sessions/open")
+def open_session(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """A session that was started and never finished, if there is one.
+
+    The browser held the only record that a session was under way, so a reload
+    lost it — the runner came back empty and a second session was created
+    beside the first. The server knows perfectly well, and now says so.
+    """
+    # Recent enough to still be the same session. One started and abandoned
+    # days ago is not something to pick back up, and offering it every time
+    # the page loads would make the prompt noise.
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=RESUME_WINDOW_HOURS)
+    s = (db.query(WorkoutSession)
+         .options(selectinload(WorkoutSession.sets).selectinload(SetLog.exercise))
+         .filter(WorkoutSession.user_id == current_user.user_id,
+                 WorkoutSession.finished_at.is_(None),
+                 WorkoutSession.date_time >= cutoff,
+                 WorkoutSession.session_type != AEROBIC_SESSION)
+         .order_by(WorkoutSession.date_time.desc())
+         .first())
+    return {"session": _session_out(s) if s else None}
+
+
+@router.post("/sessions/{session_id}/finish")
+def finish_session(
+    session_id: int,
+    payload: SessionFinish,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Close a session, and record how long it took.
+
+    Stamped by the server rather than the browser: the browser is the thing
+    that might have been reloaded, and the whole point of the field is to
+    survive that.
+    """
+    s = _owned_session(db, current_user.user_id, session_id)
+    if payload.session_type:
+        s.session_type = payload.session_type
+    if payload.notes is not None:
+        s.notes = payload.notes
+    s.finished_at = datetime.now(timezone.utc)
+    if s.date_time and s.duration_min is None:
+        started = s.date_time if s.date_time.tzinfo else s.date_time.replace(tzinfo=timezone.utc)
+        minutes = int((s.finished_at - started).total_seconds() // 60)
+        # A session left open overnight is not a twelve-hour session; better no
+        # number than a wrong one.
+        s.duration_min = minutes if 0 < minutes <= 240 else None
+    db.commit()
+    return _session_out(_owned_session(db, current_user.user_id, session_id))
 
 
 @router.get("/aerobic")

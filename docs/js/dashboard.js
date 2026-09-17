@@ -3498,6 +3498,62 @@ let trNextDayAsked = false;
 // box you could train straight past — and it is not a survey: 4 or more takes
 // the load down a step, so answering it after the fact means it describes a
 // session it could not change.
+// A session the browser lost. The server knew one was open all along — the
+// browser was simply the only thing holding the fact, so a reload threw it
+// away, started the runner from nothing, and left the logged sets stranded
+// beside a brand new session.
+async function trCheckForOpenSession() {
+  const bar = getElement("tr-session-bar");
+  if (!bar || trSession) return false;
+  let data;
+  try {
+    const res = await fetch(`${API_URL}/training/sessions/open`, { headers: trAuth() });
+    if (!res.ok) return false;
+    data = await res.json();
+  } catch (err) {
+    return false;                 // offering nothing beats offering an error
+  }
+  if (!data.session) return false;
+
+  const s = data.session;
+  const when = new Date(s.date_time);
+  const card = trEl("div", null, "tr-card tr-notice");
+  card.appendChild(trEl("p",
+    `A session from ${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} `
+    + `is still open — ${s.sets.length} set${s.sets.length === 1 ? "" : "s"} logged.`,
+    "tr-card-title"));
+  card.appendChild(trEl("p",
+    "Picking it up keeps those sets and carries on. Starting fresh closes it "
+    + "and leaves them on the record as their own session.", "tr-hint"));
+
+  const row = trEl("div", null, "tr-nav");
+  const resume = trEl("button", "Pick it up", "primary tr-big");
+  resume.type = "button";
+  resume.addEventListener("click", async () => {
+    trSession = s;
+    trRenderSession();
+    await trLoadPlan();
+    if (trPlan) trStartRunner();
+  });
+  const anew = trEl("button", "Start fresh", "secondary");
+  anew.type = "button";
+  anew.addEventListener("click", async () => {
+    await ensureFreshToken();
+    await fetch(`${API_URL}/training/sessions/${s.session_id}/finish`, {
+      method: "POST",
+      headers: { ...trAuth(), "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    trNextDayAsked = true;        // already answered or skipped for this session
+    await trStartSession();
+  });
+  row.append(resume, anew);
+  card.appendChild(row);
+  bar.replaceChildren(card);
+  return true;
+}
+
+
 async function trStartSession() {
   if (!trNextDayAsked && trPlan && trPlan.knee && trPlan.knee.awaiting_next_day) {
     trAskNextDay();
@@ -3878,6 +3934,8 @@ function setupTraining() {
       }
       trRenderSession();
       await trLoadPlan();
+      // After the bar is drawn, because this replaces what is in it.
+      await trCheckForOpenSession();
       await trLoadCheckin();
       await trLoadHistory();
     } catch (err) {
@@ -5250,14 +5308,17 @@ async function trFinishSession() {
     ? `Skipped: ${trRun.skipped.join(", ")}`
     : null;
 
-  await fetch(`${API_URL}/training/sessions/${trSession.session_id}`, {
-    method: "PATCH",
-    headers: { ...trAuth(), "Content-Type": "application/json" },
-    body: JSON.stringify({
-      session_type: sessionType,
-      ...(notes ? { notes } : {}),
-    }),
-  });
+    // The finish endpoint rather than a plain patch: it is what stamps the
+    // session closed, and a session never stamped closed is one the app will
+    // go on offering to resume.
+    await fetch(`${API_URL}/training/sessions/${trSession.session_id}/finish`, {
+      method: "POST",
+      headers: { ...trAuth(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        session_type: sessionType,
+        ...(notes ? { notes } : {}),
+      }),
+    });
 
   trTimerStop();
   trKindOverride = null;

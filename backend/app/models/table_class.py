@@ -290,6 +290,11 @@ class WorkoutSession(Base):
     # back-off rule: knee pain that is worse 24h later means the last session
     # was too much, however it felt while training.
     next_day_knee = Column(Integer, nullable=True)
+    # Null while a session is still open. There was no way to tell a session
+    # someone was part-way through from one they had finished, so a page
+    # reload stranded it: the runner starts from nothing, a second session is
+    # created beside the first, and the sets already logged are orphaned.
+    finished_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User", back_populates="workout_sessions")
     sets = relationship("SetLog", back_populates="session", cascade="all, delete-orphan")
