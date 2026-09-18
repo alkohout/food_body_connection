@@ -13,3 +13,5 @@ venv/
 # Local dev scratch (plot cache, uploaded docs)
 .local/
 
+.uivenv/
+.uilibs/
