@@ -3530,6 +3530,7 @@ async function trCheckForOpenSession() {
   const resume = trEl("button", "Pick it up", "primary tr-big");
   resume.type = "button";
   resume.addEventListener("click", async () => {
+    if (await trNeedsMorningScore()) return;
     trSession = s;
     trRenderSession();
     // What was being done matters, not just that something was. Resuming an
@@ -3556,8 +3557,7 @@ async function trCheckForOpenSession() {
       headers: { ...trAuth(), "Content-Type": "application/json" },
       body: JSON.stringify({}),
     });
-    trNextDayAsked = true;        // already answered or skipped for this session
-    await trStartSession();
+    await trStartSession();      // which asks for the score if one is due
   });
   row.append(resume, anew);
   card.appendChild(row);
@@ -3566,11 +3566,27 @@ async function trCheckForOpenSession() {
 }
 
 
+// Does the morning-after score need asking for before anything else happens?
+//
+// Its own function because there are three ways into a session — starting
+// one, picking up an interrupted one, abandoning one to start fresh — and two
+// of them went straight past this. The score drives the back-off rule and
+// leaving a phase, so a route that skips it silently loses the thing the rest
+// of the programme steers by.
+async function trNeedsMorningScore() {
+  if (trNextDayAsked) return false;
+  // The session bar is drawn before the plan has loaded, so a quick tap on
+  // Start arrived with trPlan still null and the question was skipped without
+  // anything appearing to go wrong.
+  if (!trPlan) await trLoadPlan();
+  if (!trPlan || !trPlan.knee || !trPlan.knee.awaiting_next_day) return false;
+  trAskNextDay();
+  return true;
+}
+
+
 async function trStartSession() {
-  if (!trNextDayAsked && trPlan && trPlan.knee && trPlan.knee.awaiting_next_day) {
-    trAskNextDay();
-    return;
-  }
+  if (await trNeedsMorningScore()) return;
   // The session is about to run for an hour or more, so it starts on a fresh
   // token rather than whatever is left of the one from this morning's login.
   await ensureFreshToken();
@@ -4785,6 +4801,10 @@ function trStartRunner(blocks) {
 }
 
 async function trStartAssessment() {
+  // The fourth way into a session, and it was the one still going round the
+  // question. A baseline test is max efforts on a knee whose state the app has
+  // not asked about.
+  if (await trNeedsMorningScore()) return;
   const res = await fetch(`${API_URL}/training/assessment`, { headers: trAuth() });
   if (!res.ok) {
     trSetStatus("tr-status", `Could not load the assessment (${res.status}).`);
