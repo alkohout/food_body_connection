@@ -15,6 +15,9 @@ import pathlib, re
 js = pathlib.Path("docs/js/dashboard.js").read_text()
 html = "".join(pathlib.Path(f"docs/{n}").read_text()
                for n in ("dashboard.html", "index.html", "reset-password.html"))
+# Commented-out markup defines nothing. There are nearly two hundred lines of
+# it here, and counting its ids as real hides a genuinely missing element.
+html = re.sub(r"<!--.*?-->", "", html, flags=re.S)
 
 defined = set(re.findall(r'\bid="([^"]+)"', html))
 # ids the JS creates itself at runtime
