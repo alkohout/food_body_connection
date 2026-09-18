@@ -23,7 +23,7 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 
 from app.data.stretches import (
-    LADDER_NAMES, LADDER_NOTE, routine_for, scheme_for_seconds,
+    KICK_PREP, LADDER_NAMES, LADDER_NOTE, routine_for, scheme_for_seconds,
 )
 from app.data.programs import (
     ASSIST_BANDS, Block, CONDITIONING, DAILY, DEFAULT_FOCUS, HAMSTRING_END_RANGE,
@@ -215,6 +215,13 @@ DELOAD_EVERY_WEEKS = 6    # a planned easy week, counted from the first session
 RAMP_LIMIT = 1.3
 RAMP_MIN_BASELINE = 60    # a chronic week below this is not yet a baseline
 RAMP_MAX_TRIM = 0.35      # never cut more than this much of a session
+# A set is not a set. Counting a forty-second calf stretch the same as a
+# loaded split squat made a stretch-heavy session look like a volume spike,
+# and since only stretching is ever trimmed, the correction for a week of hard
+# lifting came out of the stretching — ten of thirteen holds, leaving no
+# routine at all. Weighted by the exertion already recorded against each
+# exercise, which is the app's own judgement of how hard a thing is.
+SET_WEIGHT = {1: 0.4, 2: 1.0, 3: 1.4}
 NEW_PER_SESSION = 2       # unfamiliar movements to meet on any one day
 # Clear days after a back-outer knee report before anything comes back, and
 # then one more movement returns every few days rather than all of them at
@@ -326,6 +333,9 @@ class History:
             .join(WorkoutSession, SetLog.session_id == WorkoutSession.session_id)
             .filter(SetLog.user_id == user_id).all()
         )
+        rows = db.query(Exercise).filter(Exercise.user_id == user_id).all()
+        self.effort = {e.exercise_id: SET_WEIGHT.get(e.exertion or 2, 1.0) for e in rows}
+        self.mobility = {e.exercise_id for e in rows if e.category == "mobility"}
         self.by_exercise, self.by_session = {}, {}
         for st, s in self.rows:
             self.by_exercise.setdefault(st.exercise_id, []).append((st, s))
@@ -1257,10 +1267,11 @@ def recent_easy_days(db, user_id, tz_offset=0, days=7):
     return sorted(hits)
 
 
-def _sets_between(hist, start, end, tz_offset):
-    """Sets logged with a session date in [start, end]."""
-    return sum(1 for _, s in hist.rows
-               if s.date_time and start <= _local_date(s.date_time, tz_offset) <= end)
+def _sets_between(hist, start, end, tz_offset, only_mobility=False):
+    """How much work a window holds, weighted by how hard each set was."""
+    return sum(hist.effort.get(st.exercise_id, 1.0) for st, s in hist.rows
+               if s.date_time and start <= _local_date(s.date_time, tz_offset) <= end
+               and (not only_mobility or st.exercise_id in hist.mobility))
 
 
 def _days_since_flare(db, user_id, regions, tz_offset):
@@ -1404,7 +1415,19 @@ def _expand_mobility(db, user_id, blocks, templates, by_id, by_name,
                     detail += " each side"
             else:
                 detail = "Work through it" + (" each side" if s["per_side"] else "")
+            # What to give up first if the week is running hot. Trimming from
+            # the end of the list took the whole post-session routine and left
+            # every warm-up drill standing — which is backwards: the holds
+            # after a session are the ones doing the work on range, and the
+            # kick ladder is the entire reason the routine exists.
+            if s["name"] in LADDER_NAMES or s["name"] in KICK_PREP:
+                rank = 2                       # goal work, give up last
+            elif s["why"]:
+                rank = 1                       # follows something trained today
+            else:
+                rank = 0                       # general, give up first
             steps.append({
+                "trim_rank": rank,
                 "exercise_id": sx.exercise_id, "exercise": sx.exercise_name,
                 "target": sx.target, "equipment": sx.equipment,
                 "scheme": scheme, "prescription": detail, "why": s["why"],
@@ -1657,17 +1680,12 @@ def _build_notes(prog, profile, decision, knee, limits, deload, flare_days,
     whatever order the code happened to run.
     """
     notes = []
-    if trimmed:
-        notes.append(f"Trimmed {len(trimmed)} stretch(es): this week would "
-                     f"otherwise reach {acute} sets against a usual week of "
-                     f"{chronic:.0f}. Volume rising faster than tissue adapts "
-                     f"is how a tendon gets sore with no single exercise "
-                     f"being too hard.")
-    elif floor_reached:
-        notes.append(f"This week is running well above your usual "
-                     f"({acute} sets against {chronic:.0f}) and there is not "
-                     f"much stretching left to cut. Worth doing less of "
-                     f"something today by choice rather than by injury.")
+    if floor_reached:
+        notes.append(f"This week is running about {acute / chronic:.0%} of your "
+                     f"usual load. Volume rising faster than tissue adapts is "
+                     f"how a tendon gets sore without any single exercise being "
+                     f"too hard — worth easing something by choice today rather "
+                     f"than by injury later.")
     if held_back:
         notes.append("Held back for another day: " + ", ".join(sorted(set(held_back)))
                      + f". No more than {NEW_PER_SESSION} unfamiliar movements "
@@ -1753,29 +1771,45 @@ def _apply_pacing(hist, blocks, by_id, tz_offset):
     # several unfamiliar movements at once. Both happened at the same time and
     # cost a tendon.
     today_local = (datetime.utcnow() - timedelta(minutes=tz_offset)).date()
-    planned = sum(b["sets"] * (2 if b["per_side"] else 1) for b in blocks)
+    planned = sum(b["sets"] * (2 if b["per_side"] else 1)
+                  * hist.effort.get(b["exercise_id"], 1.0) for b in blocks)
     recent = _sets_between(hist, today_local - timedelta(days=6),
                            today_local - timedelta(days=1), tz_offset)
     chronic = _sets_between(hist, today_local - timedelta(days=27),
                             today_local - timedelta(days=1), tz_offset) / 4.0
     acute = recent + planned
+
+    # Judged on the stretching alone, because the stretching is the only thing
+    # this rule will cut. Measured against the whole session, a week of
+    # strength work coming back after an injury was paid for by deleting every
+    # hold in the routine — which does nothing about the load that was actually
+    # rising, and takes away the work on range at the moment it is most needed.
+    mob_planned = sum(b["sets"] * (2 if b["per_side"] else 1)
+                      * hist.effort.get(b["exercise_id"], 1.0)
+                      for b in blocks if b["group"] == "mobility")
+    mob_recent = _sets_between(hist, today_local - timedelta(days=6),
+                               today_local - timedelta(days=1), tz_offset, True)
+    mob_chronic = _sets_between(hist, today_local - timedelta(days=27),
+                                today_local - timedelta(days=1), tz_offset, True) / 4.0
+    mob_acute = mob_recent + mob_planned
+
+    # It warns; it does not cut.
+    #
+    # Trimming was the wrong instrument and it was aimed at the wrong thing.
+    # The only component it would ever cut was the stretching, so every
+    # overshoot — including strength work returning after an injury — was paid
+    # for by deleting holds. And the routine's size is a decision, not an
+    # escalation: measured against a four-week average that predates the
+    # routine existing, a deliberate change looks like a spike and gets undone
+    # a fortnight running.
+    #
+    # What actually caused the injury this was written for was three new
+    # loaded end-range drills and five unfamiliar movements arriving at once,
+    # and the rule below catches that directly. So the volume signal is worth
+    # saying out loud and not worth acting on unasked.
     trimmed, floor_reached = [], False
     if chronic >= RAMP_MIN_BASELINE and acute > chronic * RAMP_LIMIT:
-        budget = chronic * RAMP_LIMIT
-        keep_at_least = planned * (1 - RAMP_MAX_TRIM)
-        # Trim the stretching first: it is the least of the training and the
-        # most of the count, and cutting strength work to make room for holds
-        # would be the wrong way round. Never gut the session, though — a rule
-        # that can delete most of a day is worse than the ramp it prevents.
-        while recent + planned > budget and planned > keep_at_least:
-            nxt = next((i for i in range(len(blocks) - 1, -1, -1)
-                        if blocks[i]["group"] == "mobility"), None)
-            if nxt is None:
-                break
-            trimmed.append(blocks[nxt]["exercise"])
-            planned -= blocks[nxt]["sets"] * (2 if blocks[nxt]["per_side"] else 1)
-            blocks.pop(nxt)
-        floor_reached = recent + planned > budget
+        floor_reached = True
 
     # Unfamiliar movements, rationed. Four of these arrived together on the
     # day before the flare, two of them the patterns that caused it.

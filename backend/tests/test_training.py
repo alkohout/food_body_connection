@@ -226,6 +226,27 @@ def test_pacing_rules_do_not_gut_a_session():
     if held:
         check("only demanding work is held back",
               "Stretch" not in held[0] and "Pelvic" not in held[0], held[0][:90])
+
+    # The volume rule reports; it does not cut. Stretching was the only thing
+    # it could ever cut, so an overshoot from anywhere else — strength work
+    # returning after an injury, most obviously — was paid for by deleting
+    # holds. And a routine measured against a four-week average that predates
+    # it looks like a spike every day for a fortnight.
+    check("the volume rule never removes stretches",
+          not [n for n in r["notes"] if "Trimmed" in n],
+          str([n for n in r["notes"] if "Trimmed" in n])[:90])
+    db.close()
+
+
+def test_the_stretch_routine_survives_a_busy_week():
+    """It had gone to nothing: ten of thirteen holds cut, three days running."""
+    db, uid, byn, sy = fresh()
+    at(31)
+    for day in ("A", "B", "C"):
+        r = build(db, uid, day=day, kind="strength", mode="full")
+        after = [b for b in r["blocks"] if b.get("slot") == "after"]
+        check(f"day {day} keeps a post-session routine", len(after) >= 5,
+              f"only {len(after)} stretches")
     db.close()
 
 
