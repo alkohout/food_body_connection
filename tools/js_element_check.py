@@ -1,4 +1,16 @@
-"""Ids the JS reaches for that the markup does not define, and vice versa."""
+"""Ids the script reaches for that nothing defines.
+
+getElement returns null for a missing id and only warns, so the failure turns
+up later as a TypeError on a line that looks fine — or as a feature that
+quietly does nothing. Both had happened here: the "add this as a new exposure"
+prompt threw every time you typed something unrecognised, and a symptom
+autocomplete warned on every page load without ever being able to work.
+
+Counts ids the script writes into markup itself as defined, because much of
+the check-in form is built that way.
+
+    python3 tools/js_element_check.py
+"""
 import pathlib, re
 js = pathlib.Path("docs/js/dashboard.js").read_text()
 html = "".join(pathlib.Path(f"docs/{n}").read_text()
