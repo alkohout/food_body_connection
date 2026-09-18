@@ -56,6 +56,37 @@ function isTokenExpired(token) {
 const TOKEN_REFRESH_MARGIN_S = 15 * 60;
 let tokenRefreshInFlight = null;
 
+// Every call to the API refreshes the token first, in one place.
+//
+// It was done by hand at each call site, which meant it was done at eight of
+// thirty-six — the training session, and nothing else. Logging an exposure, a
+// symptom, a medication, a check-in, a document, or any setting still failed
+// the moment the hour ran out, exactly as the training session used to.
+//
+// Stamping the header here as well as refreshing matters: callers build
+// `headers: { ...trAuth() }` when they construct the options object, which is
+// before the request is sent, so a refresh alone would leave the dead token
+// sitting in a header that had already been assembled.
+const rawFetch = window.fetch.bind(window);
+
+window.fetch = async function (input, init) {
+  const url = typeof input === "string" ? input : (input && input.url) || "";
+  if (!url.startsWith(API_URL) || url.includes("/auth/refresh")) {
+    return rawFetch(input, init);
+  }
+  await ensureFreshToken();
+  const token = localStorage.getItem("access_token");
+  const opts = init || {};
+  if (token && opts.headers && !(opts.headers instanceof Headers)) {
+    return rawFetch(input, {
+      ...opts,
+      headers: { ...opts.headers, Authorization: `Bearer ${token}` },
+    });
+  }
+  return rawFetch(input, opts);
+};
+
+
 function tokenSecondsLeft(token) {
   try {
     if (!token) return 0;
@@ -74,7 +105,7 @@ async function ensureFreshToken() {
   if (left > TOKEN_REFRESH_MARGIN_S) return true;
   // Saves can land together; one refresh serves all of them.
   if (!tokenRefreshInFlight) {
-    tokenRefreshInFlight = fetch(`${API_URL}/auth/refresh`, {
+    tokenRefreshInFlight = rawFetch(`${API_URL}/auth/refresh`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -657,7 +688,11 @@ const setupAutocomplete = (inputEl, idEl, suggestionsEl, type) => {
       const addBtnWrapper = getElement("add-allergen-wrapper");
       const addBtn = getElement("add-allergen-btn");
 
-      if (data.length === 0 && query.length > 1) {
+      // Guarded on both sides. The branch below already checked for
+      // null and this one did not, so typing an exposure the list has
+      // never seen — the exact case the feature exists for — threw
+      // instead of offering to add it.
+      if (data.length === 0 && query.length > 1 && addBtnWrapper && addBtn) {
         addBtnWrapper.style.display = "block";
         addBtn.textContent = `Add "${query}" as a new exposure`;
 
@@ -2705,12 +2740,9 @@ async function init() {
 
     // Set up autocomplete (after data is loaded)
     console.log("Setting up autocomplete...");
-    setupAutocomplete(
-      getElement("symptom-select"),
-      getElement("symptom-id"),
-      getElement("symptom-suggestions"),
-      "symptom"
-    );
+    // The symptom field is a <select>, so there is nothing to
+    // autocomplete and there was never a suggestions box for it. The
+    // call warned on every page load and did nothing else.
     setupAutocomplete(
       getElement("allergen-intensity-input"),
       getElement("allergen-intensity-id"),

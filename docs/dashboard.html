@@ -56,7 +56,10 @@
            Or add a new one below.
       </p>
 
-      <div class="form-row">
+      <!-- The row the autocomplete reveals when what you typed is not on
+           the list yet. It had no id, so the script that shows it
+           dereferenced null and threw. -->
+      <div class="form-row" id="add-allergen-wrapper">
         <label></label>
         <div class="inline-add">
           <input
