@@ -253,8 +253,13 @@ EQUIVALENT = {
 }
 
 
-def _eligible(pool, day_targets, allow_floor, sore_knee):
-    """Everything in the pool that suits today, best match first."""
+def _eligible(pool, day_targets, allow_floor, sore_knee, pin=()):
+    """Everything in the pool that suits today, best match first.
+
+    `pin` names stretches that earn their place from something other than
+    today's targets and so skip the target filter. The safety gates above it
+    still apply — a pinned stretch is not worth a sore knee.
+    """
     out = []
     for s in pool:
         if s.floor and not allow_floor:
@@ -269,7 +274,7 @@ def _eligible(pool, day_targets, allow_floor, sore_knee):
         # nothing, so nothing matches, and matching nothing must not mean
         # prescribing nothing — the stretching is most of the point of the
         # day. With no session to follow, the routine is simply a general one.
-        if s.targets and not hit and day_targets:
+        if s.targets and not hit and day_targets and s.name not in pin:
             continue
         out.append((s, hit))
     # Stable, so the catalogue order breaks ties and the routine does not
@@ -326,9 +331,20 @@ def routine_for(slot, by_target, *, kicks=False, allow_floor=True,
     """
     day_targets = set(by_target)
     if slot == "before":
-        chosen = _eligible(BEFORE, day_targets, allow_floor, sore_knee)
+        # Pinned, not merely sorted to the front. Sorting can only reorder
+        # what the target filter already kept, and the kick prep is aimed at
+        # the kicking rather than at the day's strength work — so on a practice
+        # day, where the only non-practice block was the pelvic floor work, its
+        # lone "core" target was enough to switch the filter on and drop the
+        # leg swings. The warm-up for the kicks went missing on the day that
+        # was almost entirely kicks.
+        chosen = _eligible(BEFORE, day_targets, allow_floor, sore_knee,
+                           pin=KICK_PREP if kicks else ())
         if kicks:
             chosen.sort(key=lambda pair: pair[0].name not in KICK_PREP)
+        # One extra slot, not one per pinned stretch. The prep sorts to the
+        # front and so already fits; widening this only adds a stretch to every
+        # kicking day, and the volume is not free.
         limit = BEFORE_LIMIT + (1 if kicks else 0)
         return [_step(s, ("Loosens the hips for the kicking that follows."
                           if kicks and s.name in KICK_PREP

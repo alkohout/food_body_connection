@@ -250,6 +250,32 @@ def test_the_stretch_routine_survives_a_busy_week():
     db.close()
 
 
+def test_the_kick_prep_survives_a_practice_day():
+    """It went missing on a Saturday, which is almost entirely kicking.
+
+    The prep was sorted to the front of the warm-up rather than pinned into
+    it, and sorting cannot reinstate what the target filter has already
+    dropped. On a practice day the pelvic floor work is the only block with a
+    target, and its lone "core" was enough to switch that filter on.
+    """
+    from app.data.stretches import routine_for, KICK_PREP
+
+    practice_only = {"core": ["Pelvic Floor Training"]}
+    got = [s["name"] for s in routine_for("before", practice_only, kicks=True)]
+    check("the leg swings are prescribed on a practice-only day",
+          all(n in got for n in KICK_PREP), str(got))
+
+    strength = {"knee": ["Box Squat"], "hip": ["Standing Hip Abduction"],
+                "core": ["Dead Bug"]}
+    day = [s["name"] for s in routine_for("before", strength, kicks=True)]
+    check("and still on a strength day", all(n in day for n in KICK_PREP), str(day))
+    check("without lengthening the warm-up", len(day) <= 5, f"{len(day)} stretches")
+
+    quiet = [s["name"] for s in routine_for("before", practice_only, kicks=False)]
+    check("someone who does not kick is not given them",
+          not any(n in quiet for n in KICK_PREP), str(quiet))
+
+
 def test_an_interrupted_session_can_be_picked_up():
     """The browser held the only record that a session was open.
 
