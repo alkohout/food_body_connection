@@ -280,7 +280,11 @@ def achievable_loads(profile) -> list[float]:
     totals = {0.0}
     for p in pairs:
         totals |= {t + p for t in totals}
-    return sorted(round(bar + t, 2) for t in totals)
+    # A load has to weigh something. With no bar weight recorded the empty bar
+    # comes out as 0kg, which then sits at the bottom of the ladder as though it
+    # were a rung — so a step down from the lightest real load landed on "hold
+    # nothing", and the repeat-until-complete rule pinned it there.
+    return sorted(w for w in (round(bar + t, 2) for t in totals) if w > 0)
 
 
 def achievable_bands(profile) -> list[float]:
@@ -305,7 +309,11 @@ def _next_load(current, loads, up=True):
     if not loads:
         return current
     if current is None:
-        return loads[1] if len(loads) > 1 else loads[0]
+        # The lightest buildable load. This used to be the second rung, because
+        # the first one was the empty bar and starting there meant starting with
+        # nothing; now that a load has to weigh something, the first rung is the
+        # honest place to start.
+        return loads[0]
     if up:
         higher = [w for w in loads if w > current + 1e-6]
         return higher[0] if higher else current
@@ -1072,6 +1080,13 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
     else:  # load
         prev = [s for s in last_sets if s.weight_kg is not None]
         last_w = max((s.weight_kg for s in prev), default=None)
+        # Sessions already logged at 0kg, from when that was a rung. Read as a
+        # load they are a floor nothing climbs off, because every branch that
+        # repeats or holds repeats it exactly. Read as the lightest thing that
+        # can actually be held, the next session carries on from where the
+        # weights were before the layoff.
+        if last_w is not None and loads and last_w < loads[0]:
+            last_w = loads[0]
         counts = [(s.reps or 0) for s in prev]
         top_reps = max(counts) if counts else 0
         last_reps = min(counts) if counts else 0
@@ -1084,7 +1099,7 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
             why = ("Planned easy week — targets and sets come down together."
                    if action == "deload" else "Load down a step while the knee settles.")
         elif last_w is None:
-            weight = loads[1] if len(loads) > 1 else (loads[0] if loads else None)
+            weight = loads[0] if loads else None
             target = block.low
             why = "First time — start light and see how it feels tomorrow."
         elif action == "hold":

@@ -250,6 +250,69 @@ def test_the_stretch_routine_survives_a_busy_week():
     db.close()
 
 
+def test_a_load_has_to_weigh_something():
+    """Weights stopped coming back after a layoff, and sat at 0kg instead.
+
+    With no bar weight recorded the empty bar came out as 0kg and sat at the
+    bottom of the load ladder as a rung. A deload step from the lightest real
+    load landed there, and every branch that repeats or holds a load then
+    repeated 0kg exactly — so "repeat it before adding load" waited forever
+    for a complete session at a load that is not an exercise.
+    """
+    from types import SimpleNamespace
+    from app.analysis.training_program import achievable_loads, _next_load
+
+    profile = SimpleNamespace(
+        dumbbell_bar_kg=0.0,
+        equipment_json='{"plates": {"3.0": 8, "2.5": 4, "1.25": 4}}')
+    loads = achievable_loads(profile)
+    check("nothing on the ladder weighs nothing", all(w > 0 for w in loads),
+          str(loads[:4]))
+    check("the lightest is the lightest real load", loads[0] == 2.5, str(loads[:3]))
+
+    check("a step down from the bottom stays on the bottom",
+          _next_load(loads[0], loads, up=False) == loads[0])
+    check("and a load logged at zero climbs back on",
+          _next_load(0.0, loads, up=True) == 2.5)
+    check("a first load is the lightest, not the one above it",
+          _next_load(None, loads, up=True) == 2.5)
+
+
+def test_a_load_logged_at_zero_does_not_pin_the_next_one():
+    """The half that heals what was already recorded.
+
+    Four sessions went in at 0kg before the ladder was fixed. Read back as a
+    load, "repeat it before adding load" repeats zero; read as the lightest
+    thing that can actually be held, the weights carry on from before the
+    layoff.
+    """
+    from types import SimpleNamespace
+    from app.data.programs import Block
+    from app.analysis.training_program import _prescribe
+
+    block = Block("Romanian Deadlift", "load", 4, 6, 10)
+    ex = SimpleNamespace(exercise_name="Romanian Deadlift", category="strength",
+                         target="posterior", equipment="dumbbell",
+                         is_unilateral=False, is_hold=False, exercise_id=1,
+                         form_cues=None, video_url=None, needs_balance=False,
+                         hold_seconds=None, notes=None)
+    loads = [2.5, 5.0, 7.5]
+    zeros = [SimpleNamespace(weight_kg=0.0, reps=6, rpe=6) for _ in range(3)]
+
+    got = _prescribe(block, ex, zeros, "progress", loads)
+    check("an incomplete session at 0kg is not repeated at 0kg",
+          got["target_weight"] == 2.5, str(got["target_weight"]))
+
+    held = _prescribe(block, ex, zeros, "hold", loads)
+    check("and holding does not hold it there either",
+          held["target_weight"] == 2.5, str(held["target_weight"]))
+
+    real = [SimpleNamespace(weight_kg=5.0, reps=6, rpe=6) for _ in range(4)]
+    kept = _prescribe(block, ex, real, "hold", loads)
+    check("a real load is left alone", kept["target_weight"] == 5.0,
+          str(kept["target_weight"]))
+
+
 def test_the_kick_prep_survives_a_practice_day():
     """It went missing on a Saturday, which is almost entirely kicking.
 
