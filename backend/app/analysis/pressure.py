@@ -38,6 +38,11 @@ FORECAST = "https://api.open-meteo.com/v1/forecast"
 # The archive is authoritative but late; leave a margin rather than discovering
 # the gap as a run of missing days.
 ARCHIVE_LAG_DAYS = 7
+
+# Archive days never change, so they are cached permanently — which means a new
+# metric would otherwise never appear for any day already stored. Bump this when
+# the shape of a daily row changes.
+CACHE_VERSION = 2
 FORECAST_TTL_S = 3 * 3600
 NET_TIMEOUT_S = 30
 
@@ -66,6 +71,12 @@ def _to_daily(times, values):
     is the shape people describe — a front coming through — rather than the
     net change between two arbitrary midnights, which can be zero on a day the
     pressure fell 10 hPa and recovered.
+
+    `rise24` is the same measurement the other way up. Only falls were recorded
+    at first, on the strength of how the trigger is usually described, which
+    made a rising front indistinguishable from a flat day and meant the question
+    could only ever be answered about half the weather. `swing24` is the larger
+    of the two, for asking whether movement in either direction matters.
     """
     rows, order = {}, []
     for i, (t, v) in enumerate(zip(times, values)):
@@ -73,12 +84,13 @@ def _to_daily(times, values):
             continue
         d = t[:10]
         if d not in rows:
-            rows[d] = {"readings": [], "drop24": 0.0}
+            rows[d] = {"readings": [], "drop24": 0.0, "rise24": 0.0}
             order.append(d)
         rows[d]["readings"].append(v)
         window = [x for x in values[max(0, i - 24):i + 1] if x is not None]
         if window:
             rows[d]["drop24"] = max(rows[d]["drop24"], max(window) - v)
+            rows[d]["rise24"] = max(rows[d]["rise24"], v - min(window))
 
     out = {}
     prev_mean = None
@@ -91,6 +103,8 @@ def _to_daily(times, values):
             "max": round(max(vals), 1),
             "range": round(max(vals) - min(vals), 1),
             "drop24": round(rows[d]["drop24"], 1),
+            "rise24": round(rows[d]["rise24"], 1),
+            "swing24": round(max(rows[d]["drop24"], rows[d]["rise24"]), 1),
             "delta": round(mean - prev_mean, 1) if prev_mean is not None else 0.0,
         }
         prev_mean = mean
@@ -122,7 +136,7 @@ def series(start: date, end: date, ahead: int = 0,
     the weather is not a reason to fail a plot of somebody's symptoms.
     """
     today = date.today()
-    key = f"{lat:.3f}_{lon:.3f}.json".replace("-", "m")
+    key = f"v{CACHE_VERSION}_{lat:.3f}_{lon:.3f}.json".replace("-", "m")
     path = _cache_path(key)
     cached = {}
     if os.path.exists(path):
@@ -156,7 +170,8 @@ def series(start: date, end: date, ahead: int = 0,
 
 
 def _cached_forecast(settled, end, ahead, lat, lon):
-    path = _cache_path(f"forecast_{lat:.3f}_{lon:.3f}.json".replace("-", "m"))
+    path = _cache_path(
+        f"forecast_v{CACHE_VERSION}_{lat:.3f}_{lon:.3f}.json".replace("-", "m"))
     if os.path.exists(path) and time.time() - os.path.getmtime(path) < FORECAST_TTL_S:
         try:
             return json.loads(open(path, encoding="utf-8").read())
