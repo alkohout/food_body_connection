@@ -94,6 +94,70 @@ def test_an_open_session_is_offered_back():
     run("resume", api, body)
 
 
+def _blk(name, group, slot=None):
+    return {"exercise": name, "group": group, "slot": slot, "sets": 2,
+            "prescription": "2 x 8", "why": "", "scheme": "reps",
+            "target_reps": 8, "target_seconds": None, "target_weight": None,
+            "target_band": None, "per_side": False, "exercise_id": 1,
+            "form_cues": None, "video_url": None, "notice": None}
+
+
+STAGED = [
+    _blk("Leg Swings, Front and Back", "mobility", "before"),
+    _blk("Tai Chi Form 37", "practice"),
+    _blk("Kung Fu Pattern", "practice"),
+    _blk("Side Kick", "practice"),
+    _blk("Goblet Squat", "strength"),
+    _blk("Pelvic Floor Training", "pelvic"),
+    _blk("Chambered Side Kick Hold", "mobility", "after"),
+]
+SESSION = {"session_id": 900, "date_time": "2026-11-10T06:00:00Z",
+           "session_type": "strength", "sets": []}
+
+
+def test_progress_is_a_bar_coloured_by_stage():
+    """It was a running count, which said nothing about the shape of a session."""
+    plan = dict(PLAN, blocks=STAGED)
+    api = Api(**{"/training/today": plan,
+                 "/training/sessions": lambda req: (
+                     SESSION if req.method == "POST" else [])})
+
+    def body(page, api, errors):
+        page.click("text=Start session")
+        page.wait_for_timeout(600)
+        segs = page.locator("#tr-run-progress .tr-bar-seg")
+        check("one segment per exercise", segs.count() == len(STAGED),
+              f"{segs.count()} of {len(STAGED)}")
+
+        colour = lambda i: segs.nth(i).evaluate(
+            "el => getComputedStyle(el).backgroundColor")
+        check("tai chi and kung fu are not the same colour",
+              colour(1) != colour(2), colour(1))
+        check("strength is its own colour again",
+              colour(4) not in (colour(1), colour(2)), colour(4))
+        # The kick holds live in the stretch routine, so they read as stretches
+        # rather than as martial practice despite the name.
+        check("a kick hold in the stretches is a stretch",
+              colour(6) == colour(0), f"{colour(6)} vs {colour(0)}")
+
+        here = page.locator("#tr-run-progress .tr-bar-seg.is-here")
+        check("the current exercise is marked", here.count() == 1, str(here.count()))
+        ahead = page.locator("#tr-run-progress .tr-bar-seg.is-ahead")
+        check("and everything after it is still to come",
+              ahead.count() == len(STAGED) - 1, str(ahead.count()))
+
+        check("the legend names only the stages present",
+              page.locator("#tr-run-progress .tr-bar-key-item").count() == 5,
+              str(page.locator("#tr-run-progress .tr-bar-key-item").count()))
+        # The count has not been thrown away, only moved somewhere a screen
+        # reader can reach it.
+        label = page.locator("#tr-run-progress").get_attribute("aria-label")
+        check("the count is still readable aloud", "1 of 7" in (label or ""), str(label))
+        check("no uncaught error", not errors, str(errors[:1]))
+
+    run("bar", api, body)
+
+
 def test_the_walk_appears_only_when_scheduled():
     """It was a step inside the runner, then briefly nowhere at all."""
     walk = {"exercise": "Brisk Walk", "exercise_id": 1, "low": 25, "high": 30,

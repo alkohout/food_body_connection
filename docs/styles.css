@@ -853,6 +853,46 @@ textarea:focus {
   margin: 0 0 0.4rem;
 }
 
+/* Where you are in the session. One segment per exercise, coloured by stage,
+   so the shape of the session is visible at a glance — how much stretching is
+   left, whether the strength work is done — which a running count never showed. */
+.tr-bar {
+  display: flex;
+  gap: 2px;
+  width: 100%;
+  margin: 0 0 0.4rem;
+}
+.tr-bar-seg {
+  flex: 1 1 0;
+  height: 0.5rem;
+  border-radius: 1px;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.tr-bar-seg:first-child { border-radius: 3px 1px 1px 3px; }
+.tr-bar-seg:last-child { border-radius: 1px 3px 3px 1px; }
+/* Still coloured, so the stages ahead stay readable as a plan. */
+.tr-bar-seg.is-ahead { opacity: 0.28; }
+.tr-bar-seg.is-here {
+  transform: scaleY(1.9);
+  box-shadow: 0 0 0 1px #fff, 0 0 0 2px var(--seg, #374151);
+}
+
+.tr-bar-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.7rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.tr-bar-key-item { display: inline-flex; align-items: center; gap: 0.3rem; }
+.tr-bar-key-item.is-here { color: #374151; font-weight: 600; }
+.tr-bar-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  display: inline-block;
+}
+
 .tr-block { width: 100%; }
 .tr-big { font-size: 0.95rem; padding: 0.6rem 1rem; min-height: 2.6rem; }
 

@@ -4869,6 +4869,79 @@ function trRunnerVisible(on) {
   if (r) r.style.display = on ? "" : "none";
 }
 
+// The stages a session moves through, and the colour each one carries in the
+// progress bar. Tai chi and kung fu share a group on the server — both are
+// "practice" — so the two are told apart here by name, which is the only place
+// the distinction is wanted: it is a thing to look at, not to reason about.
+const TR_STAGES = {
+  taichi: { label: "tai chi", colour: "#0891b2" },
+  kungfu: { label: "kung fu", colour: "#b91c1c" },
+  strength: { label: "strength", colour: "#7c3aed" },
+  stretch: { label: "stretch", colour: "#16a34a" },
+  pelvic: { label: "pelvic floor", colour: "#db2777" },
+  aerobic: { label: "aerobic", colour: "#ea580c" },
+  test: { label: "baseline test", colour: "#ca8a04" },
+  practice: { label: "practice", colour: "#64748b" },
+};
+
+function trStageKey(b) {
+  const name = (b.exercise || "").toLowerCase();
+  if (b.group === "practice" || b.group === "maintenance") {
+    if (name.includes("tai chi")) return "taichi";
+    // Only inside a practice block. The stretch routine has a standing front
+    // kick hold and a chambered side kick hold in it, and those are mobility —
+    // they should read as stretches, not as martial practice.
+    if (name.includes("kung fu") || name.includes("kick")) return "kungfu";
+    return "practice";
+  }
+  return { strength: "strength", mobility: "stretch", conditioning: "aerobic",
+           pelvic: "pelvic", assessment: "test" }[b.group] || "practice";
+}
+
+// Where you are in the session, as a bar rather than a count. The count stays
+// on the element for a screen reader, which cannot see a colour.
+function trRenderProgressBar(head, blocks, idx) {
+  head.replaceChildren();
+  const here = blocks[idx] ? trStageKey(blocks[idx]) : null;
+
+  const bar = trEl("div", null, "tr-bar");
+  blocks.forEach((b, i) => {
+    const key = trStageKey(b);
+    const seg = trEl("span", null, "tr-bar-seg");
+    seg.style.background = TR_STAGES[key].colour;
+    // The ring on the current segment is drawn from this rather than from
+    // currentColor, which here is the muted grey of the caption text.
+    seg.style.setProperty("--seg", TR_STAGES[key].colour);
+    if (i > idx) seg.classList.add("is-ahead");
+    if (i === idx) seg.classList.add("is-here");
+    seg.title = `${b.exercise} — ${TR_STAGES[key].label}`;
+    bar.appendChild(seg);
+  });
+  head.appendChild(bar);
+
+  // Only the stages this session actually contains, in the order they arrive.
+  const seen = [];
+  blocks.forEach((b) => {
+    const key = trStageKey(b);
+    if (!seen.includes(key)) seen.push(key);
+  });
+  const legend = trEl("div", null, "tr-bar-key");
+  seen.forEach((key) => {
+    const item = trEl("span", null, "tr-bar-key-item");
+    if (key === here) item.classList.add("is-here");
+    const dot = trEl("span", null, "tr-bar-dot");
+    dot.style.background = TR_STAGES[key].colour;
+    item.append(dot, trEl("span", TR_STAGES[key].label));
+    legend.appendChild(item);
+  });
+  head.appendChild(legend);
+
+  head.setAttribute(
+    "aria-label",
+    `Exercise ${idx + 1} of ${blocks.length}` +
+      (here ? `, ${TR_STAGES[here].label}` : ""));
+}
+
 function trRenderRunner() {
   const body = getElement("tr-run-body");
   const head = getElement("tr-run-progress");
@@ -4900,12 +4973,7 @@ function trRenderRunner() {
   // logging a set re-renders the whole body and a value set on the element
   // is thrown away with it — which is why it always came back on "left".
   const nextSide = trNextSide(b);
-  const groupLabel = { practice: "practice", maintenance: "maintenance",
-                       assessment: "baseline test", strength: "strength",
-                       mobility: "stretch",
-                       conditioning: "aerobic",
-                       pelvic: "pelvic floor" }[b.group] || b.group;
-  head.textContent = `${trRun.idx + 1} of ${blocks.length} — ${groupLabel}`;
+    trRenderProgressBar(head, blocks, trRun.idx);
 
   // An exercise the engine swapped out from under you is worth saying out
   // loud, once, before you start it.
