@@ -250,6 +250,137 @@ def test_the_stretch_routine_survives_a_busy_week():
     db.close()
 
 
+def test_progression_is_paced_without_asking_how_it_felt():
+    """The brakes were all wired to a signal that was never given.
+
+    `easy` read an RPE and defaulted to True when none was logged, and across
+    3,353 logged sets not one carried one — so the check that was meant to hold
+    a load back passed on every session the programme ever prescribed. A
+    beginner does not yet know what their limit feels like, and someone who
+    trusts the screen pushes to whatever it asks, so asking was never a brake.
+    """
+    from types import SimpleNamespace
+    from app.data.programs import Block
+    from app.analysis.training_program import (CONSOLIDATE_SESSIONS,
+                                               MIN_DAYS_AT_LOAD, _prescribe)
+
+    block = Block("Box Squat", "load", 3, 8, 12)
+    ex = SimpleNamespace(exercise_name="Box Squat", category="strength",
+                         target="knee", equipment="dumbbell", is_hold=False,
+                         is_unilateral=False, exercise_id=1, form_cues=None,
+                         video_url=None, needs_balance=False,
+                         hold_seconds=None, notes=None)
+    loads = [2.5, 5.0, 6.0, 7.5]
+
+    def sets_at(w, reps, rpe=None, n=3):
+        return [SimpleNamespace(weight_kg=w, reps=reps, rpe=rpe, band_kg=None)
+                for _ in range(n)]
+
+    def pace(at_load_days, reps_hist, loads_hist, at_reps):
+        return {"sessions_at_load": len(loads_hist), "days_at_load": at_load_days,
+                "days_since_rep_step": 3, "sessions_at_reps": at_reps,
+                "top_reps": reps_hist[-1], "reps_by_session": reps_hist,
+                "loads_by_session": loads_hist}
+
+    # One session at the top of the range used to be enough to add weight.
+    once = _prescribe(block, ex, sets_at(5.0, 12), "progress", loads,
+                      pace=pace(30, [11, 12], [5.0, 5.0], 1))
+    check("one session at the top does not add load",
+          once["target_weight"] == 5.0, str(once["target_weight"]))
+    check("it repeats the top instead", once["target_reps"] == 12,
+          str(once["target_reps"]))
+
+    twice = _prescribe(block, ex, sets_at(5.0, 12), "progress", loads,
+                       pace=pace(30, [12, 12], [5.0, 5.0], 2))
+    check(f"{CONSOLIDATE_SESSIONS} sessions at the top does",
+          twice["target_weight"] == 6.0, str(twice["target_weight"]))
+    check("and the reps start again at the bottom",
+          twice["target_reps"] == block.low, str(twice["target_reps"]))
+
+    # Time under the load matters on its own. Muscle adapts faster than tendon,
+    # which is how a programme that feels fine produces an overuse injury.
+    soon = _prescribe(block, ex, sets_at(5.0, 12), "progress", loads,
+                      pace=pace(MIN_DAYS_AT_LOAD - 1, [12, 12], [5.0, 5.0], 2))
+    check("a load held for under a fortnight is not stepped up",
+          soon["target_weight"] == 5.0, str(soon["target_weight"]))
+
+    # A logged RPE can still stop a step. It can no longer cause one.
+    heavy = _prescribe(block, ex, sets_at(5.0, 12, rpe=9), "progress", loads,
+                       pace=pace(30, [12, 12], [5.0, 5.0], 2))
+    check("a hard session still blocks the step",
+          heavy["target_weight"] == 5.0, str(heavy["target_weight"]))
+
+
+def test_a_big_jump_in_load_lands_at_lower_volume():
+    """The plates cannot make a small step at the light end: 2.5kg to 5kg is
+    the whole load again. The sets carry what the plates cannot."""
+    from types import SimpleNamespace
+    from app.data.programs import Block
+    from app.analysis.training_program import _prescribe
+
+    block = Block("Goblet Squat", "load", 4, 6, 10)
+    ex = SimpleNamespace(exercise_name="Goblet Squat", category="strength",
+                         target="knee", equipment="dumbbell", is_hold=False,
+                         is_unilateral=False, exercise_id=1, form_cues=None,
+                         video_url=None, needs_balance=False,
+                         hold_seconds=None, notes=None)
+    prior = [SimpleNamespace(weight_kg=2.5, reps=10, rpe=None, band_kg=None)
+             for _ in range(4)]
+    p = {"sessions_at_load": 2, "days_at_load": 30, "days_since_rep_step": 3,
+         "sessions_at_reps": 2, "top_reps": 10,
+         "reps_by_session": [10, 10], "loads_by_session": [2.5, 2.5]}
+    doubled = _prescribe(block, ex, prior, "progress", [2.5, 5.0, 6.0], pace=p)
+    check("the load doubles because nothing sits between the two",
+          doubled["target_weight"] == 5.0, str(doubled["target_weight"]))
+    check("so the first session at it drops a set",
+          doubled["sets"] == block.sets - 1,
+          f"{doubled['sets']} of {block.sets}")
+
+    # A step small enough to be ordinary keeps its volume. On this plate set
+    # that is the exception rather than the rule: of the eight steps the plates
+    # can make, only 11->12kg and 13.5->14.5kg come in under the threshold.
+    # Every other one is a 20-100% jump, which is why the sets have to give.
+    prior11 = [SimpleNamespace(weight_kg=11.0, reps=10, rpe=None, band_kg=None)
+               for _ in range(4)]
+    p11 = dict(p, reps_by_session=[10, 10], loads_by_session=[11.0, 11.0])
+    small = _prescribe(block, ex, prior11, "progress", [5.0, 11.0, 12.0], pace=p11)
+    check("a 9% step keeps its full volume", small["sets"] == block.sets,
+          f"{small['sets']} of {block.sets}")
+
+
+def test_reps_do_not_climb_every_single_session():
+    """Adding a rep each time looks gentle and compounds into the fastest ramp
+    the rotation allows — every session harder than the last, indefinitely."""
+    from types import SimpleNamespace
+    from app.data.programs import Block
+    from app.analysis.training_program import _prescribe
+
+    block = Block("Dumbbell Row", "load", 3, 8, 12)
+    ex = SimpleNamespace(exercise_name="Dumbbell Row", category="strength",
+                         target="upper", equipment="dumbbell", is_hold=False,
+                         is_unilateral=False, exercise_id=1, form_cues=None,
+                         video_url=None, needs_balance=False,
+                         hold_seconds=None, notes=None)
+    prior = [SimpleNamespace(weight_kg=5.0, reps=9, rpe=None, band_kg=None)
+             for _ in range(3)]
+    first = {"sessions_at_load": 3, "days_at_load": 10, "days_since_rep_step": 3,
+             "sessions_at_reps": 1, "top_reps": 9,
+             "reps_by_session": [8, 9], "loads_by_session": [5.0, 5.0]}
+    held = _prescribe(block, ex, prior, "progress", [2.5, 5.0], pace=first)
+    check("a rep count is repeated before it goes up",
+          held["target_reps"] == 9, str(held["target_reps"]))
+
+    second = dict(first, sessions_at_reps=2, reps_by_session=[9, 9])
+    up = _prescribe(block, ex, prior, "progress", [2.5, 5.0], pace=second)
+    check("and then it goes up", up["target_reps"] == 10, str(up["target_reps"]))
+
+    # Counted in sessions, not days: a fortnight off must not buy a step up.
+    layoff = dict(first, days_since_rep_step=21, sessions_at_reps=1)
+    back = _prescribe(block, ex, prior, "progress", [2.5, 5.0], pace=layoff)
+    check("a layoff does not unlock one either",
+          back["target_reps"] == 9, str(back["target_reps"]))
+
+
 def test_a_load_has_to_weigh_something():
     """Weights stopped coming back after a layoff, and sat at 0kg instead.
 

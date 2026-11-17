@@ -187,7 +187,36 @@ SYMPTOM_RULES = [
     ("stiffness",  {"back_off": 3, "hold": 2, "instability": False}),
 ]
 SYMPTOM_DEFAULT = {"back_off": 2, "hold": 1, "instability": False}
-RPE_CEILING = 8           # progress load only if the last sets were <= this
+RPE_CEILING = 8           # a logged RPE above this blocks a load step
+
+# Progression is paced by the calendar and by work actually completed, not by
+# whether the person says they have reached their limit. Someone new to lifting
+# does not yet know what their limit feels like, and someone who trusts the
+# screen will push to whatever it asks — so asking them was never a brake.
+#
+# The old rule stepped the load up the first session the top of the rep range
+# was reached, and added a rep every session in between. Nothing in either
+# decision looked at the clock, and the one check that could have slowed it
+# down — "was it easy?" — read an RPE that had never been logged, so it
+# defaulted to yes on every session the programme had ever prescribed.
+
+# Sessions at the top of the rep range before the load goes up. One session at
+# the top is a good day; two is an adaptation.
+CONSOLIDATE_SESSIONS = 2
+# And a minimum spell at a load regardless of how fast the reps climbed. Muscle
+# adapts faster than tendon and bone, which is how a programme that feels fine
+# produces an overuse injury: the part that says "this is easy" is not the part
+# that is failing.
+MIN_DAYS_AT_LOAD = 14
+# Sessions at a rep count before it goes up, so every second session of an
+# exercise is a repeat rather than a step. Counted in sessions and not in days
+# because a layoff would clear a calendar gate without any work being done.
+REP_STEP_SESSIONS = 2
+# A load step this large relative to the current load gets its first session at
+# reduced volume. With light dumbbells the plates cannot make a small jump —
+# 2.5kg to 5kg is the whole load again — so the sets carry what the plates
+# cannot.
+BIG_STEP_PCT = 0.15
 RECENT_SCORES = 5         # how many recent next-day scores decide a phase
 MIN_EXERCISES_FOR_CREDIT = 3   # exercises needed for a session to count
 STALL_SESSIONS = 3        # identical failed attempts before backing the target off
@@ -380,6 +409,103 @@ def _last_sets(hist, exercise_id):
     was_assessment = any(s.session_type == "assessment"
                          for _, s in dated if s.date_time == latest)
     return sets, latest, was_assessment
+
+
+def _progress_pace(hist, exercise_id):
+    """How long this exercise has carried its current load, and when reps moved.
+
+    Both progression decisions used to turn on the last session alone: reach
+    the top of the rep range once and the load went up, otherwise add a rep.
+    Neither looked at the calendar, so on daily training the ramp ran as fast
+    as the rotation allowed and nothing ever asked whether the tissue had
+    caught up.
+
+    Returns None when there is no history to pace against, which leaves a first
+    prescription to the branches that handle a first time.
+    """
+    dated = [(st, s) for st, s in hist.for_exercise(exercise_id) if s.date_time]
+    if not dated:
+        return None
+
+    # One entry per session: the heaviest load carried and the best rep count.
+    sessions = {}
+    for st, s in dated:
+        day = s.date_time.date()
+        cur = sessions.setdefault(day, {"weight": None, "reps": 0})
+        if st.weight_kg is not None:
+            cur["weight"] = max(cur["weight"] or 0.0, st.weight_kg)
+        cur["reps"] = max(cur["reps"], st.reps or 0)
+    order = sorted(sessions)
+    today = datetime.utcnow().date()
+
+    latest = sessions[order[-1]]
+    load = latest["weight"]
+
+    # Back through the sessions while the load is unchanged. A lighter session
+    # in the middle — a deload, a sore week — ends the run, because the point
+    # is time spent carrying this load and that session did not.
+    at_load, first_at_load = 0, order[-1]
+    for day in reversed(order):
+        if sessions[day]["weight"] != load:
+            break
+        at_load += 1
+        first_at_load = day
+
+    # The same walk for reps. Counted in sessions rather than in days: a week
+    # off would otherwise satisfy a calendar gate without a single session
+    # having been done at the rep count it is supposed to be confirming, so
+    # every layoff would end with a step up.
+    top = latest["reps"]
+    last_step, at_reps = order[-1], 0
+    for day in reversed(order):
+        if sessions[day]["reps"] < top:
+            break
+        last_step = day
+        at_reps += 1
+
+    # Sessions at the top of the rep range are counted by the caller, which is
+    # the only place that knows what the range is.
+    return {
+        "sessions_at_load": at_load,
+        "days_at_load": (today - first_at_load).days,
+        "days_since_rep_step": (today - last_step).days,
+        "sessions_at_reps": at_reps,
+        "top_reps": top,
+        "reps_by_session": [sessions[d]["reps"] for d in order],
+        "loads_by_session": [sessions[d]["weight"] for d in order],
+    }
+
+
+def _sessions_at_top(pace, high):
+    """Consecutive recent sessions completed at the top of the rep range."""
+    if not pace:
+        return 0
+    n = 0
+    for reps, load in zip(reversed(pace["reps_by_session"]),
+                          reversed(pace["loads_by_session"])):
+        if reps < high or load != pace["loads_by_session"][-1]:
+            break
+        n += 1
+    return n
+
+
+def _ready_for_more_load(pace, high, hard):
+    """Whether a load step is due, judged on the clock rather than on a report.
+
+    Three things have to be true, and a person saying they feel fine is not one
+    of them. A logged RPE can still stop a step; it can no longer cause one,
+    which is what it did by default when nothing was logged at all.
+    """
+    if hard:
+        return False, "the last sets were logged as hard"
+    if pace is None:
+        return False, "nothing logged yet at this load"
+    if _sessions_at_top(pace, high) < CONSOLIDATE_SESSIONS:
+        return False, (f"needs {CONSOLIDATE_SESSIONS} sessions at the top of the "
+                       f"range, not one")
+    if pace["days_at_load"] < MIN_DAYS_AT_LOAD:
+        return False, f"only {pace['days_at_load']} days at this load"
+    return True, ""
 
 
 # Easier versions of the same movement, hardest first. Only used once a stall
@@ -939,7 +1065,7 @@ def _repeat_floor(low, achieved):
 
 
 def _prescribe(block, ex, last_sets, action, loads, last_done=None,
-               stalled=False, from_assessment=False, bands=None):
+               stalled=False, from_assessment=False, bands=None, pace=None):
     """Turn one template block plus history into a concrete instruction."""
     sets = block.sets
     detail, why = "", ""
@@ -1025,7 +1151,9 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         used_bands = [s.band_kg for s in last_sets if s.band_kg is not None]
         last_band = max(used_bands) if used_bands else (bands[0] if banded else None)
         rpes_r = [s.rpe for s in last_sets if s.rpe is not None]
-        easy_enough = all(r <= RPE_CEILING for r in rpes_r) if rpes_r else True
+        # Same reading as the load branch: a logged RPE can stop a band step,
+        # never cause one.
+        hard_r = any(r > RPE_CEILING for r in rpes_r)
         if banded and weight is None:
             weight = last_band
         if action in ("back_off", "deload"):
@@ -1054,7 +1182,8 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         elif weakest < top:
             target = max(_repeat_floor(block.low, top), min(top, block.high))
             why = f"Last set dropped to {weakest} — repeat {target} before adding."
-        elif banded and top >= block.high and easy_enough:
+        elif banded and top >= block.high and not hard_r and (
+                _ready_for_more_load(pace, block.high, hard_r)[0]):
             # The band is this exercise's load. Topping out the reps is the
             # signal to move up one and start the range again, exactly as
             # adding a plate would.
@@ -1070,6 +1199,10 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         elif top >= block.high:
             target = block.high
             why = f"Every set at {block.high} — hold there and slow the tempo."
+        elif pace and pace["sessions_at_reps"] < REP_STEP_SESSIONS:
+            target = top
+            why = (f"Same again, {top}. Second time at a number is what makes "
+                   f"it stick — the step up comes next.")
         else:
             target = min(block.high, top + 1)
             why = f"Every set hit {top} — one more."
@@ -1091,7 +1224,11 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         top_reps = max(counts) if counts else 0
         last_reps = min(counts) if counts else 0
         rpes = [s.rpe for s in prev if s.rpe is not None]
-        easy = all(r <= RPE_CEILING for r in rpes) if rpes else True
+        # An RPE can stop a load step; it can no longer cause one. Read the
+        # other way round, nothing logged meant "it was easy", and nothing has
+        # ever been logged — so the check passed on every session this
+        # programme has ever prescribed.
+        hard = any(r > RPE_CEILING for r in rpes)
 
         if action in ("back_off", "deload"):
             weight = _next_load(last_w, loads, up=False)
@@ -1126,11 +1263,33 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         elif last_reps < top_reps:
             weight, target = last_w, max(_repeat_floor(block.low, top_reps), top_reps)
             why = f"Last set dropped to {last_reps} — repeat {target} at {last_w}kg."
-        elif last_reps >= block.high and easy:
-            weight = _next_load(last_w, loads, up=True)
-            target = block.low
-            why = (f"Every set hit {block.high} at {last_w}kg, so load goes up and "
-                   f"reps reset to {block.low}.")
+        elif last_reps >= block.high:
+            ready, hold_why = _ready_for_more_load(pace, block.high, hard)
+            if ready:
+                weight = _next_load(last_w, loads, up=True)
+                target = block.low
+                why = (f"Every set hit {block.high} at {last_w}kg across "
+                       f"{CONSOLIDATE_SESSIONS} sessions, so load goes up and "
+                       f"reps reset to {block.low}.")
+                # The plates cannot make a small jump at the light end — 2.5kg
+                # to 5kg is the whole load again — so the first session at the
+                # new weight carries one set fewer. The load is the new thing;
+                # doing all of it on day one is how the jump becomes an injury.
+                if (weight is not None and last_w
+                        and (weight - last_w) / last_w > BIG_STEP_PCT
+                        and sets > 1):
+                    sets -= 1
+                    why += (f" That is a big step up, so this first session is "
+                            f"{sets} sets rather than {block.sets}.")
+            else:
+                weight, target = last_w, block.high
+                why = f"Holding {block.high} at {last_w}kg — {hold_why}."
+        elif pace and pace["sessions_at_reps"] < REP_STEP_SESSIONS:
+            # Not every session is a step up. Adding a rep each time looks
+            # gentle and compounds into the fastest ramp the rotation allows.
+            weight, target = last_w, top_reps
+            why = (f"Same again, {top_reps} at {last_w}kg. Second time at a "
+                   f"number is what makes it stick — the step up comes next.")
         else:
             weight, target = last_w, min(block.high, top_reps + 1)
             if target <= top_reps:
@@ -1574,6 +1733,7 @@ def _prescribe_blocks(db, user_id, hist, templates, by_name, by_id, prog,
             block, ex, prior, action, loads, last_done=when,
             stalled=_stalled(hist, ex.exercise_id, block.scheme),
             from_assessment=from_test, bands=bands,
+            pace=_progress_pace(hist, ex.exercise_id),
         )
 
         # For a unilateral exercise with one sore side, work out what the good
@@ -1583,6 +1743,7 @@ def _prescribe_blocks(db, user_id, hist, templates, by_name, by_id, prog,
                 block, ex, prior, "progress", loads, last_done=when,
                 stalled=_stalled(hist, ex.exercise_id, block.scheme),
                 from_assessment=from_test, bands=bands,
+                pace=_progress_pace(hist, ex.exercise_id),
             )
             other = "left" if affected == "right" else "right"
             # "each side" is what the bilateral wording says; once the two
@@ -1627,6 +1788,7 @@ def _prescribe_blocks(db, user_id, hist, templates, by_name, by_id, prog,
                     last_done=sub_when,
                     stalled=_stalled(hist, sub_ex.exercise_id, sub_block.scheme),
                     from_assessment=sub_test, bands=bands,
+                    pace=_progress_pace(hist, sub_ex.exercise_id),
                 )
                 item.pop("exhausted", None)
                 item["substituted_from"] = ex.exercise_name
@@ -1675,7 +1837,8 @@ def _add_rehab_isometric(hist, blocks, by_name, resting, limits, loads, bands):
             item = _prescribe(Block("Hamstring Isometric", "iso", 3, 20, 45),
                               iso_ex, iso_prior, "progress", loads,
                               last_done=iso_when, stalled=False,
-                              from_assessment=iso_test, bands=bands)
+                              from_assessment=iso_test, bands=bands,
+                              pace=_progress_pace(hist, iso_ex.exercise_id))
             item.pop("exhausted", None)
             item["group"] = "strength"
             item["slot"] = None
