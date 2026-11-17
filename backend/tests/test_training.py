@@ -311,6 +311,80 @@ def test_progression_is_paced_without_asking_how_it_felt():
           heavy["target_weight"] == 5.0, str(heavy["target_weight"]))
 
 
+def test_the_whole_programme_cannot_step_up_at_once():
+    """Seven doublings landed between the 3rd and the 10th of November.
+
+    Every one was a legitimate step for the exercise it belonged to, and the
+    load on every session doubled in eight days. No rule that looks at one
+    exercise at a time can see that, and the ramp limit could not either: it
+    counted sets, and the set count went down while the work went up.
+    """
+    from types import SimpleNamespace
+    from app.data.programs import Block
+    from app.analysis.training_program import (LOAD_STEPS_PER_WEEK, _prescribe,
+                                               _ready_for_more_load)
+
+    pace = {"sessions_at_load": 5, "days_at_load": 30, "days_since_rep_step": 3,
+            "sessions_at_reps": 2, "top_reps": 12, "best_recent_load": 5.0,
+            "reps_by_session": [12, 12], "loads_by_session": [5.0, 5.0]}
+    ok, _ = _ready_for_more_load(pace, 12, False, proposed=6.0, budget=1)
+    check("a step goes ahead while the week has room", ok)
+    spent, why = _ready_for_more_load(pace, 12, False, proposed=6.0, budget=0)
+    check("and is held once the week is spent", not spent)
+    check("saying so in the prescription",
+          "already gone up this week" in why, why)
+
+    block = Block("Box Squat", "load", 3, 8, 12)
+    ex = SimpleNamespace(exercise_name="Box Squat", category="strength",
+                         target="knee", equipment="dumbbell", is_hold=False,
+                         is_unilateral=False, exercise_id=1, form_cues=None,
+                         video_url=None, needs_balance=False,
+                         hold_seconds=None, notes=None)
+    prior = [SimpleNamespace(weight_kg=5.0, reps=12, rpe=None, band_kg=None)
+             for _ in range(3)]
+    held = _prescribe(block, ex, prior, "progress", [2.5, 5.0, 6.0],
+                      pace=pace, step_budget=0)
+    check("so the load stays where it is", held["target_weight"] == 5.0,
+          str(held["target_weight"]))
+    moved = _prescribe(block, ex, prior, "progress", [2.5, 5.0, 6.0],
+                       pace=pace, step_budget=LOAD_STEPS_PER_WEEK)
+    check("and moves when the budget allows", moved["target_weight"] == 6.0,
+          str(moved["target_weight"]))
+
+
+def test_the_ramp_can_see_a_load_increase():
+    """It counted sets. Over the fortnight the loads doubled, the set count
+    fell 12% while the mechanical work rose 62%, so the one guard meant to
+    catch a ramp watched the volume going down."""
+    from types import SimpleNamespace
+    from app.analysis.training_program import _set_work, _planned_work
+
+    light = SimpleNamespace(weight_kg=2.5, band_kg=None, reps=10, hold_seconds=None)
+    heavy = SimpleNamespace(weight_kg=5.0, band_kg=None, reps=10, hold_seconds=None)
+    check("twice the weight is twice the work",
+          _set_work(heavy) == 2 * _set_work(light),
+          f"{_set_work(heavy)} vs {_set_work(light)}")
+
+    more = SimpleNamespace(weight_kg=2.5, band_kg=None, reps=20, hold_seconds=None)
+    check("and so is twice the reps", _set_work(more) == 2 * _set_work(light))
+
+    # Bodyweight is a load of one, not of nothing, or an unloaded set would
+    # count for nothing at all and the stretching would vanish from the ramp.
+    body = SimpleNamespace(weight_kg=None, band_kg=None, reps=10, hold_seconds=None)
+    check("bodyweight work still counts", _set_work(body) == 10, str(_set_work(body)))
+    hold = SimpleNamespace(weight_kg=None, band_kg=None, reps=None, hold_seconds=60)
+    check("and so does a hold", _set_work(hold) > 0, str(_set_work(hold)))
+
+    # A planned session is scored the same way, against the same baseline.
+    plan = {"exercise_id": 1, "target_weight": 5.0, "target_reps": 10,
+            "target_band": None, "target_seconds": None}
+    check("a planned heavier session scores above its baseline",
+          _planned_work(plan, {1: 25.0}) == 2.0,
+          str(_planned_work(plan, {1: 25.0})))
+    check("and an unknown exercise does not divide by nothing",
+          _planned_work(plan, {}) == 1.0)
+
+
 def test_a_load_already_carried_is_re_earned_not_rediscovered():
     """Otherwise the six-weekly deload eats the programme.
 

@@ -220,6 +220,15 @@ REP_STEP_SESSIONS = 2
 # which is a new load again however familiar the number looks.
 RETURN_WINDOW_DAYS = 35
 
+# Load steps allowed across the whole programme in a week, and the window that
+# counts them. Every rule above this one is about a single exercise, and each
+# of the seven doublings that landed between the 3rd and the 10th of November
+# was a legitimate step for the exercise it belonged to. Together they doubled
+# the load on every session in eight days. Nothing watching one exercise at a
+# time can see that, which is why it needs saying here.
+LOAD_STEPS_PER_WEEK = 2
+LOAD_STEP_WINDOW_DAYS = 7
+
 # A load step this large relative to the current load gets its first session at
 # reduced volume. With light dumbbells the plates cannot make a small jump —
 # 2.5kg to 5kg is the whole load again — so the sets carry what the plates
@@ -492,6 +501,35 @@ def _progress_pace(hist, exercise_id):
     }
 
 
+def _recent_load_steps(hist, tz_offset, days=LOAD_STEP_WINDOW_DAYS):
+    """How many exercises have gone up in load across the last few days.
+
+    Counted over the whole programme rather than per exercise, because that is
+    the only level at which several individually reasonable steps landing at
+    once is visible at all.
+    """
+    today = (datetime.utcnow() - timedelta(minutes=tz_offset)).date()
+    per = {}
+    for st, s in hist.rows:
+        if not s.date_time or st.weight_kg is None:
+            continue
+        day = _local_date(s.date_time, tz_offset)
+        key = (st.exercise_id, day)
+        per[key] = max(per.get(key, 0.0), st.weight_kg)
+
+    by_ex = {}
+    for (ex_id, day), w in per.items():
+        by_ex.setdefault(ex_id, []).append((day, w))
+
+    steps = 0
+    for ex_id, rows in by_ex.items():
+        rows.sort()
+        for i in range(1, len(rows)):
+            if rows[i][1] > rows[i - 1][1] and (today - rows[i][0]).days < days:
+                steps += 1
+    return steps
+
+
 def _sessions_at_top(pace, high):
     """Consecutive recent sessions completed at the top of the rep range."""
     if not pace:
@@ -505,7 +543,7 @@ def _sessions_at_top(pace, high):
     return n
 
 
-def _ready_for_more_load(pace, high, hard, proposed=None):
+def _ready_for_more_load(pace, high, hard, proposed=None, budget=None):
     """Whether a load step is due, judged on the clock rather than on a report.
 
     A person saying they feel fine is not one of the things that has to be
@@ -520,6 +558,9 @@ def _ready_for_more_load(pace, high, hard, proposed=None):
         return False, "the last sets were logged as hard"
     if pace is None:
         return False, "nothing logged yet at this load"
+    if budget is not None and budget <= 0:
+        return False, (f"{LOAD_STEPS_PER_WEEK} other exercises have already gone "
+                       f"up this week")
 
     returning = (proposed is not None
                  and pace.get("best_recent_load") is not None
@@ -1090,7 +1131,8 @@ def _repeat_floor(low, achieved):
 
 
 def _prescribe(block, ex, last_sets, action, loads, last_done=None,
-               stalled=False, from_assessment=False, bands=None, pace=None):
+               stalled=False, from_assessment=False, bands=None, pace=None,
+               step_budget=None):
     """Turn one template block plus history into a concrete instruction."""
     sets = block.sets
     detail, why = "", ""
@@ -1210,7 +1252,8 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         elif banded and top >= block.high and not hard_r and (
                 _ready_for_more_load(
                     pace, block.high, hard_r,
-                    proposed=_next_load(last_band, bands, up=True))[0]):
+                    proposed=_next_load(last_band, bands, up=True),
+                    budget=step_budget)[0]):
             # The band is this exercise's load. Topping out the reps is the
             # signal to move up one and start the range again, exactly as
             # adding a plate would.
@@ -1293,7 +1336,8 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         elif last_reps >= block.high:
             step_to = _next_load(last_w, loads, up=True)
             ready, hold_why = _ready_for_more_load(pace, block.high, hard,
-                                                   proposed=step_to)
+                                                   proposed=step_to,
+                                                   budget=step_budget)
             if ready:
                 weight = _next_load(last_w, loads, up=True)
                 target = block.low
@@ -1470,11 +1514,87 @@ def recent_easy_days(db, user_id, tz_offset=0, days=7):
     return sorted(hits)
 
 
-def _sets_between(hist, start, end, tz_offset, only_mobility=False):
-    """How much work a window holds, weighted by how hard each set was."""
-    return sum(hist.effort.get(st.exercise_id, 1.0) for st, s in hist.rows
-               if s.date_time and start <= _local_date(s.date_time, tz_offset) <= end
-               and (not only_mobility or st.exercise_id in hist.mobility))
+# Seconds of a hold that count as one rep, so a plank and a squat can be added
+# together at all. Roughly a slow rep; the exact figure matters little because
+# every set is scored against other sets of the same exercise.
+HOLD_SECONDS_PER_REP = 5.0
+
+
+def _set_work(st):
+    """The mechanical work in one set: what was moved, times how many times.
+
+    Bodyweight counts as a load of one rather than zero, so an unloaded set is
+    worth its reps instead of nothing.
+    """
+    load = st.weight_kg or st.band_kg or 1.0
+    if not load:
+        load = 1.0
+    units = st.reps or 0
+    if not units and st.hold_seconds:
+        units = st.hold_seconds / HOLD_SECONDS_PER_REP
+    return load * (units or 1)
+
+
+def _work_baseline(hist, start, end, tz_offset):
+    """The typical work in one set of each exercise over a window.
+
+    Every set in the ramp used to count as one, scaled only by a fixed
+    per-exercise effort constant. Nothing in it looked at the weight on the
+    bar, so when this user's loads went from 2.5kg to 5kg across a fortnight
+    the mechanical work rose 62% while the set count fell 12% — and the ramp
+    saw volume going down. Scoring each set against the normal set for that
+    same exercise makes a load change register as the increase it is, while
+    leaving a steady programme reading exactly as it did before.
+    """
+    per = {}
+    for st, s in hist.rows:
+        if not s.date_time:
+            continue
+        if start <= _local_date(s.date_time, tz_offset) <= end:
+            per.setdefault(st.exercise_id, []).append(_set_work(st))
+    out = {}
+    for ex_id, works in per.items():
+        works.sort()
+        mid = works[len(works) // 2]
+        # A zero or missing baseline would make every later set infinite.
+        out[ex_id] = mid if mid > 0 else 1.0
+    return out
+
+
+def _sets_between(hist, start, end, tz_offset, only_mobility=False,
+                  baseline=None):
+    """How much work a window holds, weighted by how hard each set was.
+
+    With a baseline, a set also counts for how it compares with a normal set
+    of the same exercise — so going up in weight registers here, which is the
+    whole point of a ramp limit and was exactly what it could not see.
+    """
+    total = 0.0
+    for st, s in hist.rows:
+        if not s.date_time:
+            continue
+        if not (start <= _local_date(s.date_time, tz_offset) <= end):
+            continue
+        if only_mobility and st.exercise_id not in hist.mobility:
+            continue
+        scale = 1.0
+        if baseline:
+            ref = baseline.get(st.exercise_id)
+            if ref:
+                scale = _set_work(st) / ref
+        total += hist.effort.get(st.exercise_id, 1.0) * scale
+    return total
+
+
+def _planned_work(block, baseline):
+    """The same scoring for a session that has not happened yet."""
+    load = block.get("target_weight") or block.get("target_band") or 1.0
+    units = block.get("target_reps") or 0
+    if not units and block.get("target_seconds"):
+        units = block["target_seconds"] / HOLD_SECONDS_PER_REP
+    work = load * (units or 1)
+    ref = (baseline or {}).get(block["exercise_id"])
+    return work / ref if ref else 1.0
 
 
 def _days_since_flare(db, user_id, regions, tz_offset):
@@ -1659,7 +1779,8 @@ def _expand_mobility(db, user_id, blocks, templates, by_id, by_name,
 
 def _prescribe_blocks(db, user_id, hist, templates, by_name, by_id, prog,
                       knee, limits, loads, bands, available, deload,
-                      flare_days, return_budget, blocks, missing, resting):
+                      flare_days, return_budget, blocks, missing, resting,
+                      tz_offset=0):
     """Turn each template into an instruction, or explain why it is not there.
 
     This is where an exercise meets everything that might change it: kit that
@@ -1669,6 +1790,10 @@ def _prescribe_blocks(db, user_id, hist, templates, by_name, by_id, prog,
     Fills blocks, and reports what fell out and why.
     """
     returned = 0                      # rested movements handed back so far
+    # How many load increases the programme has left this week. In a list so
+    # the loop below can spend it as it goes, which is what stops several
+    # exercises in one session all stepping up together.
+    step_budget = [LOAD_STEPS_PER_WEEK - _recent_load_steps(hist, tz_offset)]
     dropped, limited, used_ids = [], [], set()
     for block, group, slot in templates:
         ex = by_name.get(block.name.strip().lower())
@@ -1758,12 +1883,20 @@ def _prescribe_blocks(db, user_id, hist, templates, by_name, by_id, prog,
                 ex = up_ex
                 prior, when, from_test = _last_sets(hist, ex.exercise_id)
 
+        prev_w = max((s.weight_kg for s in prior
+                      if s.weight_kg is not None), default=None)
         item = _prescribe(
             block, ex, prior, action, loads, last_done=when,
             stalled=_stalled(hist, ex.exercise_id, block.scheme),
             from_assessment=from_test, bands=bands,
             pace=_progress_pace(hist, ex.exercise_id),
+            step_budget=step_budget[0],
         )
+        # Spent here rather than inside the prescription, so an exercise that
+        # steps up in this session counts against the next one in it.
+        if (item.get("target_weight") is not None and prev_w is not None
+                and item["target_weight"] > prev_w):
+            step_budget[0] -= 1
 
         # For a unilateral exercise with one sore side, work out what the good
         # side should do by prescribing it again as though nothing hurt.
@@ -1978,12 +2111,19 @@ def _apply_pacing(hist, blocks, by_id, tz_offset):
     # several unfamiliar movements at once. Both happened at the same time and
     # cost a tendon.
     today_local = (datetime.utcnow() - timedelta(minutes=tz_offset)).date()
+    # What a normal set of each exercise has been over the chronic window, so
+    # both windows and the session being planned are scored the same way.
+    baseline = _work_baseline(hist, today_local - timedelta(days=27),
+                              today_local - timedelta(days=1), tz_offset)
     planned = sum(b["sets"] * (2 if b["per_side"] else 1)
-                  * hist.effort.get(b["exercise_id"], 1.0) for b in blocks)
+                  * hist.effort.get(b["exercise_id"], 1.0)
+                  * _planned_work(b, baseline) for b in blocks)
     recent = _sets_between(hist, today_local - timedelta(days=6),
-                           today_local - timedelta(days=1), tz_offset)
+                           today_local - timedelta(days=1), tz_offset,
+                           baseline=baseline)
     chronic = _sets_between(hist, today_local - timedelta(days=27),
-                            today_local - timedelta(days=1), tz_offset) / 4.0
+                            today_local - timedelta(days=1), tz_offset,
+                            baseline=baseline) / 4.0
     acute = recent + planned
 
     # Judged on the stretching alone, because the stretching is the only thing
@@ -1993,11 +2133,14 @@ def _apply_pacing(hist, blocks, by_id, tz_offset):
     # rising, and takes away the work on range at the moment it is most needed.
     mob_planned = sum(b["sets"] * (2 if b["per_side"] else 1)
                       * hist.effort.get(b["exercise_id"], 1.0)
+                      * _planned_work(b, baseline)
                       for b in blocks if b["group"] == "mobility")
     mob_recent = _sets_between(hist, today_local - timedelta(days=6),
-                               today_local - timedelta(days=1), tz_offset, True)
+                               today_local - timedelta(days=1), tz_offset, True,
+                               baseline=baseline)
     mob_chronic = _sets_between(hist, today_local - timedelta(days=27),
-                                today_local - timedelta(days=1), tz_offset, True) / 4.0
+                                today_local - timedelta(days=1), tz_offset, True,
+                                baseline=baseline) / 4.0
     mob_acute = mob_recent + mob_planned
 
     # It warns; it does not cut.
@@ -2275,7 +2418,7 @@ def build_session(db, user_id, day=None, tz_offset=0, kind=None,
     dropped, limited = _prescribe_blocks(
         db, user_id, hist, templates, by_name, by_id, prog, knee, limits,
         loads, bands, available, deload, flare_days, return_budget,
-        blocks, missing, resting)
+        blocks, missing, resting, tz_offset=tz_offset)
 
     blocks = _expand_mobility(db, user_id, blocks, templates, by_id, by_name,
                               knee, limits, prog, tz_offset)
