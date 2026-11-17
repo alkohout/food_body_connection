@@ -311,6 +311,44 @@ def test_progression_is_paced_without_asking_how_it_felt():
           heavy["target_weight"] == 5.0, str(heavy["target_weight"]))
 
 
+def test_a_load_already_carried_is_re_earned_not_rediscovered():
+    """Otherwise the six-weekly deload eats the programme.
+
+    Pacing every load step the same way meant a deload to 2.5kg took thirty
+    days to climb back to the 5kg it had just come off — on a forty-two day
+    deload cycle, most of the programme's life spent recovering from its own
+    easy weeks. Coming back off a layoff is different: the number is familiar
+    but the tissue is not, so that still takes the long road.
+    """
+    from types import SimpleNamespace
+    from app.data.programs import Block
+    from app.analysis.training_program import _prescribe
+
+    block = Block("Box Squat", "load", 3, 8, 12)
+    ex = SimpleNamespace(exercise_name="Box Squat", category="strength",
+                         target="knee", equipment="dumbbell", is_hold=False,
+                         is_unilateral=False, exercise_id=1, form_cues=None,
+                         video_url=None, needs_balance=False,
+                         hold_seconds=None, notes=None)
+    loads = [2.5, 5.0, 6.0]
+    prior = [SimpleNamespace(weight_kg=2.5, reps=12, rpe=None, band_kg=None)
+             for _ in range(3)]
+    # Twelve days at 2.5kg after a deload, having been at 5kg before it.
+    after_deload = {"sessions_at_load": 5, "days_at_load": 12,
+                    "days_since_rep_step": 3, "sessions_at_reps": 2,
+                    "top_reps": 12, "best_recent_load": 5.0,
+                    "reps_by_session": [11, 12], "loads_by_session": [2.5, 2.5]}
+    back = _prescribe(block, ex, prior, "progress", loads, pace=after_deload)
+    check("a load worked recently is picked back up",
+          back["target_weight"] == 5.0, str(back["target_weight"]))
+
+    # The same shape, except nothing heavier has been carried in the window.
+    layoff = dict(after_deload, best_recent_load=2.5)
+    slow = _prescribe(block, ex, prior, "progress", loads, pace=layoff)
+    check("but coming back off a layoff takes the long road",
+          slow["target_weight"] == 2.5, str(slow["target_weight"]))
+
+
 def test_a_big_jump_in_load_lands_at_lower_volume():
     """The plates cannot make a small step at the light end: 2.5kg to 5kg is
     the whole load again. The sets carry what the plates cannot."""

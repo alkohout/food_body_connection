@@ -212,6 +212,14 @@ MIN_DAYS_AT_LOAD = 14
 # exercise is a repeat rather than a step. Counted in sessions and not in days
 # because a layoff would clear a calendar gate without any work being done.
 REP_STEP_SESSIONS = 2
+# Returning to a load already carried recently is not the same as reaching a
+# new one: it is being re-earned rather than discovered, so it does not need
+# the full consolidation. Without this a six-weekly deload costs a month of
+# re-climbing and the programme spends most of its life recovering from its own
+# easy weeks. The window is what separates that from coming back off a layoff,
+# which is a new load again however familiar the number looks.
+RETURN_WINDOW_DAYS = 35
+
 # A load step this large relative to the current load gets its first session at
 # reduced volume. With light dumbbells the plates cannot make a small jump —
 # 2.5kg to 5kg is the whole load again — so the sets carry what the plates
@@ -441,6 +449,13 @@ def _progress_pace(hist, exercise_id):
     latest = sessions[order[-1]]
     load = latest["weight"]
 
+    # The most this exercise has carried recently, so a step back up to it can
+    # be told apart from a step past anything ever done before.
+    recent = [sessions[d]["weight"] for d in order
+              if (today - d).days <= RETURN_WINDOW_DAYS
+              and sessions[d]["weight"] is not None]
+    best_recent = max(recent) if recent else None
+
     # Back through the sessions while the load is unchanged. A lighter session
     # in the middle — a deload, a sore week — ends the run, because the point
     # is time spent carrying this load and that session did not.
@@ -471,6 +486,7 @@ def _progress_pace(hist, exercise_id):
         "days_since_rep_step": (today - last_step).days,
         "sessions_at_reps": at_reps,
         "top_reps": top,
+        "best_recent_load": best_recent,
         "reps_by_session": [sessions[d]["reps"] for d in order],
         "loads_by_session": [sessions[d]["weight"] for d in order],
     }
@@ -489,21 +505,30 @@ def _sessions_at_top(pace, high):
     return n
 
 
-def _ready_for_more_load(pace, high, hard):
+def _ready_for_more_load(pace, high, hard, proposed=None):
     """Whether a load step is due, judged on the clock rather than on a report.
 
-    Three things have to be true, and a person saying they feel fine is not one
-    of them. A logged RPE can still stop a step; it can no longer cause one,
-    which is what it did by default when nothing was logged at all.
+    A person saying they feel fine is not one of the things that has to be
+    true. A logged RPE can still stop a step; it can no longer cause one, which
+    is what it did by default when nothing was logged at all.
+
+    `proposed` is the load being stepped to. When that is one already carried
+    inside the return window the gates relax, because the work of adapting to
+    it has been done and only needs picking back up.
     """
     if hard:
         return False, "the last sets were logged as hard"
     if pace is None:
         return False, "nothing logged yet at this load"
-    if _sessions_at_top(pace, high) < CONSOLIDATE_SESSIONS:
-        return False, (f"needs {CONSOLIDATE_SESSIONS} sessions at the top of the "
-                       f"range, not one")
-    if pace["days_at_load"] < MIN_DAYS_AT_LOAD:
+
+    returning = (proposed is not None
+                 and pace.get("best_recent_load") is not None
+                 and proposed <= pace["best_recent_load"] + 1e-6)
+    need = 1 if returning else CONSOLIDATE_SESSIONS
+    if _sessions_at_top(pace, high) < need:
+        return False, (f"needs {need} session{'s' if need != 1 else ''} at the "
+                       f"top of the range")
+    if not returning and pace["days_at_load"] < MIN_DAYS_AT_LOAD:
         return False, f"only {pace['days_at_load']} days at this load"
     return True, ""
 
@@ -1183,7 +1208,9 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
             target = max(_repeat_floor(block.low, top), min(top, block.high))
             why = f"Last set dropped to {weakest} — repeat {target} before adding."
         elif banded and top >= block.high and not hard_r and (
-                _ready_for_more_load(pace, block.high, hard_r)[0]):
+                _ready_for_more_load(
+                    pace, block.high, hard_r,
+                    proposed=_next_load(last_band, bands, up=True))[0]):
             # The band is this exercise's load. Topping out the reps is the
             # signal to move up one and start the range again, exactly as
             # adding a plate would.
@@ -1264,7 +1291,9 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
             weight, target = last_w, max(_repeat_floor(block.low, top_reps), top_reps)
             why = f"Last set dropped to {last_reps} — repeat {target} at {last_w}kg."
         elif last_reps >= block.high:
-            ready, hold_why = _ready_for_more_load(pace, block.high, hard)
+            step_to = _next_load(last_w, loads, up=True)
+            ready, hold_why = _ready_for_more_load(pace, block.high, hard,
+                                                   proposed=step_to)
             if ready:
                 weight = _next_load(last_w, loads, up=True)
                 target = block.low
