@@ -284,7 +284,14 @@ class WorkoutSession(Base):
     session_type = Column(String(30), nullable=False, default='strength')
     duration_min = Column(Integer, nullable=True)
     overall_rpe = Column(Integer, nullable=True)
+    # Written by the app, not by the person: the list of exercises they skipped,
+    # so the plan can be compared with what actually happened.
     notes = Column(EncryptedString, nullable=True)
+    # Written by the person. Kept apart from `notes` precisely because that one
+    # is generated — sharing the field meant a sentence typed in by hand either
+    # overwrote the skipped list or was overwritten by it, and neither is
+    # recoverable once it has happened.
+    session_note = Column(EncryptedString, nullable=True)
 
     # Filled in the following day, not at the time. This is the input to the
     # back-off rule: knee pain that is worse 24h later means the last session

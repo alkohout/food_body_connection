@@ -43,9 +43,18 @@ def session_limits(db, user_id, tz_offset=0) -> dict | None:
     Returns the strictest limit any recent symptom imposes, or None. Strictest
     rather than most recent: two things logged the same morning should not let
     the milder one decide what the session may contain.
+
+    One exception to "strictest wins". A limit that rules out a pattern rather
+    than a level of effort — a neck, which stops the overhead work — is not
+    comparable with one that lowers the ceiling, so picking a single winner
+    would lose it. A headache logged alongside a sore neck is stricter on
+    effort and would silently hand the overhead work back. Those stand-downs
+    are collected from every symptom that matched and carried on whichever
+    entry wins.
     """
     cutoff = datetime.utcnow() - timedelta(days=1)
     strictest = None
+    rest_names = set()
     rows = (
         db.query(SymptomLog, Symptom)
         .join(Symptom, SymptomLog.symptom_id == Symptom.symptom_id)
@@ -84,9 +93,12 @@ def session_limits(db, user_id, tz_offset=0) -> dict | None:
                 # described in one word before it is read in full.
                 "mode": "gentle" if rule["max_exertion"] <= 1 else "reduced",
             }
+            rest_names |= set(rule.get("rest_names") or ())
             if strictest is None or (entry["max_exertion"], entry["allow_floor"]) < \
                     (strictest["max_exertion"], strictest["allow_floor"]):
                 strictest = entry
+    if strictest is not None:
+        strictest["rest_names"] = rest_names
     return strictest
 
 
@@ -716,6 +728,8 @@ def _within_limits(ex, limits) -> bool:
     """Whether an exercise is allowed by today's limits at all."""
     if not limits:
         return True
+    if (ex.exercise_name or "").strip().lower() in (limits.get("rest_names") or ()):
+        return False
     if (ex.exertion or 2) > limits["max_exertion"]:
         return False
     return not (ex.floor_based and not limits["allow_floor"])
@@ -1226,7 +1240,7 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
                          min(int(ref * 0.8) or block.low, block.high))
             why = (f"Planned easy week — one step down from your {ref}s and "
                    f"held there, not eased off again every session."
-                   if action == "deload" else "Held back while the knee settles.")
+                   if action == "deload" else "Held back while things settle.")
         elif action == "hold" or not top:
             target = max(_repeat_floor(block.low, top), top or block.low)
             why = "Repeat last time's hold." if top else "Starting point."
@@ -1282,7 +1296,7 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
                          min(int(ref * 0.8) or block.low, block.high))
             why = (f"Planned easy week — one step down from your {ref} and "
                    f"held there, not eased off again every session."
-                   if action == "deload" else "Volume cut while the knee settles.")
+                   if action == "deload" else "Volume cut while things settle.")
         elif action == "hold" or not top:
             target = max(_repeat_floor(block.low, top), min(top or block.low, block.high))
             why = "Repeat last time." if top else "Starting point."
@@ -1365,7 +1379,7 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
             target = block.low
             why = (f"Planned easy week — one step down from your {ref}kg and "
                    f"held there, not stepped down again every session."
-                   if action == "deload" else "Load down a step while the knee settles.")
+                   if action == "deload" else "Load down a step while things settle.")
         elif last_w is None:
             weight = loads[0] if loads else None
             target = block.low
@@ -1570,7 +1584,12 @@ def recent_easy_days(db, user_id, tz_offset=0, days=7):
         name = names[log.symptom_id]
         level = log.symptom_intensity or 0
         for key, levels in SESSION_LIMITS.items():
-            if key in name and level in levels:
+            rule = levels.get(level) if key in name else None
+            # A stiff neck at its mildest stands the overhead work down and
+            # leaves the effort ceiling alone, so the session is a different
+            # shape rather than an easier one. Counting it here would report a
+            # week as having eased off when it trained as normal.
+            if rule and (rule["max_exertion"] < 3 or not rule["allow_floor"]):
                 hits.add(_local_date(log.date_time, tz_offset))
     return sorted(hits)
 
@@ -1885,7 +1904,12 @@ def _prescribe_blocks(db, user_id, hist, templates, by_name, by_id, prog,
         # A back-off applies to what is actually sore. Cutting the volume of
         # everything because one joint hurts loses training for no reason, and
         # "volume cut while the knee settles" on a row reads as nonsense.
-        targets = prog.get("soreness_targets")
+        # Narrowed only when a logged symptom named the part that hurts. The
+        # morning-after score asks how the whole body took the session, so
+        # trimming its answer down to the leg work would ease off something
+        # other than what was reported.
+        targets = (prog.get("soreness_targets")
+                   if knee.get("from_symptom_log") else None)
         action = knee["action"]
         sore_area = targets is None or (ex.target or "") in targets
         if action in ("back_off", "hold") and not sore_area:

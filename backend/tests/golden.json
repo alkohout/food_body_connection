@@ -8395,7 +8395,7 @@
     "per_side": false,
     "group": "strength",
     "slot": null,
-    "why": "Load down a step while the knee settles.",
+    "why": "Load down a step while things settle.",
     "notice": null
    },
    {
@@ -8410,7 +8410,7 @@
     "per_side": true,
     "group": "strength",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -8574,7 +8574,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -8589,7 +8589,7 @@
     "per_side": false,
     "group": "maintenance",
     "slot": null,
-    "why": "Held back while the knee settles.",
+    "why": "Held back while things settle.",
     "notice": null
    },
    {
@@ -8710,7 +8710,7 @@
     "per_side": true,
     "group": "strength",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -8725,7 +8725,7 @@
     "per_side": false,
     "group": "strength",
     "slot": null,
-    "why": "Volume cut while the knee settles.",
+    "why": "Volume cut while things settle.",
     "notice": null
    },
    {
@@ -8859,7 +8859,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -8874,7 +8874,7 @@
     "per_side": false,
     "group": "maintenance",
     "slot": null,
-    "why": "Held back while the knee settles.",
+    "why": "Held back while things settle.",
     "notice": null
    },
    {
@@ -8965,7 +8965,7 @@
     "per_side": false,
     "group": "strength",
     "slot": null,
-    "why": "Load down a step while the knee settles.",
+    "why": "Load down a step while things settle.",
     "notice": null
    },
    {
@@ -9129,7 +9129,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -9144,7 +9144,7 @@
     "per_side": false,
     "group": "maintenance",
     "slot": null,
-    "why": "Held back while the knee settles.",
+    "why": "Held back while things settle.",
     "notice": null
    },
    {
@@ -9236,7 +9236,7 @@
     "per_side": true,
     "group": "strength",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -9312,7 +9312,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -9374,7 +9374,7 @@
     "per_side": false,
     "group": "strength",
     "slot": null,
-    "why": "Volume cut while the knee settles.",
+    "why": "Volume cut while things settle.",
     "notice": null
    },
    {
@@ -9450,7 +9450,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -9573,7 +9573,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -9634,7 +9634,7 @@
     "per_side": false,
     "group": "strength",
     "slot": null,
-    "why": "Load down a step while the knee settles.",
+    "why": "Load down a step while things settle.",
     "notice": null
    },
    {
@@ -9649,7 +9649,7 @@
     "per_side": true,
     "group": "strength",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -9813,7 +9813,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -9828,7 +9828,7 @@
     "per_side": false,
     "group": "maintenance",
     "slot": null,
-    "why": "Held back while the knee settles.",
+    "why": "Held back while things settle.",
     "notice": null
    },
    {
@@ -9949,7 +9949,7 @@
     "per_side": true,
     "group": "strength",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -9964,7 +9964,7 @@
     "per_side": false,
     "group": "strength",
     "slot": null,
-    "why": "Volume cut while the knee settles.",
+    "why": "Volume cut while things settle.",
     "notice": null
    },
    {
@@ -10098,7 +10098,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -10113,7 +10113,7 @@
     "per_side": false,
     "group": "maintenance",
     "slot": null,
-    "why": "Held back while the knee settles.",
+    "why": "Held back while things settle.",
     "notice": null
    },
    {
@@ -10204,7 +10204,7 @@
     "per_side": false,
     "group": "strength",
     "slot": null,
-    "why": "Load down a step while the knee settles.",
+    "why": "Load down a step while things settle.",
     "notice": null
    },
    {
@@ -10368,7 +10368,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -10383,7 +10383,7 @@
     "per_side": false,
     "group": "maintenance",
     "slot": null,
-    "why": "Held back while the knee settles.",
+    "why": "Held back while things settle.",
     "notice": null
    },
    {
@@ -10475,7 +10475,7 @@
     "per_side": true,
     "group": "strength",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -10551,7 +10551,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -10613,7 +10613,7 @@
     "per_side": false,
     "group": "strength",
     "slot": null,
-    "why": "Volume cut while the knee settles.",
+    "why": "Volume cut while things settle.",
     "notice": null
    },
    {
@@ -10689,7 +10689,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -10812,7 +10812,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -10873,7 +10873,7 @@
     "per_side": false,
     "group": "strength",
     "slot": null,
-    "why": "Load down a step while the knee settles.",
+    "why": "Load down a step while things settle.",
     "notice": null
    },
    {
@@ -10888,7 +10888,7 @@
     "per_side": true,
     "group": "strength",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -11052,7 +11052,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -11067,7 +11067,7 @@
     "per_side": false,
     "group": "maintenance",
     "slot": null,
-    "why": "Held back while the knee settles.",
+    "why": "Held back while things settle.",
     "notice": null
    },
    {
@@ -11188,7 +11188,7 @@
     "per_side": true,
     "group": "strength",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -11203,7 +11203,7 @@
     "per_side": false,
     "group": "strength",
     "slot": null,
-    "why": "Volume cut while the knee settles.",
+    "why": "Volume cut while things settle.",
     "notice": null
    },
    {
@@ -11337,7 +11337,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -11352,7 +11352,7 @@
     "per_side": false,
     "group": "maintenance",
     "slot": null,
-    "why": "Held back while the knee settles.",
+    "why": "Held back while things settle.",
     "notice": null
    },
    {
@@ -11443,7 +11443,7 @@
     "per_side": false,
     "group": "strength",
     "slot": null,
-    "why": "Load down a step while the knee settles.",
+    "why": "Load down a step while things settle.",
     "notice": null
    },
    {
@@ -11607,7 +11607,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -11622,7 +11622,7 @@
     "per_side": false,
     "group": "maintenance",
     "slot": null,
-    "why": "Held back while the knee settles.",
+    "why": "Held back while things settle.",
     "notice": null
    },
    {
@@ -11714,7 +11714,7 @@
     "per_side": true,
     "group": "strength",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -11790,7 +11790,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -11852,7 +11852,7 @@
     "per_side": false,
     "group": "strength",
     "slot": null,
-    "why": "Volume cut while the knee settles.",
+    "why": "Volume cut while things settle.",
     "notice": null
    },
    {
@@ -11928,7 +11928,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {
@@ -12051,7 +12051,7 @@
     "per_side": true,
     "group": "maintenance",
     "slot": null,
-    "why": "Only the left side eases off. Volume cut while the knee settles.",
+    "why": "Only the left side eases off. Volume cut while things settle.",
     "notice": null
    },
    {

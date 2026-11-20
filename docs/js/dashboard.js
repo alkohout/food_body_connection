@@ -3871,9 +3871,13 @@ async function trLoadHistory() {
 
     const bits = [s.session_type.replace("_", " "), `${s.sets.length} sets`];
     if (s.next_day_knee !== null && s.next_day_knee !== undefined) {
-      bits.push(`next-day knee ${s.next_day_knee}/10`);
+      // The column is still called next_day_knee; the question it answers is
+      // now about the whole body, so the label comes from the programme.
+      const word = (trPlan && trPlan.soreness_word) || "soreness";
+      bits.push(`next-day ${word} ${s.next_day_knee}/10`);
     }
     card.appendChild(trEl("p", bits.join(" · "), "tr-hint"));
+    if (s.session_note) card.appendChild(trEl("p", s.session_note, "tr-body"));
     if (s.notes) card.appendChild(trEl("p", s.notes, "tr-hint"));
 
     const open = trExpanded.has(s.session_id);
@@ -4867,6 +4871,10 @@ async function trStartAssessment() {
 function trRunnerVisible(on) {
   const r = getElement("tr-runner-section");
   if (r) r.style.display = on ? "" : "none";
+  // The note box follows the runner: it is only answerable while there is a
+  // session to answer about.
+  const n = getElement("tr-note-section");
+  if (n) n.style.display = on ? "" : "none";
 }
 
 // The stages a session moves through, and the colour each one carries in the
@@ -5439,6 +5447,10 @@ async function trFinishSession() {
   const notes = trRun && trRun.skipped.length
     ? `Skipped: ${trRun.skipped.join(", ")}`
     : null;
+  // Read straight off the element. It is the only copy — deliberately, so
+  // there is no second version of the text to fall behind what was typed.
+  const noteEl = getElement("tr-session-note");
+  const note = noteEl && noteEl.value.trim() ? noteEl.value.trim() : null;
 
     // The finish endpoint rather than a plain patch: it is what stamps the
     // session closed, and a session never stamped closed is one the app will
@@ -5449,8 +5461,13 @@ async function trFinishSession() {
       body: JSON.stringify({
         session_type: sessionType,
         ...(notes ? { notes } : {}),
+        ...(note ? { session_note: note } : {}),
       }),
     });
+
+  // Emptied only once it is saved, so a failed request does not also lose
+  // what was written.
+  if (noteEl) noteEl.value = "";
 
   trTimerStop();
   trKindOverride = null;

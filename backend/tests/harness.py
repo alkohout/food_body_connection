@@ -30,6 +30,8 @@ KNEE_SYMPTOMS = [
     "Knee pain - left lateral", "Knee pain - left medial",
     "Knee pain - left posterior", "Knee swelling - left",
     "Knee giving way - left", "Headache", "Fatigue",
+    # The two that reshape a session without being about the knee at all.
+    "Nausea", "Neck pain",
 ]
 
 

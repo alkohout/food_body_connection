@@ -121,6 +121,7 @@ def _session_out(s: WorkoutSession) -> dict:
         "duration_min": s.duration_min,
         "overall_rpe": s.overall_rpe,
         "notes": s.notes,
+        "session_note": s.session_note,
         "next_day_knee": s.next_day_knee,
         "sets": [
             {
@@ -191,6 +192,7 @@ def create_session(
         duration_min=payload.duration_min,
         overall_rpe=payload.overall_rpe,
         notes=payload.notes,
+        session_note=payload.session_note,
     )
     db.add(s)
     db.commit()
@@ -587,6 +589,8 @@ RESUME_WINDOW_HOURS = 12
 class SessionFinish(BaseModel):
     session_type: Optional[str] = None
     notes: Optional[str] = None
+    # What the person typed, as opposed to the skipped list the runner builds.
+    session_note: Optional[str] = Field(default=None, max_length=2000)
 
 
 @router.get("/sessions/open")
@@ -637,6 +641,10 @@ def finish_session(
         s.session_type = payload.session_type
     if payload.notes is not None:
         s.notes = payload.notes
+    # Only when something was typed. An empty box on the finish screen is not
+    # an instruction to erase a note written earlier in the session.
+    if payload.session_note is not None and payload.session_note.strip():
+        s.session_note = payload.session_note.strip()
     s.finished_at = datetime.now(timezone.utc)
     if s.date_time and s.duration_min is None:
         started = s.date_time if s.date_time.tzinfo else s.date_time.replace(tzinfo=timezone.utc)

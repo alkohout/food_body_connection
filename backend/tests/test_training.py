@@ -597,6 +597,153 @@ def test_an_easy_week_never_asks_for_more_sets():
     check("and two sets hold at two", held["sets"] == 2, str(held["sets"]))
 
 
+def _limits(db, uid):
+    """session_limits with the test clock in place, as build() does it."""
+    with mock.patch.object(tp, "datetime", Clock):
+        return tp.session_limits(db, uid)
+
+
+def test_nausea_and_a_stiff_neck_reshape_the_session():
+    """The symptoms that actually derail training here had no way in.
+
+    Only headache and fatigue steered a session. Nausea and neck pain were
+    logged, visible in the symptom history, and changed nothing — so easing
+    off for them was something done by hand and then not recorded anywhere
+    the programme could see.
+
+    A neck is the one that rules out a pattern rather than a level of effort,
+    which is why it stands movements down instead of lowering the ceiling.
+    """
+    from app.data.programs import NECK_REST, SESSION_LIMITS
+
+    check("nausea reshapes a session", "nausea" in SESSION_LIMITS)
+    check("and so does a neck", "neck" in SESSION_LIMITS)
+
+    db, uid, byn, sy = fresh()
+
+    # A stiff neck at its mildest: the overhead work goes, the session stays.
+    log_symptom(db, uid, sy.get("Neck pain"), 1)
+    lim = _limits(db, uid)
+    check("a mild neck leaves the effort ceiling alone",
+          lim["max_exertion"] == 3, str(lim["max_exertion"]))
+    check("but stands the overhead work down",
+          "dumbbell shoulder press" in lim["rest_names"])
+
+    r = build(db, uid, day="B")
+    names = {b["exercise"] for b in r["blocks"]}
+    check("so the shoulder press is not in the session",
+          "Dumbbell Shoulder Press" not in names)
+    check("and the rest of the day still is", len(names) > 5, str(len(names)))
+    check("the note says what came out",
+          any("Dumbbell Shoulder Press" in n for n in r["notes"]), str(r["notes"]))
+
+    # A bicep curl has nothing to do with a neck, and dropping the whole
+    # "upper" target to spare one would have taken it with it.
+    check("work that does not touch the neck is left alone",
+          "bicep curl" not in NECK_REST)
+
+    # Nausea takes the headache shape: it is getting down to the floor and
+    # back up that provokes it, so the floor closes rather than just the
+    # effort ceiling coming down.
+    log_symptom(db, uid, sy.get("Nausea"), 2)
+    lim = _limits(db, uid)
+    check("nausea at moderate closes the floor", lim["allow_floor"] is False)
+    check("and holds the effort down", lim["max_exertion"] == 1,
+          str(lim["max_exertion"]))
+    db.close()
+
+
+def test_a_stricter_symptom_does_not_hand_back_the_overhead_work():
+    """Strictest-wins would have thrown the neck rule away.
+
+    Only one limit entry is carried, chosen as the strictest on effort. A
+    headache logged beside a sore neck is stricter on effort and would have
+    won outright — taking its own rules and silently restoring the overhead
+    work the neck had stood down. The two are not comparable, so the
+    stand-downs are collected from everything that matched.
+    """
+    from app.models.table_class import SymptomLog
+
+    db, uid, byn, sy = fresh()
+    for name, level in (("Neck pain", 1), ("Headache", 2)):
+        db.add(SymptomLog(user_id=uid, symptom_id=sy.get(name),
+                          date_time=Clock._now - timedelta(hours=3),
+                          symptom_intensity=level))
+    db.flush()
+
+    lim = _limits(db, uid)
+    check("the headache wins on effort, as the stricter of the two",
+          lim["max_exertion"] == 1, str(lim["max_exertion"]))
+    check("and the neck keeps its stand-down anyway",
+          "dumbbell shoulder press" in (lim.get("rest_names") or ()),
+          str(sorted(lim.get("rest_names") or ())))
+    db.close()
+
+
+def test_the_morning_score_asks_about_the_whole_body():
+    """It asked about the knee for 58 sessions and never once fired.
+
+    Fifty-four of those came back 0, the highest ever was 2, and the back-off
+    threshold is 4. Repointed at the whole body it can finally mean something
+    — but a back-off from a whole-body answer has to reach the whole body,
+    while a logged knee symptom must still ease off the legs and leave the
+    press-ups alone. Those pulled in opposite directions through one setting.
+    """
+    from app.data.programs import PROGRAMS
+
+    prog = PROGRAMS["knee"]
+    check("the question is no longer about the knee",
+          "knee" not in prog["soreness_prompt"].lower(),
+          prog["soreness_prompt"])
+    check("and the word for it is not either", prog["soreness"] != "knee",
+          prog["soreness"])
+    # Kept, because a logged knee symptom still needs them.
+    check("the knee targets are still there for a knee symptom",
+          prog["soreness_targets"] == {"knee", "hip", "calf", "posterior"},
+          str(prog["soreness_targets"]))
+
+    from app.models.table_class import WorkoutSession
+
+    db, uid, byn, sy = fresh()
+    at(31)
+
+    # A whole-body score high enough to back off reaches the upper body too.
+    for s in db.query(WorkoutSession).filter(WorkoutSession.user_id == uid).all():
+        s.next_day_knee = None
+    scored = (db.query(WorkoutSession)
+              .filter(WorkoutSession.user_id == uid)
+              .order_by(WorkoutSession.date_time.desc()).first())
+    scored.next_day_knee = 6
+    db.flush()
+
+    r = build(db, uid, day="B")
+    check("the score backs off at all", r["knee"]["action"] == "back_off",
+          r["knee"]["reason"])
+    # Whichever upper-body and core work the phase happens to contain: the
+    # point is that a whole-body answer is not trimmed back to the legs.
+    legs = {"knee", "hip", "calf", "posterior"}
+    off_target = [b for b in r["blocks"]
+                  if b["group"] == "strength" and b.get("target") not in legs]
+    check("the day has work outside the legs to test with", off_target,
+          str([b["exercise"] for b in r["blocks"] if b["group"] == "strength"]))
+    check("and the back-off reaches it", off_target and all(
+        "settle" in b["why"] or "down a step" in b["why"] for b in off_target),
+        str([(b["exercise"], b["why"][:40]) for b in off_target]))
+
+    # The same score, had it come from a logged knee symptom instead, must
+    # still leave that work alone — that is what the targets are for.
+    log_symptom(db, uid, sy.get("Knee pain - left lateral"), 2)
+    r2 = build(db, uid, day="B")
+    check("a knee symptom still narrows to the legs",
+          r2["knee"].get("from_symptom_log") is True, r2["knee"]["reason"])
+    spared = [b for b in r2["blocks"]
+              if b["group"] == "strength" and b.get("target") not in legs]
+    check("so the work outside the legs is not eased off",
+          spared and not any("settle" in b["why"] for b in spared),
+          str([(b["exercise"], b["why"][:40]) for b in spared]))
+    db.close()
+
+
 def test_an_easy_week_steps_down_once_and_holds():
     """The easy week was cutting itself every session instead of once.
 

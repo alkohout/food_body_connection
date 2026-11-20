@@ -309,11 +309,32 @@ PROGRAMS = {
         "phases": KNEE_PHASES,
         "maintenance": KNEE_MAINTENANCE,
         "assessment": KNEE_ASSESSMENT,
-        "soreness": "knee",
-        "soreness_prompt": "How was the knee this morning? 0 is pain free, 10 is the worst it has been.",
+        # The morning-after score asks about the whole body, not the knee.
+        #
+        # It was a knee question for 58 scored sessions and came back 0 on 54
+        # of them, 1 on three and 2 on one. The back-off threshold is 4, so in
+        # five months it never once fired: a daily prompt answered faithfully
+        # and incapable of changing anything. Meanwhile the things that
+        # actually derail a session here — a migraine, nausea, a stiff neck —
+        # had no way into this measurement at all.
+        #
+        # The score still gates the phase, which is why it could not simply be
+        # dropped: with no scores at all `current_phase` has no evidence to
+        # promote on and falls back to phase 1, so deleting the prompt would
+        # have demoted a programme that has been running at phase 3.
+        "soreness": "soreness",
+        "soreness_prompt": "How did yesterday's session leave you? 0 is fine, 10 is the worst it has been.",
         "symptom_keywords": ["knee"],
-        # A sore knee is a reason to ease off the legs, not the press-ups.
-        # Hips are included because they control how the knee tracks.
+        # Which exercises a back-off reaches, and it depends on what caused it.
+        #
+        # A logged knee symptom is still a reason to ease off the legs and not
+        # the press-ups, so these targets apply to it exactly as before. Hips
+        # are included because they control how the knee tracks.
+        #
+        # The morning-after score is no longer narrowed by them, because it no
+        # longer asks about the knee: a whole-body answer that only reached the
+        # legs would be easing off something other than what was reported. The
+        # engine tells the two apart by `from_symptom_log`.
         "soreness_targets": {"knee", "hip", "calf", "posterior"},
     },
 }
@@ -379,6 +400,24 @@ POSTEROLATERAL_REST = {
     "anterior step down", "step up",
 }
 
+# What a stiff or sore neck least wants: load carried through the shoulders and
+# upper traps, anything pressed or reached overhead, and the two movements that
+# hold the head off the floor against gravity.
+#
+# Named movements rather than the "upper" target, because that target is the
+# whole upper body — a bicep curl and a band pull-apart are on it, and neither
+# has anything to do with a neck. Dropping all of them to spare the neck would
+# take out most of two training days for no reason.
+#
+# These are reasoned choices about which patterns load the neck, not clinical
+# guidance, and a neck that stays sore is worth a physiotherapist rather than a
+# rule in a file.
+NECK_REST = {
+    "dumbbell shoulder press", "pike push up", "farmer's carry",
+    "tube lat pulldown", "tube single arm lat pulldown", "prone y raise",
+    "sit up",
+}
+
 # Loaded end-range hamstring work, which is what an irritated hamstring tendon
 # least wants. The kick ladder is goal work and can wait a fortnight.
 HAMSTRING_END_RANGE = {
@@ -440,6 +479,34 @@ SESSION_LIMITS = {
         3: {"max_exertion": 1, "allow_floor": True,
             "note": "Very tired: gentle work only, and stopping early is a "
                     "reasonable outcome."},
+    },
+    # Nausea takes the same shape as a headache rather than as fatigue: it is
+    # bending down and getting back up that provokes it, so the floor closes
+    # before the effort ceiling does.
+    "nausea": {
+        1: {"max_exertion": 2, "allow_floor": True,
+            "note": "Queasy: the demanding work is out, the rest stands."},
+        2: {"max_exertion": 1, "allow_floor": False,
+            "note": "Nausea: gentle and upright only — getting down to the "
+                    "floor and back up is what makes it worse."},
+        3: {"max_exertion": 1, "allow_floor": False,
+            "note": "Bad nausea: gentle and upright only, and stopping early "
+                    "is a reasonable outcome."},
+    },
+    # A neck is the one symptom here that rules out a pattern rather than a
+    # level of effort. At mild it costs nothing but the overhead work, which is
+    # why it leaves the effort ceiling alone: skipping a whole session for a
+    # stiff neck loses training that the neck was never going to mind.
+    "neck": {
+        1: {"max_exertion": 3, "allow_floor": True, "rest_names": NECK_REST,
+            "note": "Stiff neck: the overhead work and the loaded carry are "
+                    "out. The rest of the session stands."},
+        2: {"max_exertion": 2, "allow_floor": True, "rest_names": NECK_REST,
+            "note": "Sore neck: nothing overhead or carried through the "
+                    "shoulders, and the demanding work is out with it."},
+        3: {"max_exertion": 1, "allow_floor": True, "rest_names": NECK_REST,
+            "note": "Bad neck: gentle work only, and nothing overhead or "
+                    "loaded through the shoulders."},
     },
 }
 

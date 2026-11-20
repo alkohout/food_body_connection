@@ -90,6 +90,7 @@ class SessionCreate(BaseModel):
     duration_min: Optional[int] = Field(default=None, ge=0)
     overall_rpe: Optional[int] = Field(default=None, ge=1, le=10)
     notes: Optional[str] = None
+    session_note: Optional[str] = Field(default=None, max_length=2000)
 
 
 class SessionUpdate(BaseModel):
@@ -97,7 +98,11 @@ class SessionUpdate(BaseModel):
     duration_min: Optional[int] = Field(default=None, ge=0)
     overall_rpe: Optional[int] = Field(default=None, ge=1, le=10)
     notes: Optional[str] = None
-    # Recorded the day after, which is the point of it.
+    session_note: Optional[str] = Field(default=None, max_length=2000)
+    # Recorded the day after, which is the point of it. Named for the knee
+    # because that is what it used to ask about; it now asks how the whole body
+    # took the session, and renaming the column would break a client still
+    # sending the old name.
     next_day_knee: Optional[int] = Field(default=None, ge=0, le=10)
 
 
@@ -108,6 +113,7 @@ class SessionOut(BaseModel):
     duration_min: Optional[int]
     overall_rpe: Optional[int]
     notes: Optional[str]
+    session_note: Optional[str] = None
     next_day_knee: Optional[int]
     sets: list[SetOut] = []
 

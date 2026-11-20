@@ -1038,6 +1038,21 @@
         <div id="tr-run-body" class="tr-card"></div>
       </section>
 
+      <!-- A note in the person's own words, separate from the "Skipped: ..."
+           line the runner generates for itself. Written into the markup rather
+           than built by the renderer: logging a set re-renders the runner, and
+           a textarea rebuilt mid-sentence loses both the text and the cursor —
+           the same trap the side selector fell into. -->
+      <section class="med-section" id="tr-note-section" style="display:none">
+        <div class="tr-card">
+          <p class="tr-card-title">Anything worth noting?</p>
+          <p class="tr-hint">How the session actually went, in your words —
+            saved when you finish.</p>
+          <textarea id="tr-session-note" rows="2" maxlength="2000"
+                    placeholder="e.g. eased off, nausea — skipped upper body, stiff neck"></textarea>
+        </div>
+      </section>
+
       <!-- Only on days with a walk scheduled. It is logged on its own because
            it happens at another time of day than the training. -->
       <section class="med-section" id="tr-aerobic-section" style="display:none">
