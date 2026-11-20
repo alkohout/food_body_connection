@@ -556,6 +556,97 @@ def test_a_load_logged_at_zero_does_not_pin_the_next_one():
           str(kept["target_weight"]))
 
 
+def test_an_easy_week_never_asks_for_more_sets():
+    """A one-set practice item came back as two on a deload week.
+
+    The set cut floors at two so a three-set block eases to two rather than
+    all the way to one. On a block that only ever had one set, that floor was
+    a raise: tai chi, which is one round, was prescribed twice over for the
+    whole of an easy week. Logged as two rounds on four consecutive days
+    before it was spotted, so the easy week was the heaviest practice week.
+    """
+    from types import SimpleNamespace
+    from app.data.programs import Block
+    from app.analysis.training_program import _prescribe
+
+    ex = SimpleNamespace(exercise_name="Tai Chi Exercises", category="martial",
+                         target="whole", equipment="none", is_unilateral=False,
+                         is_hold=False, exercise_id=1, form_cues=None,
+                         video_url=None, needs_balance=False,
+                         hold_seconds=None, notes=None)
+    one = Block("Tai Chi Exercises", "check", 1, 0, 0)
+
+    for action in ("deload", "back_off"):
+        got = _prescribe(one, ex, [], action, [])
+        check(f"one set stays one set on a {action}", got["sets"] == 1,
+              str(got["sets"]))
+
+    # The floor itself still has to work, or a three-set block would ease to
+    # one and the easy week would be a week off.
+    three = Block("Goblet Squat", "load", 3, 6, 10)
+    sq = SimpleNamespace(exercise_name="Goblet Squat", category="strength",
+                         target="quad", equipment="dumbbell", is_unilateral=False,
+                         is_hold=False, exercise_id=2, form_cues=None,
+                         video_url=None, needs_balance=False,
+                         hold_seconds=None, notes=None)
+    eased = _prescribe(three, sq, [], "deload", [2.5, 5.0])
+    check("three sets still ease to two", eased["sets"] == 2, str(eased["sets"]))
+
+    two = Block("Side Kick", "reps", 2, 10, 20)
+    held = _prescribe(two, ex, [], "deload", [])
+    check("and two sets hold at two", held["sets"] == 2, str(held["sets"]))
+
+
+def test_pelvic_floor_is_a_daily_dose_not_a_progression():
+    """It ratcheted itself down: 10s, then 8s, then 6s.
+
+    The deload target was computed from the session before, so inside one easy
+    week each session eased off from the already-eased figure. Pelvic floor
+    work carries no load to recover from in the first place — the guidance is
+    frequency, a full-length hold every day — so it should not have been in
+    the easy week at all. It holds its dose now, and does not climb either.
+    """
+    from types import SimpleNamespace
+    from app.data.programs import Block, DAILY
+    from app.analysis.training_program import _prescribe
+
+    block = DAILY[0]
+    check("the daily block is the pelvic floor work",
+          block.name == "Pelvic Floor Training", block.name)
+
+    ex = SimpleNamespace(exercise_name="Pelvic Floor Training", category="strength",
+                         target="core", equipment="none", is_unilateral=False,
+                         is_hold=True, exercise_id=1, form_cues=None,
+                         video_url=None, needs_balance=False,
+                         hold_seconds=None, notes=None)
+    full = [SimpleNamespace(hold_seconds=10, reps=None, rpe=None, weight_kg=None,
+                            band_kg=None) for _ in range(block.sets)]
+
+    for action in ("deload", "back_off", "progress", "hold"):
+        got = _prescribe(block, ex, full, action, [], fixed_dose=True)
+        check(f"{action}: the hold stays at {block.high}s",
+              got["target_seconds"] == block.high, str(got["target_seconds"]))
+        check(f"{action}: and all {block.sets} sets stay",
+              got["sets"] == block.sets, str(got["sets"]))
+
+    # The ratchet: fed its own cut-down history it has to come back, not sink
+    # further. This is the case that produced 6s from 10s in two sessions.
+    cut = [SimpleNamespace(hold_seconds=6, reps=None, rpe=None, weight_kg=None,
+                           band_kg=None) for _ in range(2)]
+    back = _prescribe(block, ex, cut, "deload", [], fixed_dose=True)
+    check("a cut-down history does not cut it again",
+          back["target_seconds"] == block.high, str(back["target_seconds"]))
+
+    # Without the flag it is an ordinary isometric, which is what every other
+    # hold in the programme still needs to be.
+    ordinary = _prescribe(Block("Side Plank", "iso", 3, 20, 60), ex,
+                          [SimpleNamespace(hold_seconds=30, reps=None, rpe=None,
+                                           weight_kg=None, band_kg=None)
+                           for _ in range(3)], "deload", [])
+    check("an ordinary hold still eases off on a deload",
+          ordinary["target_seconds"] < 30, str(ordinary["target_seconds"]))
+
+
 def test_the_kick_prep_survives_a_practice_day():
     """It went missing on a Saturday, which is almost entirely kicking.
 

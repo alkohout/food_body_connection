@@ -1132,7 +1132,7 @@ def _repeat_floor(low, achieved):
 
 def _prescribe(block, ex, last_sets, action, loads, last_done=None,
                stalled=False, from_assessment=False, bands=None, pace=None,
-               step_budget=None):
+               step_budget=None, fixed_dose=False):
     """Turn one template block plus history into a concrete instruction."""
     sets = block.sets
     detail, why = "", ""
@@ -1141,8 +1141,12 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
     # easier version of the movement.
     exhausted = False
 
-    if action in ("back_off", "deload"):
-        sets = max(2, block.sets - 1)
+    # The floor of two is there so a three-set block eases to two rather than
+    # all the way to one. It was only ever a floor, though, and on a one-set
+    # block max() raised it: an easy week asked for a round of tai chi twice
+    # over, which is the opposite of easing off. Capped at what was asked for.
+    if action in ("back_off", "deload") and not fixed_dose:
+        sets = min(block.sets, max(2, block.sets - 1))
 
     # What was actually completed last time. Two rules apply throughout:
     #
@@ -1174,7 +1178,17 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
     elif block.scheme == "iso":
         holds = [(s.hold_seconds or 0) for s in last_sets]
         top, weakest = (max(holds), min(holds)) if holds else (0, 0)
-        if action in ("back_off", "deload"):
+        if fixed_dose:
+            # Pelvic floor work answers to frequency, not to load: the dose is
+            # a full-length hold done every day, and there is no accumulated
+            # fatigue in it to ease off from. Reading it as a progression made
+            # an easy week cut it, and because each session eased off from the
+            # session before, the cut compounded — 10s became 8s became 6s.
+            target = block.high or block.low
+            why = ("A daily dose rather than something to progress — a "
+                   "full-length hold every day is the whole point, so this "
+                   "neither climbs with a good week nor drops on an easy one.")
+        elif action in ("back_off", "deload"):
             target = max(_repeat_floor(block.low, top), int(top * 0.8) or block.low)
             why = ("Planned easy week — targets and sets come down together."
                    if action == "deload" else "Held back while the knee settles.")
@@ -1891,6 +1905,7 @@ def _prescribe_blocks(db, user_id, hist, templates, by_name, by_id, prog,
             from_assessment=from_test, bands=bands,
             pace=_progress_pace(hist, ex.exercise_id),
             step_budget=step_budget[0],
+            fixed_dose=(group == "pelvic"),
         )
         # Spent here rather than inside the prescription, so an exercise that
         # steps up in this session counts against the next one in it.
