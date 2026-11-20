@@ -229,6 +229,21 @@ RETURN_WINDOW_DAYS = 35
 LOAD_STEPS_PER_WEEK = 2
 LOAD_STEP_WINDOW_DAYS = 7
 
+# How far back to look for the level an easy week should ease off from.
+#
+# Every eased target used to be a fraction of the session before it, which
+# inside a run of eased sessions means a fraction of an already-eased figure.
+# The cuts compounded: pelvic floor holds went 10s, 8s, 6s in three days, and
+# Side Kick lost half its reps — 20, 16, 12, 10 — inside one easy week that
+# was supposed to be a single step down held for seven days.
+#
+# Measured against the best of the recent window instead, which the easing
+# itself does not move, so the step down is the same size on the first day of
+# the week as on the last. Long enough to span a deload week and reach the
+# working level in front of it; short enough to still describe what this
+# person can currently do rather than their best month.
+WORKING_LEVEL_DAYS = 21
+
 # A load step this large relative to the current load gets its first session at
 # reduced volume. With light dumbbells the plates cannot make a small jump —
 # 2.5kg to 5kg is the whole load again — so the sets carry what the plates
@@ -444,14 +459,16 @@ def _progress_pace(hist, exercise_id):
     if not dated:
         return None
 
-    # One entry per session: the heaviest load carried and the best rep count.
+    # One entry per session: the heaviest load carried, the best rep count and
+    # the longest hold.
     sessions = {}
     for st, s in dated:
         day = s.date_time.date()
-        cur = sessions.setdefault(day, {"weight": None, "reps": 0})
+        cur = sessions.setdefault(day, {"weight": None, "reps": 0, "hold": 0})
         if st.weight_kg is not None:
             cur["weight"] = max(cur["weight"] or 0.0, st.weight_kg)
         cur["reps"] = max(cur["reps"], st.reps or 0)
+        cur["hold"] = max(cur["hold"], st.hold_seconds or 0)
     order = sorted(sessions)
     today = datetime.utcnow().date()
 
@@ -487,9 +504,21 @@ def _progress_pace(hist, exercise_id):
         last_step = day
         at_reps += 1
 
+    # The level an easy week eases off from: the best of the recent window
+    # rather than whatever the last session happened to be asked for. A deload
+    # does not change this, which is what stops the step down compounding.
+    window = [d for d in order if (today - d).days <= WORKING_LEVEL_DAYS]
+    weights = [sessions[d]["weight"] for d in window
+               if sessions[d]["weight"] is not None]
+    reps_in = [sessions[d]["reps"] for d in window if sessions[d]["reps"]]
+    holds_in = [sessions[d]["hold"] for d in window if sessions[d]["hold"]]
+
     # Sessions at the top of the rep range are counted by the caller, which is
     # the only place that knows what the range is.
     return {
+        "working_load": max(weights) if weights else None,
+        "working_reps": max(reps_in) if reps_in else None,
+        "working_hold": max(holds_in) if holds_in else None,
         "sessions_at_load": at_load,
         "days_at_load": (today - first_at_load).days,
         "days_since_rep_step": (today - last_step).days,
@@ -1189,8 +1218,14 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
                    "full-length hold every day is the whole point, so this "
                    "neither climbs with a good week nor drops on an easy one.")
         elif action in ("back_off", "deload"):
-            target = max(_repeat_floor(block.low, top), int(top * 0.8) or block.low)
-            why = ("Planned easy week — targets and sets come down together."
+            # Off the working level, not off the last session: inside a run of
+            # eased sessions the last session is itself eased, and taking 80%
+            # of it again each time is how 10s became 8s became 6s.
+            ref = (pace or {}).get("working_hold") or top
+            target = max(_repeat_floor(block.low, ref),
+                         min(int(ref * 0.8) or block.low, block.high))
+            why = (f"Planned easy week — one step down from your {ref}s and "
+                   f"held there, not eased off again every session."
                    if action == "deload" else "Held back while the knee settles.")
         elif action == "hold" or not top:
             target = max(_repeat_floor(block.low, top), top or block.low)
@@ -1238,8 +1273,15 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         if banded and weight is None:
             weight = last_band
         if action in ("back_off", "deload"):
-            target = max(_repeat_floor(block.low, top), int(top * 0.8) or block.low)
-            why = ("Planned easy week — targets and sets come down together."
+            # As in the iso branch: the reference is the best of the recent
+            # window, which the easing does not move. Measured off the session
+            # before, one easy week cost Side Kick half its reps — 20, 16, 12,
+            # 10 — because each day eased off the day before.
+            ref = (pace or {}).get("working_reps") or top
+            target = max(_repeat_floor(block.low, ref),
+                         min(int(ref * 0.8) or block.low, block.high))
+            why = (f"Planned easy week — one step down from your {ref} and "
+                   f"held there, not eased off again every session."
                    if action == "deload" else "Volume cut while the knee settles.")
         elif action == "hold" or not top:
             target = max(_repeat_floor(block.low, top), min(top or block.low, block.high))
@@ -1315,9 +1357,14 @@ def _prescribe(block, ex, last_sets, action, loads, last_done=None,
         hard = any(r > RPE_CEILING for r in rpes)
 
         if action in ("back_off", "deload"):
-            weight = _next_load(last_w, loads, up=False)
+            # One rung below the working level and no further. Stepping down
+            # from last session's load instead meant a body part trained twice
+            # in the easy week came down twice.
+            ref = (pace or {}).get("working_load") or last_w
+            weight = _next_load(ref, loads, up=False)
             target = block.low
-            why = ("Planned easy week — targets and sets come down together."
+            why = (f"Planned easy week — one step down from your {ref}kg and "
+                   f"held there, not stepped down again every session."
                    if action == "deload" else "Load down a step while the knee settles.")
         elif last_w is None:
             weight = loads[0] if loads else None

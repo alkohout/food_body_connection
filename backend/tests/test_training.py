@@ -597,6 +597,81 @@ def test_an_easy_week_never_asks_for_more_sets():
     check("and two sets hold at two", held["sets"] == 2, str(held["sets"]))
 
 
+def test_an_easy_week_steps_down_once_and_holds():
+    """The easy week was cutting itself every session instead of once.
+
+    Each eased target was a fraction of the session before it, and inside a
+    run of eased sessions the session before is itself eased. Side Kick went
+    20, 16, 12, 10 across four days of one deload week; pelvic floor holds
+    went 10s, 8s, 6s. A week meant to be one step down, held, took half the
+    programme with it.
+
+    The reference is now the best of the recent window, which the easing does
+    not move, so the step is the same size on the last day as on the first.
+    """
+    from types import SimpleNamespace
+    from app.data.programs import Block
+    from app.analysis.training_program import _prescribe
+
+    def follow(block, ex, scheme_field, start, pace, rounds=5):
+        """Prescribe, do exactly what it says, prescribe again."""
+        done, seen = start, []
+        for _ in range(rounds):
+            prior = [SimpleNamespace(reps=None, hold_seconds=None, weight_kg=None,
+                                     band_kg=None, rpe=None) for _ in range(4)]
+            for st in prior:
+                setattr(st, scheme_field, done)
+            got = _prescribe(block, ex, prior, "deload", [2.5, 5.0, 7.5], pace=pace)
+            done = got["target_reps"] if scheme_field == "reps" else got["target_seconds"]
+            seen.append(done)
+        return seen
+
+    kick = SimpleNamespace(exercise_name="Side Kick", category="martial",
+                           target="hip", equipment="none", is_unilateral=True,
+                           is_hold=False, exercise_id=1, form_cues=None,
+                           video_url=None, needs_balance=False,
+                           hold_seconds=None, notes=None)
+    reps = follow(Block("Side Kick", "reps", 2, 10, 20), kick, "reps", 20,
+                  {"working_reps": 20})
+    check("reps step down once and stay", len(set(reps)) == 1, str(reps))
+    check("and the step is a real one", reps[0] < 20, str(reps))
+
+    # The ratchet it replaces, so the test fails if the reference is dropped.
+    old = follow(Block("Side Kick", "reps", 2, 10, 20), kick, "reps", 20, {})
+    check("without a working level it would still sink", len(set(old)) > 1, str(old))
+
+    plank = SimpleNamespace(exercise_name="Side Plank", category="strength",
+                            target="core", equipment="none", is_unilateral=False,
+                            is_hold=True, exercise_id=2, form_cues=None,
+                            video_url=None, needs_balance=False,
+                            hold_seconds=None, notes=None)
+    holds = follow(Block("Side Plank", "iso", 3, 20, 60), plank, "hold_seconds",
+                   60, {"working_hold": 60})
+    check("holds step down once and stay", len(set(holds)) == 1, str(holds))
+    check("and that step is a real one", holds[0] < 60, str(holds))
+
+    # Load steps down a rung from the working load, not from wherever the last
+    # session landed, so a body part trained twice in the week drops once.
+    sq = SimpleNamespace(exercise_name="Goblet Squat", category="strength",
+                         target="quad", equipment="dumbbell", is_unilateral=False,
+                         is_hold=False, exercise_id=3, form_cues=None,
+                         video_url=None, needs_balance=False,
+                         hold_seconds=None, notes=None)
+    block = Block("Goblet Squat", "load", 3, 6, 10)
+    loads = [2.5, 5.0, 7.5]
+    at = 7.5
+    seen = []
+    for _ in range(4):
+        prior = [SimpleNamespace(weight_kg=at, reps=6, rpe=None, band_kg=None,
+                                 hold_seconds=None) for _ in range(3)]
+        got = _prescribe(block, sq, prior, "deload", loads,
+                         pace={"working_load": 7.5})
+        at = got["target_weight"]
+        seen.append(at)
+    check("load steps down one rung and holds", len(set(seen)) == 1, str(seen))
+    check("and it is one rung, not two", seen[0] == 5.0, str(seen))
+
+
 def test_pelvic_floor_is_a_daily_dose_not_a_progression():
     """It ratcheted itself down: 10s, then 8s, then 6s.
 
